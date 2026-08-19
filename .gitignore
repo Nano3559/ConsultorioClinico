@@ -1,0 +1,33 @@
+# --- Flutter / Dart ---
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/build/
+frontend/.pub-cache/
+frontend/.pub/
+frontend/*.iml
+frontend/.idea/
+frontend/.vscode/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/key.properties
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/ephemeral/
+
+# --- Node.js ---
+backend/node_modules/
+backend/dist/
+backend/build/
+backend/coverage/
+backend/.env
+backend/.env.*
+backend/npm-debug.log*
+backend/yarn-error.log*
+backend/package-lock.json
+
+# --- General ---
+*.log
+.DS_Store
+Thumbs.db
+.env
