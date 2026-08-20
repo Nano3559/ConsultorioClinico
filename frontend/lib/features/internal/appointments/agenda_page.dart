@@ -29,18 +29,21 @@ class _AgendaPageState extends State<AgendaPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
     final list = clinic.appointmentsOfDay(_date).where((a) {
       if (_doctorFilter != null && a.doctorId != _doctorFilter) return false;
       return true;
     }).toList();
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
         Row(
           children: [
             IconButton(
               onPressed: () => _changeDate(-1),
+              visualDensity: VisualDensity.compact,
+              iconSize: isMobile ? 22 : 24,
               icon: const Icon(Icons.chevron_left),
             ),
             Expanded(
@@ -58,11 +61,15 @@ class _AgendaPageState extends State<AgendaPage> {
                   children: [
                     Text(
                       AppFormatters.day(_date),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark),
+                      style: TextStyle(
+                        fontSize: isMobile ? 16 : 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                      ),
                     ),
                     Text(
                       '${_date.day}/${_date.month}/${_date.year}',
-                      style: const TextStyle(color: AppColors.muted),
+                      style: const TextStyle(color: AppColors.muted, fontSize: 13),
                     ),
                   ],
                 ),
@@ -70,18 +77,23 @@ class _AgendaPageState extends State<AgendaPage> {
             ),
             IconButton(
               onPressed: () => _changeDate(1),
+              visualDensity: VisualDensity.compact,
+              iconSize: isMobile ? 22 : 24,
               icon: const Icon(Icons.chevron_right),
             ),
-            const SizedBox(width: 8),
             if (_date.day != DateTime.now().day ||
                 _date.month != DateTime.now().month)
               TextButton(
                 onPressed: () => setState(() => _date = DateTime.now()),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                ),
                 child: const Text('Hoy'),
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: isMobile ? 6 : 8),
         ResponsiveRow(
           children: [
             DropdownButtonFormField<String?>(
@@ -134,26 +146,40 @@ class _AgendaPageState extends State<AgendaPage> {
         else
           for (final a in list)
             Card(
-              margin: const EdgeInsets.only(bottom: 10),
+              margin: EdgeInsets.only(bottom: isMobile ? 6 : 10),
               child: ListTile(
+                dense: isMobile,
+                contentPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 10, vertical: 2) : null,
                 leading: Container(
-                  width: 64,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  width: isMobile ? 46 : 64,
+                  height: isMobile ? 32 : 40,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AppColors.primaryBg,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        a.time,
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark),
-                      ),
-                    ],
+                  child: Text(
+                    a.time,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                      fontSize: isMobile ? 12 : 13,
+                    ),
                   ),
                 ),
-                title: Text(clinic.patientName(a.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                subtitle: Text('${clinic.doctorName(a.doctorId)} — ${a.reason}'),
+                title: Text(
+                  clinic.patientName(a.patientId),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark, fontSize: isMobile ? 14 : 16),
+                ),
+                subtitle: Text(
+                  '${clinic.doctorName(a.doctorId)} — ${a.reason}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: isMobile ? 12 : 14),
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
