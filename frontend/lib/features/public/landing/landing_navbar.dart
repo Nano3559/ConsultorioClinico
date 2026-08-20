@@ -30,12 +30,15 @@ class LandingNavbar extends StatelessWidget {
         children: [
           const Icon(Icons.local_hospital, color: AppColors.primary, size: 32),
           const SizedBox(width: 10),
-          const Text(
-            AppInfo.name,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.dark,
+          Flexible(
+            child: Text(
+              AppInfo.name,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
             ),
           ),
           const Spacer(),

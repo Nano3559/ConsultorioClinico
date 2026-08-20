@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_status_badge.dart';
+import '../../../core/widgets/responsive_row.dart';
 import '../../../state/clinic_provider.dart';
 import 'appointment_actions.dart';
 
@@ -31,78 +32,65 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
       return true;
     }).toList();
 
-    return Column(
+    return ListView(
+      padding: const EdgeInsets.all(20),
       children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String?>(
-                      initialValue: _doctorFilter,
-                      isDense: true,
-                      decoration: const InputDecoration(labelText: 'Médico'),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('Todos')),
-                        for (final d in clinic.doctors)
-                          DropdownMenuItem(value: d.id, child: Text(d.displayName)),
-                      ],
-                      onChanged: (v) => setState(() => _doctorFilter = v),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<AppointmentStatus?>(
-                      initialValue: _statusFilter,
-                      isDense: true,
-                      decoration: const InputDecoration(labelText: 'Estado'),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('Todos')),
-                        for (final s in AppointmentStatus.values)
-                          DropdownMenuItem(value: s, child: Text(s.label)),
-                      ],
-                      onChanged: (v) => setState(() => _statusFilter = v),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: () => context.push('/solicitar-cita'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Nueva cita'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        ResponsiveRow(
+          children: [
+            DropdownButtonFormField<String?>(
+              initialValue: _doctorFilter,
+              isDense: true,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Médico'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Todos')),
+                for (final d in clinic.doctors)
+                  DropdownMenuItem(value: d.id, child: Text(d.displayName)),
+              ],
+              onChanged: (v) => setState(() => _doctorFilter = v),
+            ),
+            DropdownButtonFormField<AppointmentStatus?>(
+              initialValue: _statusFilter,
+              isDense: true,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Estado'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Todos')),
+                for (final s in AppointmentStatus.values)
+                  DropdownMenuItem(value: s, child: Text(s.label)),
+              ],
+              onChanged: (v) => setState(() => _statusFilter = v),
+            ),
+            FilledButton.icon(
+              onPressed: () => context.push('/solicitar-cita'),
+              icon: const Icon(Icons.add),
+              label: const Text('Nueva cita'),
+            ),
+          ],
         ),
-        Expanded(
-          child: list.isEmpty
-              ? const AppEmptyState(icon: Icons.event_note_outlined, title: 'Sin citas con esos filtros')
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    final a = list[i];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        leading: AppStatusBadge(status: a.status),
-                        title: Text(clinic.patientName(a.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                        subtitle: Text(
-                          '${AppFormatters.shortDate(a.date)} · ${a.time} · ${clinic.doctorName(a.doctorId)}\n${a.reason}',
-                        ),
-                        isThreeLine: true,
-                        trailing: IconButton(
-                          icon: const Icon(Icons.more_vert, color: AppColors.muted),
-                          onPressed: () => showAppointmentActions(context, clinic, a),
-                        ),
-                      ),
-                    );
-                  },
+        const SizedBox(height: 12),
+        if (list.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: AppEmptyState(icon: Icons.event_note_outlined, title: 'Sin citas con esos filtros'),
+          )
+        else
+          for (final a in list)
+            Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: AppStatusBadge(status: a.status),
+                title: Text(clinic.patientName(a.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                subtitle: Text(
+                  '${AppFormatters.shortDate(a.date)} · ${a.time} · ${clinic.doctorName(a.doctorId)}\n${a.reason}',
                 ),
-        ),
+                isThreeLine: true,
+                trailing: IconButton(
+                  icon: const Icon(Icons.more_vert, color: AppColors.muted),
+                  onPressed: () => showAppointmentActions(context, clinic, a),
+                ),
+              ),
+            ),
       ],
     );
   }

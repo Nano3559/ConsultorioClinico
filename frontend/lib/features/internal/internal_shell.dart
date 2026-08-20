@@ -282,15 +282,17 @@ class _TopBar extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           AppAvatar(name: user.name, radius: 18),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-              Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-            ],
-          ),
-          const SizedBox(width: 8),
+          if (MediaQuery.of(context).size.width >= 700) ...[
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+              ],
+            ),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout, color: AppColors.muted),

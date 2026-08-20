@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/doctor.dart';
 import '../../../state/clinic_provider.dart';
 import 'doctor_form_page.dart';
@@ -18,13 +19,11 @@ class DoctorsPage extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.all(20),
-          child: Row(
+          child: ResponsiveRow(
             children: [
-              const Expanded(
-                child: Text(
-                  'Profesionales del consultorio',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark),
-                ),
+              const Text(
+                'Profesionales del consultorio',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark),
               ),
               FilledButton.icon(
                 onPressed: () => Navigator.of(context).push(

@@ -45,12 +45,18 @@ class _HeroText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 1000;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'El control médico y clínico de tu consultorio, en un solo lugar',
-          style: TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+          style: TextStyle(
+            fontSize: isMobile ? 26 : 40,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            height: 1.2,
+          ),
         ),
         const SizedBox(height: 20),
         const Text(
@@ -108,7 +114,13 @@ class _HeroCard extends StatelessWidget {
             children: [
               Icon(Icons.event_available, color: AppColors.primary, size: 28),
               SizedBox(width: 12),
-              Text('Próxima cita', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark)),
+              Flexible(
+                child: Text(
+                  'Próxima cita',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               Spacer(),
               _Badge(text: 'Confirmada'),
             ],
@@ -118,12 +130,14 @@ class _HeroCard extends StatelessWidget {
             children: [
               CircleAvatar(radius: 24, backgroundColor: AppColors.primary, child: Icon(Icons.person, color: Colors.white)),
               SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Dra. Ana Gómez', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark)),
-                  Text('Medicina general', style: TextStyle(color: AppColors.muted, fontSize: 13)),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Dra. Ana Gómez', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark), overflow: TextOverflow.ellipsis),
+                    Text('Medicina general', style: TextStyle(color: AppColors.muted, fontSize: 13), overflow: TextOverflow.ellipsis),
+                  ],
+                ),
               ),
             ],
           ),
@@ -134,12 +148,12 @@ class _HeroCard extends StatelessWidget {
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.calendar_month, color: AppColors.primary, size: 22),
-                SizedBox(width: 10),
-                Expanded(child: Text('Hoy · 10:30 AM', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark))),
-                Icon(Icons.videocam, color: AppColors.primary, size: 22),
+                const Icon(Icons.calendar_month, color: AppColors.primary, size: 22),
+                const SizedBox(width: 10),
+                const Expanded(child: Text('Hoy · 10:30 AM', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark))),
+                const Icon(Icons.videocam, color: AppColors.primary, size: 22),
               ],
             ),
           ),

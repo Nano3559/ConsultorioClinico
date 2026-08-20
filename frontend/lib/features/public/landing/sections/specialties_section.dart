@@ -89,15 +89,18 @@ class _SpecialtyCard extends StatelessWidget {
               ),
               const Spacer(),
               if (doctor != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    doctor!.displayName,
-                    style: const TextStyle(color: AppColors.primaryDark, fontSize: 12, fontWeight: FontWeight.w700),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBg,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      doctor!.displayName,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.primaryDark, fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
             ],

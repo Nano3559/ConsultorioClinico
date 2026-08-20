@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_status_badge.dart';
+import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/payment.dart';
 import '../../../state/clinic_provider.dart';
 
@@ -78,15 +79,10 @@ class _ReportsPageState extends State<ReportsPage> {
           onStatus: (v) => setState(() => _statusFilter = v),
         ),
         const SizedBox(height: 16),
-        Row(
+        ResponsiveRow(
           children: [
-            Expanded(
-              child: _MetricCard(label: 'Citas en el rango', value: '${filtered.length}', icon: Icons.event_note_outlined, color: AppColors.info),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricCard(label: 'Ingresos cobrados', value: AppFormatters.money(ingresos), icon: Icons.payments_outlined, color: AppColors.success),
-            ),
+            _MetricCard(label: 'Citas en el rango', value: '${filtered.length}', icon: Icons.event_note_outlined, color: AppColors.info),
+            _MetricCard(label: 'Ingresos cobrados', value: AppFormatters.money(ingresos), icon: Icons.payments_outlined, color: AppColors.success),
           ],
         ),
         const SizedBox(height: 20),
@@ -142,72 +138,67 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
         ),
         const SizedBox(height: 20),
-        Row(
+        ResponsiveRow(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _ChartCard(
-                title: 'Citas por médico',
-                child: SizedBox(
-                  height: 220,
-                  child: byDoctor.isEmpty
-                      ? const Center(child: Text('Sin datos', style: TextStyle(color: AppColors.muted)))
-                      : ListView.builder(
-                          itemCount: byDoctor.length,
-                          itemBuilder: (ctx, i) {
-                            final e = byDoctor.entries.elementAt(i);
-                            final max = byDoctor.values.reduce((a, b) => a > b ? a : b);
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                children: [
-                                  SizedBox(width: 90, child: Text(e.key, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12))),
-                                  Expanded(
-                                    child: Stack(
-                                      children: [
-                                        Container(height: 18, decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(6))),
-                                        FractionallySizedBox(
-                                          widthFactor: e.value / max,
-                                          child: Container(height: 18, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6))),
-                                        ),
-                                      ],
-                                    ),
+            _ChartCard(
+              title: 'Citas por médico',
+              child: SizedBox(
+                height: 220,
+                child: byDoctor.isEmpty
+                    ? const Center(child: Text('Sin datos', style: TextStyle(color: AppColors.muted)))
+                    : ListView.builder(
+                        itemCount: byDoctor.length,
+                        itemBuilder: (ctx, i) {
+                          final e = byDoctor.entries.elementAt(i);
+                          final max = byDoctor.values.reduce((a, b) => a > b ? a : b);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                SizedBox(width: 90, child: Text(e.key, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12))),
+                                Expanded(
+                                  child: Stack(
+                                    children: [
+                                      Container(height: 18, decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(6))),
+                                      FractionallySizedBox(
+                                        widthFactor: e.value / max,
+                                        child: Container(height: 18, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6))),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ChartCard(
-                title: 'Citas por especialidad',
-                child: SizedBox(
-                  height: 220,
-                  child: bySpecialty.isEmpty
-                      ? const Center(child: Text('Sin datos', style: TextStyle(color: AppColors.muted)))
-                      : PieChart(
-                          PieChartData(
-                            sectionsSpace: 2,
-                            centerSpaceRadius: 30,
-                            sections: [
-                              for (var i = 0; i < bySpecialty.entries.length; i++)
-                                PieChartSectionData(
-                                  value: bySpecialty.entries.elementAt(i).value.toDouble(),
-                                  title: bySpecialty.entries.elementAt(i).key,
-                                  titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
-                                  color: AppColors.accentPool[i % AppColors.accentPool.length],
-                                  radius: 46,
-                                ),
-                            ],
-                          ),
+            _ChartCard(
+              title: 'Citas por especialidad',
+              child: SizedBox(
+                height: 220,
+                child: bySpecialty.isEmpty
+                    ? const Center(child: Text('Sin datos', style: TextStyle(color: AppColors.muted)))
+                    : PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          sections: [
+                            for (var i = 0; i < bySpecialty.entries.length; i++)
+                              PieChartSectionData(
+                                value: bySpecialty.entries.elementAt(i).value.toDouble(),
+                                title: bySpecialty.entries.elementAt(i).key,
+                                titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                                color: AppColors.accentPool[i % AppColors.accentPool.length],
+                                radius: 46,
+                              ),
+                          ],
                         ),
-                ),
+                      ),
               ),
             ),
           ],
@@ -269,84 +260,74 @@ class _Filters extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
+          ResponsiveRow(
             children: [
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: desde,
-                      firstDate: DateTime(2015),
-                      lastDate: DateTime(2030),
-                    );
-                    if (d != null) onRange(d, hasta);
-                  },
-                  icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                  label: Text('Desde: ${AppFormatters.shortDate(desde)}'),
-                ),
+              TextButton.icon(
+                onPressed: () async {
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: desde,
+                    firstDate: DateTime(2015),
+                    lastDate: DateTime(2030),
+                  );
+                  if (d != null) onRange(d, hasta);
+                },
+                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                label: Text('Desde: ${AppFormatters.shortDate(desde)}'),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: hasta,
-                      firstDate: DateTime(2015),
-                      lastDate: DateTime(2030),
-                    );
-                    if (d != null) onRange(desde, d);
-                  },
-                  icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                  label: Text('Hasta: ${AppFormatters.shortDate(hasta)}'),
-                ),
+              TextButton.icon(
+                onPressed: () async {
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: hasta,
+                    firstDate: DateTime(2015),
+                    lastDate: DateTime(2030),
+                  );
+                  if (d != null) onRange(desde, d);
+                },
+                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                label: Text('Hasta: ${AppFormatters.shortDate(hasta)}'),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Row(
+          ResponsiveRow(
             children: [
-              Expanded(
-                child: DropdownButtonFormField<String?>(
-                  initialValue: null,
-                  isDense: true,
-                  decoration: const InputDecoration(labelText: 'Médico'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Todos')),
-                    for (final d in clinic.doctors)
-                      DropdownMenuItem(value: d.id, child: Text(d.displayName)),
-                  ],
-                  onChanged: (v) => onDoctor(v),
-                ),
+              DropdownButtonFormField<String?>(
+                initialValue: null,
+                isDense: true,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Médico'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Todos')),
+                  for (final d in clinic.doctors)
+                    DropdownMenuItem(value: d.id, child: Text(d.displayName)),
+                ],
+                onChanged: (v) => onDoctor(v),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButtonFormField<String?>(
-                  initialValue: null,
-                  isDense: true,
-                  decoration: const InputDecoration(labelText: 'Especialidad'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Todas')),
-                    for (final s in clinic.specialties)
-                      DropdownMenuItem(value: s.id, child: Text(s.name)),
-                  ],
-                  onChanged: (v) => onSpecialty(v),
-                ),
+              DropdownButtonFormField<String?>(
+                initialValue: null,
+                isDense: true,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Especialidad'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Todas')),
+                  for (final s in clinic.specialties)
+                    DropdownMenuItem(value: s.id, child: Text(s.name)),
+                ],
+                onChanged: (v) => onSpecialty(v),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButtonFormField<AppointmentStatus?>(
-                  initialValue: null,
-                  isDense: true,
-                  decoration: const InputDecoration(labelText: 'Estado'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Todos')),
-                    for (final s in AppointmentStatus.values)
-                      DropdownMenuItem(value: s, child: Text(s.label)),
-                  ],
-                  onChanged: (v) => onStatus(v),
-                ),
+              DropdownButtonFormField<AppointmentStatus?>(
+                initialValue: null,
+                isDense: true,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Estado'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Todos')),
+                  for (final s in AppointmentStatus.values)
+                    DropdownMenuItem(value: s, child: Text(s.label)),
+                ],
+                onChanged: (v) => onStatus(v),
               ),
             ],
           ),

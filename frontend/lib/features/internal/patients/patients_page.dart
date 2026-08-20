@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/patient.dart';
 import '../../../state/clinic_provider.dart';
 import 'patient_form_page.dart';
@@ -34,19 +35,16 @@ class _PatientsPageState extends State<PatientsPage> {
       children: [
         Padding(
           padding: const EdgeInsets.all(20),
-          child: Row(
+          child: ResponsiveRow(
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _search,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Buscar paciente',
-                    prefixIcon: Icon(Icons.search),
-                  ),
+              TextField(
+                controller: _search,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Buscar paciente',
+                  prefixIcon: Icon(Icons.search),
                 ),
               ),
-              const SizedBox(width: 12),
               FilledButton.icon(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const PatientFormPage()),
@@ -83,30 +81,25 @@ class _PatientTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clinic = context.read<ClinicProvider>();
-    final last = clinic.appointmentsOfPatient(patient.id).isEmpty
-        ? 'Sin citas'
-        : AppFormatters.shortDate(clinic.appointmentsOfPatient(patient.id).first.date);
+    final appts = clinic.appointmentsOfPatient(patient.id);
+    final last = appts.isEmpty ? 'Sin citas' : AppFormatters.shortDate(appts.first.date);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         leading: AppAvatar(name: patient.fullName, radius: 22),
         title: Text(patient.fullName, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-        subtitle: Text('CI ${patient.ci} · ${patient.phone}'),
-        trailing: Wrap(
-          spacing: 8,
-          children: [
-            Text(
-              'Última cita: $last',
-              style: const TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-            IconButton(
-              tooltip: 'Ver detalle',
-              icon: const Icon(Icons.chevron_right, color: AppColors.muted),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => PatientDetailPage(patientId: patient.id)),
-              ),
-            ),
-          ],
+        subtitle: Text(
+          'CI ${patient.ci} · ${patient.phone}\nÚltima cita: $last',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        isThreeLine: true,
+        trailing: IconButton(
+          tooltip: 'Ver detalle',
+          icon: const Icon(Icons.chevron_right, color: AppColors.muted),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => PatientDetailPage(patientId: patient.id)),
+          ),
         ),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => PatientDetailPage(patientId: patient.id)),

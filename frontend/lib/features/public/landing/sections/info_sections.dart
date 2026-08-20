@@ -148,9 +148,12 @@ class HoursSection extends StatelessWidget {
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                         const Spacer(),
-                        Text(
-                          hours,
-                          style: const TextStyle(color: Color(0xFF94A3B8)),
+                        Flexible(
+                          child: Text(
+                            hours,
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(color: Color(0xFF94A3B8)),
+                          ),
                         ),
                       ],
                     ),

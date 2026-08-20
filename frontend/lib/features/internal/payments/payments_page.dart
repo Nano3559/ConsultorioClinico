@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/payment.dart';
 import '../../../data/mock/mock_data.dart';
 import '../../../state/clinic_provider.dart';
@@ -29,85 +30,74 @@ class _PaymentsPageState extends State<PaymentsPage> {
         .where((p) => p.status == PaymentStatus.pagado)
         .fold<double>(0, (s, p) => s + p.amount);
 
-    return Column(
+    return ListView(
+      padding: const EdgeInsets.all(20),
       children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+        ResponsiveRow(
+          children: [
+            DropdownButtonFormField<PaymentStatus?>(
+              initialValue: _filter,
+              isDense: true,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Estado'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Todos')),
+                for (final s in PaymentStatus.values)
+                  DropdownMenuItem(value: s, child: Text(s.label)),
+              ],
+              onChanged: (v) => setState(() => _filter = v),
+            ),
+            FilledButton.icon(
+              onPressed: () => _registerPayment(context, clinic),
+              icon: const Icon(Icons.add),
+              label: const Text('Registrar pago'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.successBg,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<PaymentStatus?>(
-                      initialValue: _filter,
-                      isDense: true,
-                      decoration: const InputDecoration(labelText: 'Estado'),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('Todos')),
-                        for (final s in PaymentStatus.values)
-                          DropdownMenuItem(value: s, child: Text(s.label)),
-                      ],
-                      onChanged: (v) => setState(() => _filter = v),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: () => _registerPayment(context, clinic),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Registrar pago'),
-                  ),
-                ],
+              const Icon(Icons.payments_outlined, color: AppColors.success),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Ingresos cobrados (pagados)', style: TextStyle(color: AppColors.dark, fontWeight: FontWeight.w700)),
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.successBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.payments_outlined, color: AppColors.success),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text('Ingresos cobrados (pagados)', style: TextStyle(color: AppColors.dark, fontWeight: FontWeight.w700)),
-                    ),
-                    Text(
-                      AppFormatters.money(total),
-                      style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w800, fontSize: 18),
-                    ),
-                  ],
-                ),
+              Text(
+                AppFormatters.money(total),
+                style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w800, fontSize: 18),
               ),
             ],
           ),
         ),
-        Expanded(
-          child: list.isEmpty
-              ? const AppEmptyState(icon: Icons.receipt_long_outlined, title: 'Sin pagos registrados')
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    final p = list[i];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        leading: Icon(p.method.icon, color: AppColors.primary),
-                        title: Text(
-                          '${clinic.patientName(p.patientId)} — ${AppFormatters.money(p.amount)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
-                        ),
-                        subtitle: Text(
-                          '${AppFormatters.shortDate(p.date)} · ${clinic.doctorName(p.doctorId)} · ${p.method.label}',
-                        ),
-                        trailing: _PaymentStatusChip(status: p.status),
-                        onTap: () => _toggleStatus(context, clinic, p),
-                      ),
-                    );
-                  },
+        const SizedBox(height: 12),
+        if (list.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: AppEmptyState(icon: Icons.receipt_long_outlined, title: 'Sin pagos registrados'),
+          )
+        else
+          for (final p in list)
+            Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: Icon(p.method.icon, color: AppColors.primary),
+                title: Text(
+                  '${clinic.patientName(p.patientId)} — ${AppFormatters.money(p.amount)}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
                 ),
-        ),
+                subtitle: Text(
+                  '${AppFormatters.shortDate(p.date)} · ${clinic.doctorName(p.doctorId)} · ${p.method.label}',
+                ),
+                trailing: _PaymentStatusChip(status: p.status),
+                onTap: () => _toggleStatus(context, clinic, p),
+              ),
+            ),
       ],
     );
   }

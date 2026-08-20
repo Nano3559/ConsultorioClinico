@@ -93,6 +93,29 @@ class _TodayAppointments extends StatelessWidget {
               title: 'Sin citas para hoy',
               subtitle: 'Cuando se agenden citas aparecerán aquí.',
             )
+          else if (MediaQuery.of(context).size.width < 700)
+            for (final a in today)
+              Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Container(
+                    width: 54,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBg,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      a.time,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+                    ),
+                  ),
+                  title: Text(clinic.patientName(a.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                  subtitle: Text('${clinic.doctorName(a.doctorId)} · ${a.reason}'),
+                  trailing: AppStatusBadge(status: a.status),
+                ),
+              )
           else
             Table(
               columnWidths: const {0: FlexColumnWidth(1), 1: FlexColumnWidth(2), 2: FlexColumnWidth(2), 3: FlexColumnWidth(2), 4: FlexColumnWidth(1.4)},

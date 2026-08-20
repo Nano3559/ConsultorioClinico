@@ -103,9 +103,12 @@ class _DoctorCard extends StatelessWidget {
             children: [
               const Icon(Icons.work_history_outlined, color: AppColors.muted, size: 16),
               const SizedBox(width: 6),
-              Text(
-                '${doctor.yearsExperience} años de experiencia',
-                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              Flexible(
+                child: Text(
+                  '${doctor.yearsExperience} años de experiencia',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
               ),
             ],
           ),
