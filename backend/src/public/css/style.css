@@ -1,0 +1,164 @@
+:root {
+  --primary: #0d6efd;
+  --primary-dark: #0a58ca;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding-top: 56px;
+}
+
+.main-content {
+  min-height: calc(100vh - 56px);
+}
+
+.hero-section {
+  min-height: 80vh;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.hero-image {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+.stat-card {
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+}
+
+.doctor-avatar, .doctor-avatar-lg, .doctor-avatar-xl {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f8f9fa;
+}
+
+.doctor-avatar-lg {
+  width: 120px;
+  height: 120px;
+}
+
+.doctor-avatar-xl {
+  width: 150px;
+  height: 150px;
+}
+
+.doctor-avatar i, .doctor-avatar-lg i, .doctor-avatar-xl i {
+  font-size: 3rem;
+}
+
+.doctor-avatar-xl i {
+  font-size: 5rem;
+}
+
+.icon-circle {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-header {
+  margin-top: 56px;
+}
+
+.table thead th {
+  border: none;
+  font-weight: 600;
+}
+
+.table tbody td {
+  vertical-align: middle;
+}
+
+.whatsapp-float {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  background: #25d366;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+  z-index: 1000;
+  transition: transform 0.3s ease;
+  text-decoration: none;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.1);
+  color: white;
+}
+
+.login-section {
+  min-height: calc(100vh - 56px);
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.navbar-brand {
+  font-size: 1.4rem;
+}
+
+footer a:hover {
+  color: white !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    min-height: 60vh;
+  }
+  
+  .hero-image i {
+    font-size: 8rem !important;
+  }
+  
+  .whatsapp-float {
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+}
