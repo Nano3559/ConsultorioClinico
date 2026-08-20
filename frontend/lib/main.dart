@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
@@ -10,8 +12,10 @@ import 'features/internal/internal_shell.dart';
 import 'state/auth_provider.dart';
 import 'state/clinic_provider.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Intl.defaultLocale = 'es';
+  await initializeDateFormatting('es');
   runApp(
     MultiProvider(
       providers: [
