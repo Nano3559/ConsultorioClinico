@@ -23,8 +23,9 @@ void showAppointmentActions(
           a.status == AppointmentStatus.cancelada ||
           a.status == AppointmentStatus.noAsistio;
       return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
@@ -116,9 +117,10 @@ void showAppointmentActions(
             const SizedBox(height: 8),
           ],
         ),
-      );
-    },
-  );
+      ),
+    );
+  },
+);
 }
 
 void _reschedule(BuildContext context, ClinicProvider clinic, Appointment a) {
