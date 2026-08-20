@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/patient.dart';
 import '../../../state/clinic_provider.dart';
@@ -31,45 +32,68 @@ class _PatientsPageState extends State<PatientsPage> {
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
     final patients = clinic.searchPatients(_search.text);
-    return Column(
+    final isWide = MediaQuery.sizeOf(context).width >= 840;
+    return ListView(
+      padding: const EdgeInsets.all(20),
       children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: ResponsiveRow(
-            children: [
-              TextField(
-                controller: _search,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Buscar paciente',
-                  prefixIcon: Icon(Icons.search),
-                ),
+        ResponsiveRow(
+          children: [
+            TextField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Buscar paciente',
+                prefixIcon: Icon(Icons.search),
               ),
-              FilledButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PatientFormPage()),
-                ),
-                icon: const Icon(Icons.person_add_alt),
-                label: const Text('Registrar'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PatientFormPage()),
               ),
+              icon: const Icon(Icons.person_add_alt),
+              label: const Text('Registrar'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (patients.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: AppEmptyState(
+              icon: Icons.group_off_outlined,
+              title: 'Sin resultados',
+              subtitle: 'No se encontraron pacientes.',
+            ),
+          )
+        else if (isWide)
+          AppTable(
+            headers: const ['Paciente', 'CI', 'Teléfono', 'Última cita', ''],
+            rows: [
+              for (final p in patients)
+                [
+                  TableText(p.fullName, bold: true),
+                  TableText(p.ci),
+                  TableText(p.phone),
+                  TableText(_lastAppointmentOf(clinic, p.id)),
+                  IconButton(
+                    tooltip: 'Ver detalle',
+                    icon: const Icon(Icons.chevron_right, color: AppColors.muted),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => PatientDetailPage(patientId: p.id)),
+                    ),
+                  ),
+                ],
             ],
-          ),
-        ),
-        Expanded(
-          child: patients.isEmpty
-              ? const AppEmptyState(
-                  icon: Icons.group_off_outlined,
-                  title: 'Sin resultados',
-                  subtitle: 'No se encontraron pacientes.',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: patients.length,
-                  itemBuilder: (context, i) => _PatientTile(patient: patients[i]),
-                ),
-        ),
+          )
+        else
+          for (final p in patients) _PatientTile(patient: p),
       ],
     );
+  }
+
+  String _lastAppointmentOf(ClinicProvider clinic, String patientId) {
+    final appts = clinic.appointmentsOfPatient(patientId);
+    return appts.isEmpty ? 'Sin citas' : AppFormatters.shortDate(appts.first.date);
   }
 }
 

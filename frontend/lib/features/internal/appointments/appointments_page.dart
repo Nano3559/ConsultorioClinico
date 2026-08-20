@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_status_badge.dart';
+import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../state/clinic_provider.dart';
 import 'appointment_actions.dart';
@@ -31,6 +32,8 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
       if (_doctorFilter != null && a.doctorId != _doctorFilter) return false;
       return true;
     }).toList();
+
+    final isWide = MediaQuery.sizeOf(context).width >= 840;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -73,6 +76,25 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 48),
             child: AppEmptyState(icon: Icons.event_note_outlined, title: 'Sin citas con esos filtros'),
+          )
+        else if (isWide)
+          AppTable(
+            headers: const ['Fecha', 'Hora', 'Paciente', 'Médico', 'Motivo', 'Estado', ''],
+            rows: [
+              for (final a in list)
+                [
+                  TableText(AppFormatters.shortDate(a.date)),
+                  TableText(a.time, bold: true),
+                  TableText(clinic.patientName(a.patientId)),
+                  TableText(clinic.doctorName(a.doctorId)),
+                  TableText(a.reason),
+                  AppStatusBadge(status: a.status),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert, color: AppColors.muted),
+                    onPressed: () => showAppointmentActions(context, clinic, a),
+                  ),
+                ],
+            ],
           )
         else
           for (final a in list)

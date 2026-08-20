@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/doctor.dart';
 import '../../../state/clinic_provider.dart';
@@ -15,37 +16,74 @@ class DoctorsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
-    return Column(
+    final isWide = MediaQuery.sizeOf(context).width >= 840;
+    return ListView(
+      padding: const EdgeInsets.all(20),
       children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: ResponsiveRow(
-            children: [
-              const Text(
-                'Profesionales del consultorio',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark),
+        ResponsiveRow(
+          children: [
+            const Text(
+              'Profesionales del consultorio',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DoctorFormPage()),
               ),
-              FilledButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const DoctorFormPage()),
-                ),
-                icon: const Icon(Icons.person_add_alt),
-                label: const Text('Registrar médico'),
-              ),
+              icon: const Icon(Icons.person_add_alt),
+              label: const Text('Registrar médico'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (clinic.doctors.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: AppEmptyState(icon: Icons.medical_services_outlined, title: 'Sin médicos registrados'),
+          )
+        else if (isWide)
+          AppTable(
+            headers: const ['Médico', 'Especialidad', 'Experiencia', 'Horario', 'Estado', ''],
+            rows: [
+              for (final d in clinic.doctors)
+                [
+                  TableText(d.displayName, bold: true),
+                  TableText(clinic.specialtyById(d.specialtyId).name),
+                  TableText('${d.yearsExperience} años'),
+                  TableText(_scheduleSummary(d)),
+                  TableText(
+                    d.active ? 'Activo' : 'Inactivo',
+                    bold: true,
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Switch(
+                        value: d.active,
+                        onChanged: (_) => clinic.toggleDoctorActive(d.id),
+                      ),
+                      IconButton(
+                        tooltip: 'Editar',
+                        icon: const Icon(Icons.edit_outlined, color: AppColors.muted),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => DoctorFormPage(doctor: d)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
             ],
-          ),
-        ),
-        Expanded(
-          child: clinic.doctors.isEmpty
-              ? const AppEmptyState(icon: Icons.medical_services_outlined, title: 'Sin médicos registrados')
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: clinic.doctors.length,
-                  itemBuilder: (context, i) => _DoctorTile(doctor: clinic.doctors[i]),
-                ),
-        ),
+          )
+        else
+          for (final d in clinic.doctors) _DoctorTile(doctor: d),
       ],
     );
+  }
+
+  String _scheduleSummary(Doctor d) {
+    final days = d.schedule.byDay.values;
+    if (days.isEmpty) return 'Sin horario';
+    return days.map((t) => '${t.first}-${t.last}').join(' · ');
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/payment.dart';
 import '../../../data/mock/mock_data.dart';
@@ -29,6 +30,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
     final total = clinic.payments
         .where((p) => p.status == PaymentStatus.pagado)
         .fold<double>(0, (s, p) => s + p.amount);
+    final isWide = MediaQuery.sizeOf(context).width >= 840;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -80,6 +82,21 @@ class _PaymentsPageState extends State<PaymentsPage> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 48),
             child: AppEmptyState(icon: Icons.receipt_long_outlined, title: 'Sin pagos registrados'),
+          )
+        else if (isWide)
+          AppTable(
+            headers: const ['Fecha', 'Paciente', 'Médico', 'Método', 'Monto', 'Estado'],
+            rows: [
+              for (final p in list)
+                [
+                  TableText(AppFormatters.shortDate(p.date)),
+                  TableText(clinic.patientName(p.patientId), bold: true),
+                  TableText(clinic.doctorName(p.doctorId)),
+                  TableText(p.method.label),
+                  TableText(AppFormatters.money(p.amount)),
+                  _PaymentStatusChip(status: p.status),
+                ],
+            ],
           )
         else
           for (final p in list)

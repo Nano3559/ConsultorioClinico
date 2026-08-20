@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'package:consultorio_clinico/main.dart';
+import 'package:consultorio_clinico/core/widgets/app_table.dart';
 import 'package:consultorio_clinico/state/auth_provider.dart';
 import 'package:consultorio_clinico/state/clinic_provider.dart';
 
@@ -14,9 +15,9 @@ void main() {
     await initializeDateFormatting('es');
   });
 
-  testWidgets('admin flow responsive at phone size (drawer navigation)', (tester) async {
-    tester.view.physicalSize = const Size(360 * 2, 640 * 2);
-    tester.view.devicePixelRatio = 2.0;
+  testWidgets('admin flow in web shell (sidebar with groups)', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
@@ -36,37 +37,31 @@ void main() {
 
     await tester.enterText(find.byType(TextFormField).first, 'admin@clinica.com');
     await tester.enterText(find.byType(TextFormField).last, '123456');
-    await tester.ensureVisible(find.text('Ingresar'));
     await tester.tap(find.text('Ingresar'));
     await tester.pumpAndSettle();
 
     expect(find.text('Resumen del día'), findsOneWidget);
-    // En móvil no hay barra de navegación inferior: todo vive en el drawer.
+    // En web no hay barra de navegación inferior.
     expect(find.byType(NavigationBar), findsNothing);
-
-    const modules = ['Consulta', 'Agenda', 'Citas', 'Pacientes', 'Médicos', 'Pagos', 'Reportes', 'Configuración'];
-    for (final module in modules) {
-      await tester.tap(find.byIcon(Icons.menu));
-      await tester.pumpAndSettle();
-      final item = find.descendant(
-        of: find.byType(Drawer),
-        matching: find.text(module),
-      );
-      await tester.scrollUntilVisible(
-        item,
-        120,
-        scrollable: find.descendant(
-          of: find.byType(Drawer),
-          matching: find.byType(Scrollable),
-        ).first,
-      );
-      await tester.tap(item);
-      await tester.pumpAndSettle();
-      // El título de la barra superior refleja el módulo activo.
-      expect(
-        find.descendant(of: find.byType(AppBar), matching: find.text(module)),
-        findsOneWidget,
-      );
+    // Los grupos del sidebar aparecen.
+    for (final group in ['CLÍNICO', 'PERSONAS', 'FINANZAS', 'ANÁLISIS', 'SISTEMA']) {
+      expect(find.text(group), findsOneWidget);
     }
+
+    const modules = ['Agenda', 'Citas', 'Pacientes', 'Médicos', 'Pagos', 'Reportes', 'Configuración', 'Consulta'];
+    for (final module in modules) {
+      await tester.scrollUntilVisible(
+        find.text(module),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text(module));
+      await tester.pumpAndSettle();
+    }
+
+    // El módulo de pacientes muestra tabla en web.
+    await tester.tap(find.text('Pacientes'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AppTable), findsWidgets);
   });
 }

@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_status_badge.dart';
+import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../state/clinic_provider.dart';
 import 'appointment_actions.dart';
@@ -111,6 +112,24 @@ class _AgendaPageState extends State<AgendaPage> {
               title: 'Sin citas este día',
               subtitle: 'Usa "Nueva cita" para agendar un turno.',
             ),
+          )
+        else if (MediaQuery.sizeOf(context).width >= 840)
+          AppTable(
+            headers: const ['Hora', 'Paciente', 'Médico', 'Motivo', 'Estado', ''],
+            rows: [
+              for (final a in list)
+                [
+                  TableText(a.time, bold: true),
+                  TableText(clinic.patientName(a.patientId)),
+                  TableText(clinic.doctorName(a.doctorId)),
+                  TableText(a.reason),
+                  AppStatusBadge(status: a.status),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert, color: AppColors.muted),
+                    onPressed: () => showAppointmentActions(context, clinic, a),
+                  ),
+                ],
+            ],
           )
         else
           for (final a in list)

@@ -42,25 +42,35 @@ class LandingNavbar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          if (!isMobile) ...[
-            for (final item in _menu)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: TextButton(
-                  onPressed: () => onNavigate(item),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.muted),
-                  child: Text(item),
+          if (!isMobile)
+            Flexible(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final item in _menu)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: TextButton(
+                          onPressed: () => onNavigate(item),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.muted),
+                          child: Text(item),
+                        ),
+                      ),
+                    const SizedBox(width: 6),
+                    FilledButton(
+                      onPressed: onRequest,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      ),
+                      child: const Text('Solicitar cita'),
+                    ),
+                  ],
                 ),
               ),
-            FilledButton(
-              onPressed: onRequest,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              ),
-              child: const Text('Solicitar cita'),
-            ),
-          ] else
+            )
+          else
             Builder(
               builder: (context) => IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.dark),
