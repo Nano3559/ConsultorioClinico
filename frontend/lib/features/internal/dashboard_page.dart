@@ -19,12 +19,22 @@ class DashboardPage extends StatelessWidget {
     final columns = isMobile ? 2 : 4;
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
-        const Text('Resumen del día', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.dark)),
-        const SizedBox(height: 4),
-        const Text('Estado general del consultorio en tiempo real.', style: TextStyle(color: AppColors.muted)),
-        const SizedBox(height: 20),
+        Text(
+          'Resumen del día',
+          style: TextStyle(
+            fontSize: isMobile ? 20 : 24,
+            fontWeight: FontWeight.w800,
+            color: AppColors.dark,
+          ),
+        ),
+        SizedBox(height: isMobile ? 2 : 4),
+        Text(
+          'Estado general del consultorio en tiempo real.',
+          style: TextStyle(color: AppColors.muted, fontSize: isMobile ? 13 : 14),
+        ),
+        SizedBox(height: isMobile ? 12 : 20),
         LayoutBuilder(
           builder: (context, constraints) {
             final cardW = (constraints.maxWidth - (columns - 1) * 12) / columns;
@@ -34,33 +44,33 @@ class DashboardPage extends StatelessWidget {
               children: [
                 SizedBox(
                   width: cardW,
-                  child: AppStatCard(label: 'Pacientes registrados', value: '${clinic.totalPatients}', icon: Icons.group_outlined),
+                  child: AppStatCard(label: 'Pacientes registrados', value: '${clinic.totalPatients}', icon: Icons.group_outlined, compact: isMobile),
                 ),
                 SizedBox(
                   width: cardW,
-                  child: AppStatCard(label: 'Citas hoy', value: '${clinic.appointmentsToday}', icon: Icons.event_available_outlined, color: AppColors.info),
+                  child: AppStatCard(label: 'Citas hoy', value: '${clinic.appointmentsToday}', icon: Icons.event_available_outlined, color: AppColors.info, compact: isMobile),
                 ),
                 SizedBox(
                   width: cardW,
-                  child: AppStatCard(label: 'Pendientes', value: '${clinic.countByStatusToday(AppointmentStatus.pendiente)}', icon: Icons.pending_outlined, color: AppColors.warning),
+                  child: AppStatCard(label: 'Pendientes', value: '${clinic.countByStatusToday(AppointmentStatus.pendiente)}', icon: Icons.pending_outlined, color: AppColors.warning, compact: isMobile),
                 ),
                 SizedBox(
                   width: cardW,
-                  child: AppStatCard(label: 'Atendidas', value: '${clinic.countByStatusToday(AppointmentStatus.atendida)}', icon: Icons.task_alt_outlined, color: AppColors.success),
+                  child: AppStatCard(label: 'Atendidas', value: '${clinic.countByStatusToday(AppointmentStatus.atendida)}', icon: Icons.task_alt_outlined, color: AppColors.success, compact: isMobile),
                 ),
                 SizedBox(
                   width: cardW,
-                  child: AppStatCard(label: 'Canceladas', value: '${clinic.countByStatus(AppointmentStatus.cancelada)}', icon: Icons.cancel_outlined, color: AppColors.danger),
+                  child: AppStatCard(label: 'Canceladas', value: '${clinic.countByStatus(AppointmentStatus.cancelada)}', icon: Icons.cancel_outlined, color: AppColors.danger, compact: isMobile),
                 ),
                 SizedBox(
                   width: cardW,
-                  child: AppStatCard(label: 'Médicos activos', value: '${clinic.activeDoctorCount}', icon: Icons.medical_services_outlined, color: AppColors.purple),
+                  child: AppStatCard(label: 'Médicos activos', value: '${clinic.activeDoctorCount}', icon: Icons.medical_services_outlined, color: AppColors.purple, compact: isMobile),
                 ),
               ],
             );
           },
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: isMobile ? 12 : 24),
         _TodayAppointments(today: today),
       ],
     );
@@ -75,8 +85,9 @@ class _TodayAppointments extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
+    final isMobile = MediaQuery.of(context).size.width < 700;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 14 : 20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -85,7 +96,10 @@ class _TodayAppointments extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Citas de hoy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark)),
+          Text(
+            'Citas de hoy',
+            style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.w800, color: AppColors.dark),
+          ),
           const SizedBox(height: 12),
           if (today.isEmpty)
             const AppEmptyState(
@@ -93,26 +107,28 @@ class _TodayAppointments extends StatelessWidget {
               title: 'Sin citas para hoy',
               subtitle: 'Cuando se agenden citas aparecerán aquí.',
             )
-          else if (MediaQuery.of(context).size.width < 700)
+          else if (isMobile)
             for (final a in today)
               Card(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: 6),
                 child: ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   leading: Container(
-                    width: 54,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    width: 50,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.primaryBg,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       a.time,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark, fontSize: 12),
                     ),
                   ),
-                  title: Text(clinic.patientName(a.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                  subtitle: Text('${clinic.doctorName(a.doctorId)} · ${a.reason}'),
+                  title: Text(clinic.patientName(a.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark, fontSize: 14)),
+                  subtitle: Text('${clinic.doctorName(a.doctorId)} · ${a.reason}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
                   trailing: AppStatusBadge(status: a.status),
                 ),
               )

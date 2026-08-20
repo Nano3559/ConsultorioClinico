@@ -9,6 +9,7 @@ class AppStatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     this.color = AppColors.primary,
+    this.compact = false,
   });
 
   final String label;
@@ -16,26 +17,29 @@ class AppStatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
 
+  /// Versión reducida para pantallas pequeñas.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 12 : 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(compact ? 12 : 16),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(compact ? 8 : 12),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(compact ? 8 : 12),
             ),
-            child: Icon(icon, color: color, size: 26),
+            child: Icon(icon, color: color, size: compact ? 20 : 26),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: compact ? 10 : 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,8 +47,8 @@ class AppStatCard extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 22,
+                  style: TextStyle(
+                    fontSize: compact ? 18 : 22,
                     fontWeight: FontWeight.w800,
                     color: AppColors.dark,
                   ),
@@ -54,7 +58,7 @@ class AppStatCard extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                  style: TextStyle(color: AppColors.muted, fontSize: compact ? 12 : 13),
                 ),
               ],
             ),
