@@ -17,6 +17,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
+// Ruta raíz - ¡NUEVA!
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'API del Consultorio Clínico funcionando',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      pacientes: '/api/pacientes',
+      medicos: '/api/medicos',
+      citas: '/api/citas',
+      consultas: '/api/consultas',
+      pagos: '/api/pagos',
+      reportes: '/api/reportes',
+      dashboard: '/api/dashboard'
+    }
+  });
+});
+
 // Rutas
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/pacientes', require('./routes/pacienteRoutes'));
