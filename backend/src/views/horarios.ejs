@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+
+<section class="page-header bg-primary text-white py-5 mt-5">
+  <div class="container">
+    <h1 class="display-5 fw-bold">Horarios de Atención</h1>
+    <p class="lead opacity-75">Consulta la disponibilidad de nuestros médicos</p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="table-responsive">
+      <table class="table table-hover border-0 shadow-sm">
+        <thead class="bg-primary text-white">
+          <tr>
+            <th>Día</th>
+            <th>Médico</th>
+            <th>Especialidad</th>
+            <th>Hora Inicio</th>
+            <th>Hora Fin</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% horarios.forEach(function(h) { %>
+            <tr>
+              <td><strong><%= h.dia %></strong></td>
+              <td><%= h.medico %></td>
+              <td><span class="badge bg-primary bg-opacity-10 text-primary"><%= h.especialidad %></span></td>
+              <td><%= h.horaInicio %></td>
+              <td><%= h.horaFin %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="row mt-5">
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <h5 class="fw-bold"><i class="bi bi-info-circle text-primary me-2"></i>Información Importante</h5>
+            <ul class="text-muted mb-0">
+              <li>Los horarios pueden variar en días festivos</li>
+              <li>Se recomienda agendar cita previa</li>
+              <li>Para emergencias, acuda directamente a la clínica</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <h5 class="fw-bold"><i class="bi bi-telephone text-primary me-2"></i>Contacto</h5>
+            <p class="text-muted mb-2"><i class="bi bi-phone me-2"></i><%= contacto.telefono %></p>
+            <p class="text-muted mb-2"><i class="bi bi-envelope me-2"></i><%= contacto.email %></p>
+            <p class="text-muted mb-0"><i class="bi bi-whatsapp me-2"></i><%= contacto.whatsapp %></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

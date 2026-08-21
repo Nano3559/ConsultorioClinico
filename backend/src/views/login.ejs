@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+
+<section class="login-section d-flex align-items-center py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card border-0 shadow-lg">
+          <div class="card-body p-5">
+            <div class="text-center mb-4">
+              <i class="bi bi-hospital text-primary" style="font-size: 4rem;"></i>
+              <h3 class="fw-bold mt-3">MediCore</h3>
+              <p class="text-muted">Inicia sesión en tu cuenta</p>
+            </div>
+
+            <% if (error) { %>
+              <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i><%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            <% } %>
+
+            <form action="/login" method="POST">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Correo Electrónico</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="email" class="form-control" name="email" required placeholder="correo@ejemplo.com">
+                </div>
+              </div>
+              <div class="mb-4">
+                <label class="form-label fw-semibold">Contraseña</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input type="password" class="form-control" name="password" required placeholder="Tu contraseña">
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="remember">
+                  <label class="form-check-label" for="remember">Recordarme</label>
+                </div>
+                <a href="#" class="text-primary text-decoration-none small">¿Olvidaste tu contraseña?</a>
+              </div>
+              <button type="submit" class="btn btn-primary w-100 btn-lg">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+              </button>
+            </form>
+
+            <hr class="my-4">
+
+            <div class="text-center">
+              <p class="text-muted mb-2">¿No tienes una cuenta?</p>
+              <a href="#" class="btn btn-outline-primary w-100">
+                <i class="bi bi-person-plus me-2"></i>Registrarse
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

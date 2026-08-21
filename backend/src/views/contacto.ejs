@@ -1,0 +1,138 @@
+<%- include('partials/header') %>
+
+<section class="page-header bg-primary text-white py-5 mt-5">
+  <div class="container">
+    <h1 class="display-5 fw-bold">Contacto</h1>
+    <p class="lead opacity-75">Estamos aquí para atenderte</p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h4 class="fw-bold mb-4"><i class="bi bi-info-circle text-primary me-2"></i>Información de Contacto</h4>
+
+        <% if (success) { %>
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i><%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-start mb-3">
+              <div class="icon-circle bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                <i class="bi bi-geo-alt text-primary fs-4"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-1">Dirección</h6>
+                <p class="text-muted mb-0"><%= contacto.direccion %></p>
+              </div>
+            </div>
+            <div class="d-flex align-items-start mb-3">
+              <div class="icon-circle bg-success bg-opacity-10 p-3 rounded-circle me-3">
+                <i class="bi bi-telephone text-success fs-4"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-1">Teléfono</h6>
+                <p class="text-muted mb-0"><%= contacto.telefono %></p>
+              </div>
+            </div>
+            <div class="d-flex align-items-start mb-3">
+              <div class="icon-circle bg-warning bg-opacity-10 p-3 rounded-circle me-3">
+                <i class="bi bi-envelope text-warning fs-4"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-1">Correo Electrónico</h6>
+                <p class="text-muted mb-0"><%= contacto.email %></p>
+              </div>
+            </div>
+            <div class="d-flex align-items-start mb-3">
+              <div class="icon-circle bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                <i class="bi bi-clock text-info fs-4"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-1">Horarios</h6>
+                <p class="text-muted mb-0"><%= contacto.horariosGenerales %></p>
+              </div>
+            </div>
+            <div class="d-flex align-items-start">
+              <div class="icon-circle bg-success bg-opacity-10 p-3 rounded-circle me-3">
+                <i class="bi bi-whatsapp text-success fs-4"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-1">WhatsApp</h6>
+                <a href="https://wa.me/<%= contacto.whatsapp.replace(/[^0-9]/g, '') %>" class="text-decoration-none" target="_blank">
+                  <%= contacto.whatsapp %>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3">Redes Sociales</h6>
+            <div class="d-flex gap-3">
+              <a href="<%= contacto.redes.facebook %>" class="btn btn-primary btn-lg" target="_blank">
+                <i class="bi bi-facebook"></i>
+              </a>
+              <a href="<%= contacto.redes.instagram %>" class="btn btn-danger btn-lg" target="_blank">
+                <i class="bi bi-instagram"></i>
+              </a>
+              <a href="<%= contacto.redes.twitter %>" class="btn btn-info btn-lg" target="_blank">
+                <i class="bi bi-twitter"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <h4 class="fw-bold mb-4"><i class="bi bi-envelope text-primary me-2"></i>Envíanos un Mensaje</h4>
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <form action="/contacto" method="POST">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Nombre *</label>
+                  <input type="text" class="form-control" name="nombre" required placeholder="Tu nombre">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Correo *</label>
+                  <input type="email" class="form-control" name="email" required placeholder="correo@ejemplo.com">
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Asunto *</label>
+                  <input type="text" class="form-control" name="asunto" required placeholder="Asunto del mensaje">
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Mensaje *</label>
+                  <textarea class="form-control" name="mensaje" rows="5" required placeholder="Escribe tu mensaje aquí..."></textarea>
+                </div>
+                <div class="col-12">
+                  <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-send me-2"></i>Enviar Mensaje
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3"><i class="bi bi-map text-primary me-2"></i>Ubicación</h6>
+            <div class="ratio ratio-16x9">
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3989.7944941779635!2d-78.4666!3d-0.1806!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMMKwMTAnNTAuMiJTIDc4wrAyOCcwMC4wIlc!5e0!3m2!1ses!2sec!4v1234567890" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

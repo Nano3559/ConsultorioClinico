@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_validators.dart';
+<<<<<<< HEAD
 import '../../data/models/user.dart';
 import '../../state/auth_provider.dart';
 
@@ -14,6 +15,11 @@ const _demoAccounts = [
   (UserRole.paciente, 'pedro@gmail.com', 'paciente123'),
 ];
 
+=======
+import '../../data/mock/mock_data.dart';
+import '../../state/auth_provider.dart';
+
+>>>>>>> origin/main
 /// Pantalla de acceso por rol (Ejercicio: Login).
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -39,9 +45,16 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
+<<<<<<< HEAD
     final auth = context.read<AuthProvider>();
     final error = await auth.login(_email.text, _password.text);
     if (!mounted) return;
+=======
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final error = auth.login(_email.text, _password.text);
+>>>>>>> origin/main
     setState(() => _loading = false);
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -50,9 +63,15 @@ class _LoginPageState extends State<LoginPage> {
     context.go('/app');
   }
 
+<<<<<<< HEAD
   void _quickLogin(String email, String password) {
     _email.text = email;
     _password.text = password;
+=======
+  void _quickLogin(String email) {
+    _email.text = email;
+    _password.text = '123456';
+>>>>>>> origin/main
   }
 
   @override
@@ -142,11 +161,19 @@ class _LoginPageState extends State<LoginPage> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
+<<<<<<< HEAD
                             for (final (role, email, password) in _demoAccounts)
                               ActionChip(
                                 avatar: Icon(role.icon, size: 18, color: AppColors.primary),
                                 label: Text(role.label),
                                 onPressed: () => _quickLogin(email, password),
+=======
+                            for (final u in MockData.users)
+                              ActionChip(
+                                avatar: Icon(u.role.icon, size: 18, color: AppColors.primary),
+                                label: Text(u.role.label),
+                                onPressed: () => _quickLogin(u.email),
+>>>>>>> origin/main
                               ),
                           ],
                         ),
