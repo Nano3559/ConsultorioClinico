@@ -27,6 +27,7 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       pacientes: '/api/pacientes',
       medicos: '/api/medicos',
+      especialidades: '/api/especialidades',
       citas: '/api/citas',
       consultas: '/api/consultas',
       pagos: '/api/pagos',
@@ -40,6 +41,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/pacientes', require('./routes/pacienteRoutes'));
 app.use('/api/medicos', require('./routes/medicoRoutes'));
+app.use('/api/especialidades', require('./routes/especialidadRoutes'));
 app.use('/api/citas', require('./routes/citaRoutes'));
 app.use('/api/consultas', require('./routes/consultaRoutes'));
 app.use('/api/pagos', require('./routes/pagoRoutes'));

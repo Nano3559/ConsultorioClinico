@@ -211,6 +211,58 @@ const medicos = [
   },
 ];
 
+// --- Especialidades ---
+const especialidades = [
+  {
+    id: 1,
+    nombre: 'Medicina General',
+    descripcion: 'Atención médica integral y preventiva para pacientes de todas las edades',
+    activo: true,
+    creado_en: '2024-01-01T00:00:00',
+    actualizado_en: '2024-01-01T00:00:00',
+  },
+  {
+    id: 2,
+    nombre: 'Cardiologia',
+    descripcion: 'Diagnóstico y tratamiento de enfermedades del corazón y sistema circulatorio',
+    activo: true,
+    creado_en: '2024-01-01T00:00:00',
+    actualizado_en: '2024-01-01T00:00:00',
+  },
+  {
+    id: 3,
+    nombre: 'Pediatria',
+    descripcion: 'Atención médica de bebés, niños y adolescentes',
+    activo: true,
+    creado_en: '2024-01-01T00:00:00',
+    actualizado_en: '2024-01-01T00:00:00',
+  },
+  {
+    id: 4,
+    nombre: 'Ginecologia',
+    descripcion: 'Salud femenina, sistema reproductivo y seguimiento del embarazo',
+    activo: true,
+    creado_en: '2024-01-01T00:00:00',
+    actualizado_en: '2024-01-01T00:00:00',
+  },
+  {
+    id: 5,
+    nombre: 'Dermatologia',
+    descripcion: 'Diagnóstico y tratamiento de enfermedades de la piel, cabello y uñas',
+    activo: true,
+    creado_en: '2024-01-01T00:00:00',
+    actualizado_en: '2024-01-01T00:00:00',
+  },
+  {
+    id: 6,
+    nombre: 'Odontologia',
+    descripcion: 'Salud bucal, diagnóstico y tratamiento dental',
+    activo: true,
+    creado_en: '2024-01-01T00:00:00',
+    actualizado_en: '2024-01-01T00:00:00',
+  },
+];
+
 // --- Horarios de médicos ---
 const horarios = [
   { id: 1, medico_id: 1, dia_semana: 'Lunes', hora_inicio: '08:00', hora_fin: '12:00', activo: true },
@@ -377,6 +429,7 @@ let counters = {
   usuarios: usuarios.length,
   pacientes: pacientes.length,
   medicos: medicos.length,
+  especialidades: especialidades.length,
   horarios: horarios.length,
   citas: citas.length,
   consultas: consultas.length,
@@ -387,6 +440,7 @@ module.exports = {
   usuarios,
   pacientes,
   medicos,
+  especialidades,
   horarios,
   citas,
   consultas,
