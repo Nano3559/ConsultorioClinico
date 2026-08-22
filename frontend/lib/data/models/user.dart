@@ -10,9 +10,8 @@ enum UserRole {
   const UserRole(this.label, this.icon);
   final String label;
   final IconData icon;
-<<<<<<< HEAD
 
-  /// Mapea el rol recibido desde la API (ENUM de MySQL) al enum local.
+  /// Mapea el rol recibido desde la API (ENUM de la BD) al enum local.
   static UserRole fromApi(String value) {
     switch (value) {
       case 'admin':
@@ -25,8 +24,6 @@ enum UserRole {
         return UserRole.paciente;
     }
   }
-=======
->>>>>>> origin/main
 }
 
 /// Usuario del sistema (inicialmente con mock, luego desde la API).

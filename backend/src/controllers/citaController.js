@@ -1,5 +1,5 @@
-const { citas, pacientes, medicos, counters } = require('../data/mockData');
-const { sendSuccess, sendError, nextId, formatDate } = require('../utils/helpers');
+const { getSupabase } = require('../config/supabase');
+const { sendSuccess, sendError, formatDate } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
 
 /**
@@ -8,8 +8,17 @@ const { ESTADOS_CITA } = require('../utils/constants');
  */
 const getAll = async (req, res) => {
   try {
-    return sendSuccess(res, citas);
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('citas')
+      .select('*')
+      .order('fecha')
+      .order('hora');
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('citas.getAll:', error);
     return sendError(res, 'Error al listar citas', 500);
   }
 };
@@ -21,9 +30,17 @@ const getAll = async (req, res) => {
 const getHoy = async (req, res) => {
   try {
     const hoy = formatDate(new Date());
-    const citasHoy = citas.filter((c) => c.fecha === hoy);
-    return sendSuccess(res, citasHoy);
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('citas')
+      .select('*')
+      .eq('fecha', hoy)
+      .order('hora');
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('citas.getHoy:', error);
     return sendError(res, 'Error al obtener citas del día', 500);
   }
 };
@@ -34,14 +51,28 @@ const getHoy = async (req, res) => {
  */
 const getByMedico = async (req, res) => {
   try {
-    const medico = medicos.find((m) => m.id === parseInt(req.params.id));
-    if (!medico) {
+    const supabase = getSupabase();
+
+    const { data: medicos } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!medicos || medicos.length === 0) {
       return sendError(res, 'Médico no encontrado', 404);
     }
 
-    const citasMedico = citas.filter((c) => c.medico_id === medico.id);
-    return sendSuccess(res, citasMedico);
+    const { data, error } = await supabase
+      .from('citas')
+      .select('*')
+      .eq('medico_id', req.params.id)
+      .order('fecha')
+      .order('hora');
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('citas.getByMedico:', error);
     return sendError(res, 'Error al obtener citas del médico', 500);
   }
 };
@@ -52,14 +83,28 @@ const getByMedico = async (req, res) => {
  */
 const getByPaciente = async (req, res) => {
   try {
-    const paciente = pacientes.find((p) => p.id === parseInt(req.params.id));
-    if (!paciente) {
+    const supabase = getSupabase();
+
+    const { data: pacientes } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!pacientes || pacientes.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
-    const citasPaciente = citas.filter((c) => c.paciente_id === paciente.id);
-    return sendSuccess(res, citasPaciente);
+    const { data, error } = await supabase
+      .from('citas')
+      .select('*')
+      .eq('paciente_id', req.params.id)
+      .order('fecha')
+      .order('hora');
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('citas.getByPaciente:', error);
     return sendError(res, 'Error al obtener citas del paciente', 500);
   }
 };
@@ -70,12 +115,20 @@ const getByPaciente = async (req, res) => {
  */
 const getById = async (req, res) => {
   try {
-    const cita = citas.find((c) => c.id === parseInt(req.params.id));
-    if (!cita) {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('citas')
+      .select('*')
+      .eq('id', req.params.id)
+      .limit(1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
       return sendError(res, 'Cita no encontrada', 404);
     }
-    return sendSuccess(res, cita);
+    return sendSuccess(res, data[0]);
   } catch (error) {
+    console.error('citas.getById:', error);
     return sendError(res, 'Error al obtener cita', 500);
   }
 };
@@ -87,53 +140,68 @@ const getById = async (req, res) => {
 const create = async (req, res) => {
   try {
     const { paciente_id, medico_id, fecha, hora, motivo, observaciones } = req.body;
+    const supabase = getSupabase();
 
     // Verificar que el paciente exista
-    const paciente = pacientes.find((p) => p.id === parseInt(paciente_id));
-    if (!paciente) {
+    const { data: pacientes } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('id', paciente_id)
+      .limit(1);
+    if (!pacientes || pacientes.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
-    // Verificar que el médico exista
-    const medico = medicos.find((m) => m.id === parseInt(medico_id));
-    if (!medico) {
+    // Verificar que el médico exista y esté activo
+    const { data: medicos } = await supabase
+      .from('medicos')
+      .select('id, activo')
+      .eq('id', medico_id)
+      .limit(1);
+    if (!medicos || medicos.length === 0) {
       return sendError(res, 'Médico no encontrado', 404);
     }
-
-    // Verificar que el médico esté activo
-    if (!medico.activo) {
+    if (!medicos[0].activo) {
       return sendError(res, 'El médico seleccionado no está activo', 400);
     }
 
-    // Verificar disponibilidad (no doble agenda)
-    const existeCita = citas.find(
-      (c) =>
-        c.medico_id === parseInt(medico_id) &&
-        c.fecha === fecha &&
-        c.hora === hora &&
-        c.estado !== 'cancelada'
-    );
-
-    if (existeCita) {
+    // Verificar disponibilidad (no doble agenda). La BD también lo garantiza
+    // con un índice único parcial sobre citas no canceladas.
+    const { data: ocupadas } = await supabase
+      .from('citas')
+      .select('id')
+      .eq('medico_id', medico_id)
+      .eq('fecha', fecha)
+      .eq('hora', hora)
+      .neq('estado', 'cancelada')
+      .limit(1);
+    if (ocupadas && ocupadas.length > 0) {
       return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
     }
 
-    const nuevaCita = {
-      id: nextId(citas),
-      paciente_id: parseInt(paciente_id),
-      medico_id: parseInt(medico_id),
-      fecha,
-      hora,
-      motivo,
-      estado: ESTADOS_CITA.PROGRAMADA,
-      observaciones: observaciones || '',
-      creado_en: new Date().toISOString(),
-      actualizado_en: new Date().toISOString(),
-    };
+    const { data, error } = await supabase
+      .from('citas')
+      .insert({
+        paciente_id,
+        medico_id,
+        fecha,
+        hora,
+        motivo,
+        estado: ESTADOS_CITA.PROGRAMADA,
+        observaciones: observaciones || '',
+      })
+      .select('*')
+      .single();
 
-    citas.push(nuevaCita);
-    return sendSuccess(res, nuevaCita, 'Cita creada exitosamente', 201);
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
+      }
+      throw error;
+    }
+    return sendSuccess(res, data, 'Cita creada exitosamente', 201);
   } catch (error) {
+    console.error('citas.create:', error);
     return sendError(res, 'Error al crear cita', 500);
   }
 };
@@ -144,47 +212,59 @@ const create = async (req, res) => {
  */
 const update = async (req, res) => {
   try {
-    const index = citas.findIndex((c) => c.id === parseInt(req.params.id));
-    if (index === -1) {
+    const supabase = getSupabase();
+
+    const { data: actuales } = await supabase
+      .from('citas')
+      .select('*')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!actuales || actuales.length === 0) {
       return sendError(res, 'Cita no encontrada', 404);
     }
+    const cita = actuales[0];
 
-    if (citas[index].estado === 'completada' || citas[index].estado === 'cancelada') {
+    if (cita.estado === 'completada' || cita.estado === 'cancelada') {
       return sendError(res, 'No se puede reprogramar una cita completada o cancelada', 400);
     }
 
     const { fecha, hora, motivo, observaciones } = req.body;
+    const nuevaFecha = fecha || cita.fecha;
+    const nuevaHora = hora || cita.hora;
 
     // Verificar disponibilidad si cambia fecha/hora
     if (fecha || hora) {
-      const nuevaFecha = fecha || citas[index].fecha;
-      const nuevaHora = hora || citas[index].hora;
-
-      const existeCita = citas.find(
-        (c) =>
-          c.medico_id === citas[index].medico_id &&
-          c.fecha === nuevaFecha &&
-          c.hora === nuevaHora &&
-          c.id !== citas[index].id &&
-          c.estado !== 'cancelada'
-      );
-
-      if (existeCita) {
+      const { data: ocupadas } = await supabase
+        .from('citas')
+        .select('id')
+        .eq('medico_id', cita.medico_id)
+        .eq('fecha', nuevaFecha)
+        .eq('hora', nuevaHora)
+        .neq('id', cita.id)
+        .neq('estado', 'cancelada')
+        .limit(1);
+      if (ocupadas && ocupadas.length > 0) {
         return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
       }
     }
 
-    citas[index] = {
-      ...citas[index],
-      fecha: fecha || citas[index].fecha,
-      hora: hora || citas[index].hora,
-      motivo: motivo || citas[index].motivo,
-      observaciones: observaciones !== undefined ? observaciones : citas[index].observaciones,
-      actualizado_en: new Date().toISOString(),
-    };
+    const cambios = {};
+    if (fecha) cambios.fecha = fecha;
+    if (hora) cambios.hora = hora;
+    if (motivo) cambios.motivo = motivo;
+    if (observaciones !== undefined) cambios.observaciones = observaciones;
 
-    return sendSuccess(res, citas[index], 'Cita reprogramada exitosamente');
+    const { data, error } = await supabase
+      .from('citas')
+      .update(cambios)
+      .eq('id', cita.id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return sendSuccess(res, data, 'Cita reprogramada exitosamente');
   } catch (error) {
+    console.error('citas.update:', error);
     return sendError(res, 'Error al actualizar cita', 500);
   }
 };
@@ -195,24 +275,26 @@ const update = async (req, res) => {
  */
 const updateEstado = async (req, res) => {
   try {
-    const cita = citas.find((c) => c.id === parseInt(req.params.id));
-    if (!cita) {
-      return sendError(res, 'Cita no encontrada', 404);
-    }
-
     const { estado } = req.body;
-
-    // Validar transición de estados
     const estadosPermitidos = Object.values(ESTADOS_CITA);
     if (!estadosPermitidos.includes(estado)) {
       return sendError(res, `Estado inválido. Valores permitidos: ${estadosPermitidos.join(', ')}`, 400);
     }
 
-    cita.estado = estado;
-    cita.actualizado_en = new Date().toISOString();
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('citas')
+      .update({ estado })
+      .eq('id', req.params.id)
+      .select('*');
 
-    return sendSuccess(res, cita, 'Estado de cita actualizado');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return sendError(res, 'Cita no encontrada', 404);
+    }
+    return sendSuccess(res, data[0], 'Estado de cita actualizado');
   } catch (error) {
+    console.error('citas.updateEstado:', error);
     return sendError(res, 'Error al actualizar estado', 500);
   }
 };
@@ -223,20 +305,29 @@ const updateEstado = async (req, res) => {
  */
 const remove = async (req, res) => {
   try {
-    const cita = citas.find((c) => c.id === parseInt(req.params.id));
-    if (!cita) {
+    const supabase = getSupabase();
+    const { data: actuales } = await supabase
+      .from('citas')
+      .select('estado')
+      .eq('id', req.params.id)
+      .limit(1);
+
+    if (!actuales || actuales.length === 0) {
       return sendError(res, 'Cita no encontrada', 404);
     }
-
-    if (cita.estado === 'cancelada') {
+    if (actuales[0].estado === 'cancelada') {
       return sendError(res, 'La cita ya está cancelada', 400);
     }
 
-    cita.estado = 'cancelada';
-    cita.actualizado_en = new Date().toISOString();
+    const { error } = await supabase
+      .from('citas')
+      .update({ estado: 'cancelada' })
+      .eq('id', req.params.id);
 
+    if (error) throw error;
     return sendSuccess(res, null, 'Cita cancelada exitosamente');
   } catch (error) {
+    console.error('citas.remove:', error);
     return sendError(res, 'Error al cancelar cita', 500);
   }
 };

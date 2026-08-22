@@ -9,11 +9,8 @@ import 'package:consultorio_clinico/core/widgets/app_table.dart';
 import 'package:consultorio_clinico/state/auth_provider.dart';
 import 'package:consultorio_clinico/state/clinic_provider.dart';
 
-<<<<<<< HEAD
 import 'helpers/fake_api.dart';
 
-=======
->>>>>>> origin/main
 void main() {
   setUpAll(() async {
     Intl.defaultLocale = 'es';
@@ -28,11 +25,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-<<<<<<< HEAD
           ChangeNotifierProvider(create: (_) => AuthProvider(api: fakeApiClient())),
-=======
-          ChangeNotifierProvider(create: (_) => AuthProvider()),
->>>>>>> origin/main
           ChangeNotifierProvider(create: (_) => ClinicProvider()),
         ],
         child: const ConsultorioClinicoApp(),
@@ -44,13 +37,8 @@ void main() {
     await tester.tap(find.text('Ingresar al sistema'));
     await tester.pumpAndSettle();
 
-<<<<<<< HEAD
     await tester.enterText(find.byType(TextFormField).first, 'admin@consultorio.com');
     await tester.enterText(find.byType(TextFormField).last, 'admin123');
-=======
-    await tester.enterText(find.byType(TextFormField).first, 'admin@clinica.com');
-    await tester.enterText(find.byType(TextFormField).last, '123456');
->>>>>>> origin/main
     await tester.tap(find.text('Ingresar'));
     await tester.pumpAndSettle();
 

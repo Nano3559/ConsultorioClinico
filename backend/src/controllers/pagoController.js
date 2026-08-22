@@ -1,5 +1,6 @@
-const { pagos, pacientes, citas } = require('../data/mockData');
-const { sendSuccess, sendError, nextId } = require('../utils/helpers');
+const { getSupabase } = require('../config/supabase');
+const { sendSuccess, sendError } = require('../utils/helpers');
+const { ESTADOS_PAGO } = require('../utils/constants');
 
 /**
  * GET /api/pagos
@@ -7,8 +8,16 @@ const { sendSuccess, sendError, nextId } = require('../utils/helpers');
  */
 const getAll = async (req, res) => {
   try {
-    return sendSuccess(res, pagos);
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('pagos')
+      .select('*')
+      .order('creado_en', { ascending: false });
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('pagos.getAll:', error);
     return sendError(res, 'Error al listar pagos', 500);
   }
 };
@@ -20,36 +29,48 @@ const getAll = async (req, res) => {
 const create = async (req, res) => {
   try {
     const { paciente_id, cita_id, monto, metodo_pago, descripcion } = req.body;
+    const supabase = getSupabase();
 
     // Verificar que el paciente exista
-    const paciente = pacientes.find((p) => p.id === parseInt(paciente_id));
-    if (!paciente) {
+    const { data: pacientes } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('id', paciente_id)
+      .limit(1);
+    if (!pacientes || pacientes.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
     // Si se proporciona cita_id, verificar que exista
     if (cita_id) {
-      const cita = citas.find((c) => c.id === parseInt(cita_id));
-      if (!cita) {
+      const { data: citas } = await supabase
+        .from('citas')
+        .select('id')
+        .eq('id', cita_id)
+        .limit(1);
+      if (!citas || citas.length === 0) {
         return sendError(res, 'Cita no encontrada', 404);
       }
     }
 
-    const nuevoPago = {
-      id: nextId(pagos),
-      paciente_id: parseInt(paciente_id),
-      cita_id: cita_id ? parseInt(cita_id) : null,
-      monto: parseFloat(monto),
-      metodo_pago,
-      estado: 'pagado',
-      descripcion: descripcion || '',
-      fecha_pago: new Date().toISOString(),
-      creado_en: new Date().toISOString(),
-    };
+    const { data, error } = await supabase
+      .from('pagos')
+      .insert({
+        paciente_id,
+        cita_id: cita_id ? parseInt(cita_id) : null,
+        monto: parseFloat(monto),
+        metodo_pago,
+        estado: ESTADOS_PAGO.PAGADO,
+        descripcion: descripcion || '',
+        fecha_pago: new Date().toISOString(),
+      })
+      .select('*')
+      .single();
 
-    pagos.push(nuevoPago);
-    return sendSuccess(res, nuevoPago, 'Pago registrado exitosamente', 201);
+    if (error) throw error;
+    return sendSuccess(res, data, 'Pago registrado exitosamente', 201);
   } catch (error) {
+    console.error('pagos.create:', error);
     return sendError(res, 'Error al registrar pago', 500);
   }
 };
@@ -60,14 +81,27 @@ const create = async (req, res) => {
  */
 const getByPaciente = async (req, res) => {
   try {
-    const paciente = pacientes.find((p) => p.id === parseInt(req.params.id));
-    if (!paciente) {
+    const supabase = getSupabase();
+
+    const { data: pacientes } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!pacientes || pacientes.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
-    const pagosPaciente = pagos.filter((p) => p.paciente_id === paciente.id);
-    return sendSuccess(res, pagosPaciente);
+    const { data, error } = await supabase
+      .from('pagos')
+      .select('*')
+      .eq('paciente_id', req.params.id)
+      .order('creado_en', { ascending: false });
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('pagos.getByPaciente:', error);
     return sendError(res, 'Error al obtener pagos del paciente', 500);
   }
 };

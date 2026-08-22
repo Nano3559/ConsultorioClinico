@@ -1,5 +1,5 @@
-const { pacientes, usuarios, counters } = require('../data/mockData');
-const { sendSuccess, sendError, nextId } = require('../utils/helpers');
+const { getSupabase } = require('../config/supabase');
+const { sendSuccess, sendError } = require('../utils/helpers');
 
 /**
  * GET /api/pacientes
@@ -7,9 +7,17 @@ const { sendSuccess, sendError, nextId } = require('../utils/helpers');
  */
 const getAll = async (req, res) => {
   try {
-    const activos = pacientes.filter((p) => p.activo);
-    return sendSuccess(res, activos);
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('pacientes')
+      .select('*')
+      .eq('activo', true)
+      .order('id');
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('pacientes.getAll:', error);
     return sendError(res, 'Error al listar pacientes', 500);
   }
 };
@@ -20,12 +28,20 @@ const getAll = async (req, res) => {
  */
 const getById = async (req, res) => {
   try {
-    const paciente = pacientes.find((p) => p.id === parseInt(req.params.id));
-    if (!paciente) {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('pacientes')
+      .select('*')
+      .eq('id', req.params.id)
+      .limit(1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
-    return sendSuccess(res, paciente);
+    return sendSuccess(res, data[0]);
   } catch (error) {
+    console.error('pacientes.getById:', error);
     return sendError(res, 'Error al obtener paciente', 500);
   }
 };
@@ -37,70 +53,77 @@ const getById = async (req, res) => {
 const create = async (req, res) => {
   try {
     const { nombre, apellido, cedula, telefono, email, fecha_nacimiento, sexo, direccion, tipo_sangre, alergias, contacto_emergencia } = req.body;
+    const supabase = getSupabase();
 
-    // Verificar cédula duplicada
-    const existeCedula = pacientes.find((p) => p.cedula === cedula);
-    if (existeCedula) {
+    const { data: existentes } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('cedula', cedula)
+      .limit(1);
+    if (existentes && existentes.length > 0) {
       return sendError(res, 'Ya existe un paciente con esa cédula', 400);
     }
 
-    const nuevoPaciente = {
-      id: nextId(pacientes),
-      usuario_id: null,
-      nombre,
-      apellido,
-      cedula,
-      telefono,
-      email,
-      fecha_nacimiento,
-      sexo,
-      direccion,
-      tipo_sangre,
-      alergias: alergias || 'Ninguna',
-      contacto_emergencia,
-      activo: true,
-      creado_en: new Date().toISOString(),
-      actualizado_en: new Date().toISOString(),
-    };
+    const { data, error } = await supabase
+      .from('pacientes')
+      .insert({
+        nombre,
+        apellido,
+        cedula,
+        telefono,
+        email,
+        fecha_nacimiento,
+        sexo,
+        direccion,
+        tipo_sangre,
+        alergias: alergias || 'Ninguna',
+        contacto_emergencia,
+      })
+      .select('*')
+      .single();
 
-    pacientes.push(nuevoPaciente);
-    return sendSuccess(res, nuevoPaciente, 'Paciente creado exitosamente', 201);
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(res, 'Ya existe un paciente con esa cédula', 400);
+      }
+      throw error;
+    }
+    return sendSuccess(res, data, 'Paciente creado exitosamente', 201);
   } catch (error) {
+    console.error('pacientes.create:', error);
     return sendError(res, 'Error al crear paciente', 500);
   }
 };
 
 /**
  * PUT /api/pacientes/:id
- * Actualizar paciente
+ * Actualizar paciente (solo campos enviados; el trigger actualiza actualizado_en)
  */
 const update = async (req, res) => {
   try {
-    const index = pacientes.findIndex((p) => p.id === parseInt(req.params.id));
-    if (index === -1) {
-      return sendError(res, 'Paciente no encontrado', 404);
+    const supabase = getSupabase();
+    const permitidos = ['nombre', 'apellido', 'cedula', 'telefono', 'email', 'fecha_nacimiento', 'sexo', 'direccion', 'tipo_sangre', 'alergias', 'contacto_emergencia'];
+    const cambios = {};
+    for (const campo of permitidos) {
+      if (req.body[campo] !== undefined) cambios[campo] = req.body[campo];
+    }
+    if (Object.keys(cambios).length === 0) {
+      return sendError(res, 'No hay campos para actualizar', 400);
     }
 
-    const { nombre, apellido, cedula, telefono, email, fecha_nacimiento, sexo, direccion, tipo_sangre, alergias, contacto_emergencia } = req.body;
+    const { data, error } = await supabase
+      .from('pacientes')
+      .update(cambios)
+      .eq('id', req.params.id)
+      .select('*');
 
-    pacientes[index] = {
-      ...pacientes[index],
-      nombre: nombre || pacientes[index].nombre,
-      apellido: apellido || pacientes[index].apellido,
-      cedula: cedula || pacientes[index].cedula,
-      telefono: telefono || pacientes[index].telefono,
-      email: email || pacientes[index].email,
-      fecha_nacimiento: fecha_nacimiento || pacientes[index].fecha_nacimiento,
-      sexo: sexo || pacientes[index].sexo,
-      direccion: direccion || pacientes[index].direccion,
-      tipo_sangre: tipo_sangre || pacientes[index].tipo_sangre,
-      alergias: alergias !== undefined ? alergias : pacientes[index].alergias,
-      contacto_emergencia: contacto_emergencia || pacientes[index].contacto_emergencia,
-      actualizado_en: new Date().toISOString(),
-    };
-
-    return sendSuccess(res, pacientes[index], 'Paciente actualizado exitosamente');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return sendError(res, 'Paciente no encontrado', 404);
+    }
+    return sendSuccess(res, data[0], 'Paciente actualizado exitosamente');
   } catch (error) {
+    console.error('pacientes.update:', error);
     return sendError(res, 'Error al actualizar paciente', 500);
   }
 };
@@ -111,16 +134,20 @@ const update = async (req, res) => {
  */
 const remove = async (req, res) => {
   try {
-    const paciente = pacientes.find((p) => p.id === parseInt(req.params.id));
-    if (!paciente) {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('pacientes')
+      .update({ activo: false })
+      .eq('id', req.params.id)
+      .select('id');
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
-
-    paciente.activo = false;
-    paciente.actualizado_en = new Date().toISOString();
-
     return sendSuccess(res, null, 'Paciente eliminado exitosamente');
   } catch (error) {
+    console.error('pacientes.remove:', error);
     return sendError(res, 'Error al eliminar paciente', 500);
   }
 };
