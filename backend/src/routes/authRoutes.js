@@ -4,12 +4,20 @@ const { body } = require('express-validator');
 const { register, login, getProfile } = require('../controllers/authController');
 const { verifyToken } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
+<<<<<<< HEAD
+const { ROLES } = require('../utils/constants');
+=======
+>>>>>>> origin/main
 
 // Validaciones
 const registerValidation = [
   body('nombre').notEmpty().withMessage('El nombre es obligatorio'),
   body('email').isEmail().withMessage('Email inválido'),
   body('password').isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres'),
+<<<<<<< HEAD
+  body('rol').optional().isIn(Object.values(ROLES)).withMessage(`Rol inválido. Valores permitidos: ${Object.values(ROLES).join(', ')}`),
+=======
+>>>>>>> origin/main
 ];
 
 const loginValidation = [
