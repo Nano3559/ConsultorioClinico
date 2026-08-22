@@ -1,4 +1,4 @@
-const { pacientes, medicos, citas, pagos } = require('../data/mockData');
+const { getSupabase } = require('../config/supabase');
 const { sendSuccess, sendError, formatDate } = require('../utils/helpers');
 
 /**
@@ -9,39 +9,42 @@ const getResumen = async (req, res) => {
   try {
     const hoy = formatDate(new Date());
     const mesActual = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const supabase = getSupabase();
 
-    // Total de pacientes activos
-    const totalPacientes = pacientes.filter((p) => p.activo).length;
+    const [pacientesRes, citasHoyRes, medicosRes, pagosMesRes, citasEstadoRes] = await Promise.all([
+      supabase.from('pacientes').select('id', { count: 'exact', head: true }).eq('activo', true),
+      supabase.from('citas').select('estado').eq('fecha', hoy),
+      supabase.from('medicos').select('id', { count: 'exact', head: true }).eq('activo', true),
+      supabase
+        .from('pagos')
+        .select('monto')
+        .eq('estado', 'pagado')
+        .gte('fecha_pago', `${mesActual}-01T00:00:00`),
+      supabase.from('citas').select('estado'),
+    ]);
 
-    // Citas de hoy
-    const citasHoy = citas.filter((c) => c.fecha === hoy);
-    const totalCitasHoy = citasHoy.length;
-    const citasHoyCompletadas = citasHoy.filter((c) => c.estado === 'completada').length;
-    const citasHoyPendientes = citasHoy.filter((c) => c.estado === 'programada').length;
+    if (pacientesRes.error) throw pacientesRes.error;
+    if (citasHoyRes.error) throw citasHoyRes.error;
+    if (medicosRes.error) throw medicosRes.error;
+    if (pagosMesRes.error) throw pagosMesRes.error;
 
-    // Médicos activos
-    const medicosActivos = medicos.filter((m) => m.activo).length;
+    const citasHoy = citasHoyRes.data || [];
+    const pagosMes = pagosMesRes.data || [];
+    const ingresosMes = pagosMes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
 
-    // Ingresos del mes
-    const pagosMes = pagos.filter(
-      (p) => p.estado === 'pagado' && p.fecha_pago && p.fecha_pago.startsWith(mesActual)
-    );
-    const ingresosMes = pagosMes.reduce((sum, p) => sum + p.monto, 0);
-
-    // Citas por estado (general)
-    const citasPorEstado = citas.reduce((acc, c) => {
+    const citasPorEstado = (citasEstadoRes.data || []).reduce((acc, c) => {
       acc[c.estado] = (acc[c.estado] || 0) + 1;
       return acc;
     }, {});
 
     return sendSuccess(res, {
-      total_pacientes: totalPacientes,
+      total_pacientes: pacientesRes.count,
       citas_hoy: {
-        total: totalCitasHoy,
-        completadas: citasHoyCompletadas,
-        pendientes: citasHoyPendientes,
+        total: citasHoy.length,
+        completadas: citasHoy.filter((c) => c.estado === 'completada').length,
+        pendientes: citasHoy.filter((c) => c.estado === 'programada').length,
       },
-      medicos_activos: medicosActivos,
+      medicos_activos: medicosRes.count,
       ingresos_mes: {
         total: ingresosMes,
         cantidad_pagos: pagosMes.length,
@@ -49,6 +52,7 @@ const getResumen = async (req, res) => {
       citas_por_estado: citasPorEstado,
     });
   } catch (error) {
+    console.error('dashboard.getResumen:', error);
     return sendError(res, 'Error al obtener resumen del dashboard', 500);
   }
 };

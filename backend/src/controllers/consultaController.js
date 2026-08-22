@@ -1,5 +1,5 @@
-const { consultas, pacientes, medicos, citas } = require('../data/mockData');
-const { sendSuccess, sendError, nextId } = require('../utils/helpers');
+const { getSupabase } = require('../config/supabase');
+const { sendSuccess, sendError } = require('../utils/helpers');
 
 /**
  * GET /api/consultas/paciente/:id
@@ -7,14 +7,27 @@ const { sendSuccess, sendError, nextId } = require('../utils/helpers');
  */
 const getByPaciente = async (req, res) => {
   try {
-    const paciente = pacientes.find((p) => p.id === parseInt(req.params.id));
-    if (!paciente) {
+    const supabase = getSupabase();
+
+    const { data: pacientes } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!pacientes || pacientes.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
-    const historial = consultas.filter((c) => c.paciente_id === paciente.id);
-    return sendSuccess(res, historial);
+    const { data, error } = await supabase
+      .from('consultas')
+      .select('*')
+      .eq('paciente_id', req.params.id)
+      .order('fecha', { ascending: false });
+
+    if (error) throw error;
+    return sendSuccess(res, data);
   } catch (error) {
+    console.error('consultas.getByPaciente:', error);
     return sendError(res, 'Error al obtener historial', 500);
   }
 };
@@ -25,12 +38,20 @@ const getByPaciente = async (req, res) => {
  */
 const getById = async (req, res) => {
   try {
-    const consulta = consultas.find((c) => c.id === parseInt(req.params.id));
-    if (!consulta) {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('consultas')
+      .select('*')
+      .eq('id', req.params.id)
+      .limit(1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
       return sendError(res, 'Consulta no encontrada', 404);
     }
-    return sendSuccess(res, consulta);
+    return sendSuccess(res, data[0]);
   } catch (error) {
+    console.error('consultas.getById:', error);
     return sendError(res, 'Error al obtener consulta', 500);
   }
 };
@@ -42,44 +63,58 @@ const getById = async (req, res) => {
 const create = async (req, res) => {
   try {
     const { cita_id, paciente_id, medico_id, diagnostico, tratamiento, notas_clinicas, signos_vitales } = req.body;
+    const supabase = getSupabase();
 
     // Verificar que el paciente exista
-    const paciente = pacientes.find((p) => p.id === parseInt(paciente_id));
-    if (!paciente) {
+    const { data: pacientes } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('id', paciente_id)
+      .limit(1);
+    if (!pacientes || pacientes.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
     // Verificar que el médico exista
-    const medico = medicos.find((m) => m.id === parseInt(medico_id));
-    if (!medico) {
+    const { data: medicos } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('id', medico_id)
+      .limit(1);
+    if (!medicos || medicos.length === 0) {
       return sendError(res, 'Médico no encontrado', 404);
     }
 
     // Si se proporciona cita_id, verificar que exista
     if (cita_id) {
-      const cita = citas.find((c) => c.id === parseInt(cita_id));
-      if (!cita) {
+      const { data: citas } = await supabase
+        .from('citas')
+        .select('id')
+        .eq('id', cita_id)
+        .limit(1);
+      if (!citas || citas.length === 0) {
         return sendError(res, 'Cita no encontrada', 404);
       }
     }
 
-    const nuevaConsulta = {
-      id: nextId(consultas),
-      cita_id: cita_id ? parseInt(cita_id) : null,
-      paciente_id: parseInt(paciente_id),
-      medico_id: parseInt(medico_id),
-      fecha: new Date().toISOString().split('T')[0],
-      diagnostico,
-      tratamiento,
-      notas_clinicas: notas_clinicas || '',
-      signos_vitales: signos_vitales ? JSON.stringify(signos_vitales) : null,
-      creado_en: new Date().toISOString(),
-      actualizado_en: new Date().toISOString(),
-    };
+    const { data, error } = await supabase
+      .from('consultas')
+      .insert({
+        cita_id: cita_id ? parseInt(cita_id) : null,
+        paciente_id,
+        medico_id,
+        diagnostico,
+        tratamiento,
+        notas_clinicas: notas_clinicas || '',
+        signos_vitales: signos_vitales || null,
+      })
+      .select('*')
+      .single();
 
-    consultas.push(nuevaConsulta);
-    return sendSuccess(res, nuevaConsulta, 'Consulta registrada exitosamente', 201);
+    if (error) throw error;
+    return sendSuccess(res, data, 'Consulta registrada exitosamente', 201);
   } catch (error) {
+    console.error('consultas.create:', error);
     return sendError(res, 'Error al crear consulta', 500);
   }
 };
@@ -90,24 +125,30 @@ const create = async (req, res) => {
  */
 const update = async (req, res) => {
   try {
-    const index = consultas.findIndex((c) => c.id === parseInt(req.params.id));
-    if (index === -1) {
-      return sendError(res, 'Consulta no encontrada', 404);
+    const supabase = getSupabase();
+    const cambios = {};
+    if (req.body.diagnostico !== undefined) cambios.diagnostico = req.body.diagnostico;
+    if (req.body.tratamiento !== undefined) cambios.tratamiento = req.body.tratamiento;
+    if (req.body.notas_clinicas !== undefined) cambios.notas_clinicas = req.body.notas_clinicas;
+    if (req.body.signos_vitales !== undefined) cambios.signos_vitales = req.body.signos_vitales;
+
+    if (Object.keys(cambios).length === 0) {
+      return sendError(res, 'No hay campos para actualizar', 400);
     }
 
-    const { diagnostico, tratamiento, notas_clinicas, signos_vitales } = req.body;
+    const { data, error } = await supabase
+      .from('consultas')
+      .update(cambios)
+      .eq('id', req.params.id)
+      .select('*');
 
-    consultas[index] = {
-      ...consultas[index],
-      diagnostico: diagnostico || consultas[index].diagnostico,
-      tratamiento: tratamiento || consultas[index].tratamiento,
-      notas_clinicas: notas_clinicas !== undefined ? notas_clinicas : consultas[index].notas_clinicas,
-      signos_vitales: signos_vitales ? JSON.stringify(signos_vitales) : consultas[index].signos_vitales,
-      actualizado_en: new Date().toISOString(),
-    };
-
-    return sendSuccess(res, consultas[index], 'Consulta actualizada exitosamente');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return sendError(res, 'Consulta no encontrada', 404);
+    }
+    return sendSuccess(res, data[0], 'Consulta actualizada exitosamente');
   } catch (error) {
+    console.error('consultas.update:', error);
     return sendError(res, 'Error al actualizar consulta', 500);
   }
 };
