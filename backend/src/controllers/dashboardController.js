@@ -27,6 +27,7 @@ const getResumen = async (req, res) => {
     if (citasHoyRes.error) throw citasHoyRes.error;
     if (medicosRes.error) throw medicosRes.error;
     if (pagosMesRes.error) throw pagosMesRes.error;
+    if (citasEstadoRes.error) throw citasEstadoRes.error;
 
     const citasHoy = citasHoyRes.data || [];
     const pagosMes = pagosMesRes.data || [];

@@ -1,8 +1,14 @@
 require('dotenv').config();
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+
+if (nodeEnv === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET es obligatorio en producción');
+}
+
 module.exports = {
   port: process.env.PORT || 3000,
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv,
   jwtSecret: process.env.JWT_SECRET || 'fallback_secret_key',
   jwtExpire: process.env.JWT_EXPIRE || '24h',
   supabase: {
