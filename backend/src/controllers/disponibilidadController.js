@@ -1,4 +1,4 @@
-const { medicos, horarios, citas, especialidades } = require('../data/mockData');
+const { getSupabase } = require('../config/supabase');
 const {
   sendSuccess,
   sendError,
@@ -12,27 +12,33 @@ const { INTERVALO_CITA_MINUTOS, ESTADOS_CITA } = require('../utils/constants');
 
 /**
  * Genera los slots libres de un médico en una fecha,
- * según sus horarios activos y las citas ya tomadas.
+ * según sus horarios activos en la BD y las citas ya tomadas.
  */
-const generarSlotsDisponibles = (medicoId, fecha) => {
+async function generarSlotsDisponibles(supabase, medicoId, fecha) {
   const diaSemana = obtenerDiaSemana(fecha);
   const esHoy = fecha === formatDate(new Date());
   const ahoraMinutos = new Date().getHours() * 60 + new Date().getMinutes();
 
-  const bloques = horarios.filter(
-    (h) => h.medico_id === medicoId && h.activo && h.dia_semana === diaSemana
-  );
+  const { data: bloques, error: horError } = await supabase
+    .from('horarios')
+    .select('hora_inicio, hora_fin')
+    .eq('medico_id', medicoId)
+    .eq('activo', true)
+    .eq('dia_semana', diaSemana);
+  if (horError) throw horError;
 
-  const citasOcupadas = citas.filter(
-    (c) =>
-      c.medico_id === medicoId &&
-      c.fecha === fecha &&
-      c.estado !== ESTADOS_CITA.CANCELADA
-  );
+  const { data: citasOcupadas, error: citaError } = await supabase
+    .from('citas')
+    .select('hora')
+    .eq('medico_id', medicoId)
+    .eq('fecha', fecha)
+    .neq('estado', ESTADOS_CITA.CANCELADA);
+  if (citaError) throw citaError;
 
+  const horasOcupadas = new Set((citasOcupadas || []).map((c) => c.hora.slice(0, 5)));
   const slots = [];
 
-  for (const bloque of bloques) {
+  for (const bloque of bloques || []) {
     for (
       let mins = horaAMinutos(bloque.hora_inicio);
       mins + INTERVALO_CITA_MINUTOS <= horaAMinutos(bloque.hora_fin);
@@ -44,15 +50,14 @@ const generarSlotsDisponibles = (medicoId, fecha) => {
       if (esHoy && mins <= ahoraMinutos) continue;
 
       // Descartar slots ya reservados
-      const ocupado = citasOcupadas.some((c) => c.hora === slot);
-      if (ocupado) continue;
+      if (horasOcupadas.has(slot)) continue;
 
       if (!slots.includes(slot)) slots.push(slot);
     }
   }
 
   return { diaSemana, slots: slots.sort() };
-};
+}
 
 /**
  * GET /api/disponibilidad/medico/:medicoId/fecha/:fecha
@@ -60,10 +65,16 @@ const generarSlotsDisponibles = (medicoId, fecha) => {
  */
 const getPorMedicoYFecha = async (req, res) => {
   try {
-    const medicoId = parseInt(req.params.medicoId);
+    const supabase = getSupabase();
     const fecha = req.params.fecha;
 
-    const medico = medicos.find((m) => m.id === medicoId);
+    const { data: medicos } = await supabase
+      .from('medicos')
+      .select('id, nombre, apellido, activo')
+      .eq('id', req.params.medicoId)
+      .limit(1);
+    const medico = medicos && medicos[0];
+
     if (!medico) {
       return sendError(res, 'Médico no encontrado', 404);
     }
@@ -76,10 +87,10 @@ const getPorMedicoYFecha = async (req, res) => {
       return sendError(res, 'No se puede consultar disponibilidad de fechas pasadas', 400);
     }
 
-    const { diaSemana, slots } = generarSlotsDisponibles(medicoId, fecha);
+    const { diaSemana, slots } = await generarSlotsDisponibles(supabase, medico.id, fecha);
 
     return sendSuccess(res, {
-      medico_id: medicoId,
+      medico_id: medico.id,
       medico: `${medico.nombre} ${medico.apellido}`,
       fecha,
       dia_semana: diaSemana,
@@ -88,6 +99,7 @@ const getPorMedicoYFecha = async (req, res) => {
       total_disponibles: slots.length,
     });
   } catch (error) {
+    console.error('disponibilidad.getPorMedicoYFecha:', error);
     return sendError(res, 'Error al consultar disponibilidad del médico', 500);
   }
 };
@@ -98,7 +110,15 @@ const getPorMedicoYFecha = async (req, res) => {
  */
 const getMedicosPorEspecialidad = async (req, res) => {
   try {
-    const especialidad = especialidades.find((e) => e.id === parseInt(req.params.especialidadId));
+    const supabase = getSupabase();
+
+    const { data: especialidades } = await supabase
+      .from('especialidades')
+      .select('*')
+      .eq('id', req.params.especialidadId)
+      .limit(1);
+    const especialidad = especialidades && especialidades[0];
+
     if (!especialidad) {
       return sendError(res, 'Especialidad no encontrada', 404);
     }
@@ -106,26 +126,38 @@ const getMedicosPorEspecialidad = async (req, res) => {
       return sendError(res, 'La especialidad no está activa actualmente', 400);
     }
 
-    const medicosDisponibles = medicos
-      .filter(
-        (m) =>
-          m.activo &&
-          normalizarTexto(m.especialidad) === normalizarTexto(especialidad.nombre)
-      )
-      .map((m) => ({
-        id: m.id,
-        nombre: m.nombre,
-        apellido: m.apellido,
-        consulorio: m.consulorio,
-        tarifa_consulta: m.tarifa_consulta,
-        dias_atencion: [
-          ...new Set(
-            horarios
-              .filter((h) => h.medico_id === m.id && h.activo)
-              .map((h) => h.dia_semana)
-          ),
-        ],
-      }));
+    const { data: medicosCoincidentes, error: medError } = await supabase
+      .from('medicos')
+      .select('id, nombre, apellido, consulorio, tarifa_consulta')
+      .eq('activo', true)
+      .ilike('especialidad', especialidad.nombre);
+    if (medError) throw medError;
+
+    const idsMedicos = (medicosCoincidentes || []).map((m) => m.id);
+
+    let diasPorMedico = {};
+    if (idsMedicos.length > 0) {
+      const { data: horariosMedicos, error: horError } = await supabase
+        .from('horarios')
+        .select('medico_id, dia_semana')
+        .eq('activo', true)
+        .in('medico_id', idsMedicos);
+      if (horError) throw horError;
+
+      for (const h of horariosMedicos || []) {
+        if (!diasPorMedico[h.medico_id]) diasPorMedico[h.medico_id] = new Set();
+        diasPorMedico[h.medico_id].add(h.dia_semana);
+      }
+    }
+
+    const medicosDisponibles = (medicosCoincidentes || []).map((m) => ({
+      id: m.id,
+      nombre: m.nombre,
+      apellido: m.apellido,
+      consulorio: m.consulorio,
+      tarifa_consulta: m.tarifa_consulta,
+      dias_atencion: diasPorMedico[m.id] ? [...diasPorMedico[m.id]].sort() : [],
+    }));
 
     return sendSuccess(res, {
       especialidad_id: especialidad.id,
@@ -134,6 +166,7 @@ const getMedicosPorEspecialidad = async (req, res) => {
       total_medicos: medicosDisponibles.length,
     });
   } catch (error) {
+    console.error('disponibilidad.getMedicosPorEspecialidad:', error);
     return sendError(res, 'Error al consultar médicos por especialidad', 500);
   }
 };

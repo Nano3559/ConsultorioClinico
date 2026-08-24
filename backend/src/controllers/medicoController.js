@@ -1,11 +1,6 @@
-<<<<<<< HEAD
-const { medicos, horarios, citas } = require('../data/mockData');
-const { sendSuccess, sendError, nextId, formatDate } = require('../utils/helpers');
-const { ESTADOS_CITA } = require('../utils/constants');
-=======
 const { getSupabase } = require('../config/supabase');
-const { sendSuccess, sendError } = require('../utils/helpers');
->>>>>>> 3b4875435caf1037dbf2038e764fd35db6f300a0
+const { sendSuccess, sendError, formatDate } = require('../utils/helpers');
+const { ESTADOS_CITA } = require('../utils/constants');
 
 /**
  * GET /api/medicos
@@ -206,34 +201,38 @@ const getHorarios = async (req, res) => {
  */
 const remove = async (req, res) => {
   try {
-    const index = medicos.findIndex((m) => m.id === parseInt(req.params.id));
-    if (index === -1) {
+    const supabase = getSupabase();
+
+    const { data: actuales } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!actuales || actuales.length === 0) {
       return sendError(res, 'Médico no encontrado', 404);
     }
-    const medico = medicos[index];
+    const medicoId = actuales[0].id;
 
     // No permitir eliminar si tiene citas activas (no canceladas) hoy o futuras
     const hoy = formatDate(new Date());
-    const tieneCitasActivas = citas.some(
-      (c) =>
-        c.medico_id === medico.id &&
-        c.estado !== ESTADOS_CITA.CANCELADA &&
-        c.fecha >= hoy
-    );
-    if (tieneCitasActivas) {
+    const { data: citasActivas } = await supabase
+      .from('citas')
+      .select('id')
+      .eq('medico_id', medicoId)
+      .neq('estado', ESTADOS_CITA.CANCELADA)
+      .gte('fecha', hoy)
+      .limit(1);
+    if (citasActivas && citasActivas.length > 0) {
       return sendError(res, 'No se puede eliminar: el médico tiene citas activas pendientes', 409);
     }
 
-    // Eliminar también sus horarios
-    for (let i = horarios.length - 1; i >= 0; i--) {
-      if (horarios[i].medico_id === medico.id) {
-        horarios.splice(i, 1);
-      }
-    }
+    // Los horarios y citas históricas se eliminan en cascada por FK
+    const { error } = await supabase.from('medicos').delete().eq('id', medicoId);
+    if (error) throw error;
 
-    medicos.splice(index, 1);
     return sendSuccess(res, null, 'Médico eliminado exitosamente');
   } catch (error) {
+    console.error('medicos.remove:', error);
     return sendError(res, 'Error al eliminar médico', 500);
   }
 };
