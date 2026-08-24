@@ -1,3 +1,5 @@
+const { DIAS_SEMANA } = require('./constants');
+
 /**
  * Genera respuesta JSON estándar para la API
  */
@@ -40,10 +42,45 @@ const formatDate = (date) => {
   return d.toISOString().split('T')[0];
 };
 
+/**
+ * Normaliza texto para comparaciones insensibles a mayúsculas y tildes
+ */
+const normalizarTexto = (texto) =>
+  String(texto).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Devuelve el día de la semana (Lunes..Domingo) de una fecha YYYY-MM-DD
+ */
+const obtenerDiaSemana = (fecha) => {
+  const d = new Date(`${fecha}T12:00:00`);
+  return DIAS_SEMANA[(d.getDay() + 6) % 7];
+};
+
+/**
+ * Convierte una hora HH:MM a minutos desde medianoche
+ */
+const horaAMinutos = (hora) => {
+  const [h, m] = hora.split(':').map(Number);
+  return h * 60 + m;
+};
+
+/**
+ * Convierte minutos desde medianoche a hora HH:MM
+ */
+const minutosAHora = (minutos) => {
+  const h = String(Math.floor(minutos / 60)).padStart(2, '0');
+  const m = String(minutos % 60).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
 module.exports = {
   sendSuccess,
   sendError,
   nextId,
   isValidEmail,
   formatDate,
+  normalizarTexto,
+  obtenerDiaSemana,
+  horaAMinutos,
+  minutosAHora,
 };

@@ -1,5 +1,6 @@
-const { validationResult } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 const { sendError } = require('../utils/helpers');
+const { ESTADOS_CITA, DIAS_SEMANA } = require('../utils/constants');
 
 /**
  * Middleware para validar resultados de express-validator
@@ -19,4 +20,76 @@ const validate = (req, res, next) => {
   next();
 };
 
-module.exports = { validate };
+// --- Validaciones reutilizables ---
+
+const idParamValidation = [
+  param('id').isInt({ min: 1 }).withMessage('El ID debe ser un número entero válido'),
+];
+
+const medicoIdParamValidation = [
+  param('medicoId').isInt({ min: 1 }).withMessage('El ID del médico debe ser un número entero válido'),
+];
+
+const pacienteIdParamValidation = [
+  param('pacienteId').isInt({ min: 1 }).withMessage('El ID del paciente debe ser un número entero válido'),
+];
+
+const especialidadIdParamValidation = [
+  param('especialidadId').isInt({ min: 1 }).withMessage('El ID de la especialidad debe ser un número entero válido'),
+];
+
+const fechaParamValidation = [
+  param('fecha')
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('La fecha debe tener formato YYYY-MM-DD')
+    .isDate()
+    .withMessage('La fecha no es válida'),
+];
+
+const citaValidation = [
+  body('paciente_id').isInt().withMessage('El ID del paciente es obligatorio'),
+  body('medico_id').isInt().withMessage('El ID del médico es obligatorio'),
+  body('fecha').isDate().withMessage('La fecha es obligatoria'),
+  body('hora').matches(/^\d{2}:\d{2}$/).withMessage('La hora debe tener formato HH:MM'),
+  body('motivo').notEmpty().withMessage('El motivo es obligatorio'),
+];
+
+const citaReprogramarValidation = [
+  body('fecha').optional().isDate().withMessage('La fecha no es válida'),
+  body('hora').optional().matches(/^\d{2}:\d{2}$/).withMessage('La hora debe tener formato HH:MM'),
+  body('motivo').optional().notEmpty().withMessage('El motivo no puede estar vacío'),
+];
+
+const citaEstadoValidation = [
+  body('estado')
+    .isIn(Object.values(ESTADOS_CITA))
+    .withMessage(`Estado inválido. Valores permitidos: ${Object.values(ESTADOS_CITA).join(', ')}`),
+];
+
+const horarioValidation = [
+  body('medico_id').isInt({ min: 1 }).withMessage('El ID del médico es obligatorio'),
+  body('dia_semana').isIn(DIAS_SEMANA).withMessage(`Día inválido. Valores permitidos: ${DIAS_SEMANA.join(', ')}`),
+  body('hora_inicio').matches(/^\d{2}:\d{2}$/).withMessage('La hora de inicio debe tener formato HH:MM'),
+  body('hora_fin').matches(/^\d{2}:\d{2}$/).withMessage('La hora de fin debe tener formato HH:MM'),
+];
+
+const horarioUpdateValidation = [
+  body('medico_id').optional().isInt({ min: 1 }).withMessage('El ID del médico debe ser un número entero válido'),
+  body('dia_semana').optional().isIn(DIAS_SEMANA).withMessage(`Día inválido. Valores permitidos: ${DIAS_SEMANA.join(', ')}`),
+  body('hora_inicio').optional().matches(/^\d{2}:\d{2}$/).withMessage('La hora de inicio debe tener formato HH:MM'),
+  body('hora_fin').optional().matches(/^\d{2}:\d{2}$/).withMessage('La hora de fin debe tener formato HH:MM'),
+];
+
+module.exports = {
+  validate,
+  idParamValidation,
+  medicoIdParamValidation,
+  pacienteIdParamValidation,
+  especialidadIdParamValidation,
+  fechaParamValidation,
+  citaValidation,
+  citaReprogramarValidation,
+  citaEstadoValidation,
+  horarioValidation,
+  horarioUpdateValidation,
+};

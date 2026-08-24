@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { getAll, getById, create, update, toggleEstado, getHorarios } = require('../controllers/medicoController');
+const { getAll, getById, create, update, toggleEstado, remove } = require('../controllers/medicoController');
+const { getEspecialidadesByMedico } = require('../controllers/especialidadController');
 const { verifyToken } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
-const { validate } = require('../middleware/validation');
+const {
+  validate,
+  idParamValidation,
+  medicoIdParamValidation,
+} = require('../middleware/validation');
 
 // Validaciones
 const medicoValidation = [
@@ -15,14 +20,15 @@ const medicoValidation = [
   body('email').isEmail().withMessage('Email inválido'),
 ];
 
-// Todas las rutas requieren autenticación
-router.use(verifyToken);
-
+// Rutas públicas
 router.get('/', getAll);
-router.get('/:id', getById);
-router.post('/', checkRole('admin'), medicoValidation, validate, create);
-router.put('/:id', checkRole('admin'), update);
-router.patch('/:id/estado', checkRole('admin'), toggleEstado);
-router.get('/:id/horarios', getHorarios);
+router.get('/:id', idParamValidation, validate, getById);
+router.get('/:medicoId/especialidades', medicoIdParamValidation, validate, getEspecialidadesByMedico);
+
+// Rutas protegidas (solo admin)
+router.post('/', verifyToken, checkRole('admin'), medicoValidation, validate, create);
+router.put('/:id', verifyToken, checkRole('admin'), idParamValidation, validate, update);
+router.patch('/:id/estado', verifyToken, checkRole('admin'), idParamValidation, validate, toggleEstado);
+router.delete('/:id', verifyToken, checkRole('admin'), idParamValidation, validate, remove);
 
 module.exports = router;

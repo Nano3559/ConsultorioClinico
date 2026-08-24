@@ -1,0 +1,49 @@
+Agregar a mi backend Node.js/Express los siguientes módulos completos con JWT y middleware de roles:
+
+1. CRUD MÉDICOS (mejorar el existente):
+- GET /api/medicos - Listar todos (publico)
+- GET /api/medicos/:id - Obtener por ID (publico)
+- POST /api/medicos - Crear (admin)
+- PUT /api/medicos/:id - Actualizar (admin)
+- PATCH /api/medicos/:id/estado - Activar/desactivar (admin)
+- DELETE /api/medicos/:id - Eliminar (admin)
+- GET /api/medicos/:id/especialidades - Obtener especialidades del medico
+
+2. API HORARIOS (nuevo):
+- GET /api/horarios - Listar todos (publico)
+- GET /api/horarios/medico/:medicoId - Horarios por medico (publico)
+- POST /api/horarios - Crear horario (admin)
+- PUT /api/horarios/:id - Actualizar horario (admin)
+- DELETE /api/horarios/:id - Eliminar horario (admin)
+- GET /api/horarios/disponibles - Horarios disponibles (publico)
+
+3. API CITAS (mejorar el existente):
+- GET /api/citas - Listar todas (admin/recepcion)
+- GET /api/citas/:id - Obtener por ID
+- POST /api/citas - Crear cita (paciente/admin/recepcion)
+- PUT /api/citas/:id - Reprogramar cita
+- PATCH /api/citas/:id/estado - Cambiar estado (pendiente, confirmada, atendida, cancelada, no_asistio)
+- DELETE /api/citas/:id - Cancelar cita
+- GET /api/citas/agenda/hoy - Citas del dia (medico/admin)
+- GET /api/citas/medico/:medicoId - Citas por medico
+- GET /api/citas/paciente/:pacienteId - Citas por paciente
+
+4. API DISPONIBILIDAD (nuevo):
+- GET /api/disponibilidad/medico/:medicoId/fecha/:fecha - Ver horarios disponibles
+- GET /api/disponibilidad/especialidad/:especialidadId - Medicos disponibles por especialidad
+
+Requisitos:
+- Usar verifyToken y checkRole para rutas protegidas
+- Validar horarios disponibles al crear citas
+- Incluir datos de ejemplo en mockData.js
+- Actualizar app.js con las nuevas rutas
+- Actualizar validation.js con validaciones
+
+IMPORTANTE:
+- Analiza primero la estructura actual del proyecto.
+- Reutiliza las funciones y archivos existentes cuando sea posible.
+- No elimines funcionalidades existentes.
+- Mantén el estilo y arquitectura actual del backend.
+- Si ya existe un CRUD o middleware relacionado, mejóralo en lugar de duplicarlo.
+- Verifica que las rutas no entren en conflicto entre sí.
+- Al finalizar, muestra un resumen de los archivos creados y modificados.

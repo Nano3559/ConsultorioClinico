@@ -6,12 +6,15 @@ const ROLES = {
 };
 
 const ESTADOS_CITA = {
-  PROGRAMADA: 'programada',
-  EN_CURSO: 'en_curso',
-  COMPLETADA: 'completada',
+  PENDIENTE: 'pendiente',
+  CONFIRMADA: 'confirmada',
+  ATENDIDA: 'atendida',
   CANCELADA: 'cancelada',
-  NO_SHOW: 'no_show',
+  NO_ASISTIO: 'no_asistio',
 };
+
+// Duración de cada turno al generar los slots de disponibilidad (minutos)
+const INTERVALO_CITA_MINUTOS = 30;
 
 const METODOS_PAGO = {
   EFECTIVO: 'efectivo',
@@ -39,6 +42,7 @@ const DIAS_SEMANA = [
 module.exports = {
   ROLES,
   ESTADOS_CITA,
+  INTERVALO_CITA_MINUTOS,
   METODOS_PAGO,
   ESTADOS_PAGO,
   DIAS_SEMANA,

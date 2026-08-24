@@ -1,5 +1,6 @@
-const { medicos, horarios } = require('../data/mockData');
-const { sendSuccess, sendError, nextId } = require('../utils/helpers');
+const { medicos, horarios, citas } = require('../data/mockData');
+const { sendSuccess, sendError, nextId, formatDate } = require('../utils/helpers');
+const { ESTADOS_CITA } = require('../utils/constants');
 
 /**
  * GET /api/medicos
@@ -138,11 +139,50 @@ const getHorarios = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/medicos/:id
+ * Eliminar médico
+ */
+const remove = async (req, res) => {
+  try {
+    const index = medicos.findIndex((m) => m.id === parseInt(req.params.id));
+    if (index === -1) {
+      return sendError(res, 'Médico no encontrado', 404);
+    }
+    const medico = medicos[index];
+
+    // No permitir eliminar si tiene citas activas (no canceladas) hoy o futuras
+    const hoy = formatDate(new Date());
+    const tieneCitasActivas = citas.some(
+      (c) =>
+        c.medico_id === medico.id &&
+        c.estado !== ESTADOS_CITA.CANCELADA &&
+        c.fecha >= hoy
+    );
+    if (tieneCitasActivas) {
+      return sendError(res, 'No se puede eliminar: el médico tiene citas activas pendientes', 409);
+    }
+
+    // Eliminar también sus horarios
+    for (let i = horarios.length - 1; i >= 0; i--) {
+      if (horarios[i].medico_id === medico.id) {
+        horarios.splice(i, 1);
+      }
+    }
+
+    medicos.splice(index, 1);
+    return sendSuccess(res, null, 'Médico eliminado exitosamente');
+  } catch (error) {
+    return sendError(res, 'Error al eliminar médico', 500);
+  }
+};
+
 module.exports = {
   getAll,
   getById,
   create,
   update,
   toggleEstado,
+  remove,
   getHorarios,
 };

@@ -1,5 +1,6 @@
 const { citas, pagos, medicos } = require('../data/mockData');
 const { sendSuccess, sendError } = require('../utils/helpers');
+const { ESTADOS_CITA } = require('../utils/constants');
 
 /**
  * GET /api/reportes/citas
@@ -39,9 +40,11 @@ const reporteCitas = async (req, res) => {
 
     // Estadísticas del reporte
     const total = resultado.length;
-    const completadas = resultado.filter((c) => c.estado === 'completada').length;
-    const canceladas = resultado.filter((c) => c.estado === 'cancelada').length;
-    const programadas = resultado.filter((c) => c.estado === 'programada').length;
+    const completadas = resultado.filter((c) => c.estado === ESTADOS_CITA.ATENDIDA).length;
+    const canceladas = resultado.filter((c) => c.estado === ESTADOS_CITA.CANCELADA).length;
+    const programadas = resultado.filter(
+      (c) => c.estado === ESTADOS_CITA.PENDIENTE || c.estado === ESTADOS_CITA.CONFIRMADA
+    ).length;
 
     return sendSuccess(res, {
       citas: resultado,

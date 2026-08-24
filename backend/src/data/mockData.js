@@ -277,10 +277,18 @@ const horarios = [
   { id: 10, medico_id: 3, dia_semana: 'Viernes', hora_inicio: '10:00', hora_fin: '14:00', activo: true },
   { id: 11, medico_id: 4, dia_semana: 'Martes', hora_inicio: '08:00', hora_fin: '12:00', activo: true },
   { id: 12, medico_id: 4, dia_semana: 'Jueves', hora_inicio: '08:00', hora_fin: '12:00', activo: true },
+  { id: 13, medico_id: 2, dia_semana: 'Sábado', hora_inicio: '08:00', hora_fin: '12:00', activo: true },
 ];
 
 // --- Citas ---
 const hoy = new Date().toISOString().split('T')[0];
+const sumarDias = (fechaBase, dias) => {
+  const d = new Date(fechaBase);
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().split('T')[0];
+};
+const ayer = sumarDias(hoy, -1);
+const manana = sumarDias(hoy, 1);
 
 const citas = [
   {
@@ -290,7 +298,7 @@ const citas = [
     fecha: hoy,
     hora: '09:00',
     motivo: 'Control anual',
-    estado: 'programada',
+    estado: 'confirmada',
     observaciones: '',
     creado_en: '2024-08-10T00:00:00',
     actualizado_en: '2024-08-10T00:00:00',
@@ -302,7 +310,7 @@ const citas = [
     fecha: hoy,
     hora: '10:00',
     motivo: 'Vacunación niño de 5 años',
-    estado: 'programada',
+    estado: 'pendiente',
     observaciones: 'Traer carnet de vacunación',
     creado_en: '2024-08-11T00:00:00',
     actualizado_en: '2024-08-11T00:00:00',
@@ -314,7 +322,7 @@ const citas = [
     fecha: '2024-08-15',
     hora: '11:00',
     motivo: 'Dolor en el pecho, revisión cardiaca',
-    estado: 'completada',
+    estado: 'atendida',
     observaciones: 'Se realizó electrocardiograma, resultados normales',
     creado_en: '2024-08-01T00:00:00',
     actualizado_en: '2024-08-15T12:00:00',
@@ -335,25 +343,49 @@ const citas = [
     id: 5,
     paciente_id: 1,
     medico_id: 3,
-    fecha: '2024-08-20',
+    fecha: manana,
     hora: '10:30',
     motivo: 'Examen cardiaco de rutina',
-    estado: 'programada',
+    estado: 'pendiente',
     observaciones: '',
-    creado_en: '2024-08-13T00:00:00',
-    actualizado_en: '2024-08-13T00:00:00',
+    creado_en: hoy + 'T00:00:00',
+    actualizado_en: hoy + 'T00:00:00',
   },
   {
     id: 6,
     paciente_id: 3,
     medico_id: 2,
-    fecha: '2024-08-22',
+    fecha: manana,
     hora: '09:30',
     motivo: 'Seguimiento pediátrico',
-    estado: 'programada',
+    estado: 'confirmada',
     observaciones: 'Traer resultados de laboratorio',
-    creado_en: '2024-08-14T00:00:00',
-    actualizado_en: '2024-08-14T00:00:00',
+    creado_en: hoy + 'T00:00:00',
+    actualizado_en: hoy + 'T00:00:00',
+  },
+  {
+    id: 7,
+    paciente_id: 2,
+    medico_id: 1,
+    fecha: ayer,
+    hora: '08:30',
+    motivo: 'Consulta por dolores de cabeza recurrentes',
+    estado: 'atendida',
+    observaciones: 'Se receta analgésico y control en un mes',
+    creado_en: sumarDias(hoy, -8) + 'T00:00:00',
+    actualizado_en: ayer + 'T09:00:00',
+  },
+  {
+    id: 8,
+    paciente_id: 5,
+    medico_id: 3,
+    fecha: ayer,
+    hora: '10:30',
+    motivo: 'Chequeo de presión arterial',
+    estado: 'no_asistio',
+    observaciones: 'Paciente no acudió a la cita',
+    creado_en: sumarDias(hoy, -6) + 'T00:00:00',
+    actualizado_en: ayer + 'T11:00:00',
   },
 ];
 

@@ -1,5 +1,6 @@
 const { pacientes, medicos, citas, pagos } = require('../data/mockData');
 const { sendSuccess, sendError, formatDate } = require('../utils/helpers');
+const { ESTADOS_CITA } = require('../utils/constants');
 
 /**
  * GET /api/dashboard
@@ -16,8 +17,10 @@ const getResumen = async (req, res) => {
     // Citas de hoy
     const citasHoy = citas.filter((c) => c.fecha === hoy);
     const totalCitasHoy = citasHoy.length;
-    const citasHoyCompletadas = citasHoy.filter((c) => c.estado === 'completada').length;
-    const citasHoyPendientes = citasHoy.filter((c) => c.estado === 'programada').length;
+    const citasHoyCompletadas = citasHoy.filter((c) => c.estado === ESTADOS_CITA.ATENDIDA).length;
+    const citasHoyPendientes = citasHoy.filter(
+      (c) => c.estado === ESTADOS_CITA.PENDIENTE || c.estado === ESTADOS_CITA.CONFIRMADA
+    ).length;
 
     // Médicos activos
     const medicosActivos = medicos.filter((m) => m.activo).length;

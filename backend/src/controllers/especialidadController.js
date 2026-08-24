@@ -1,9 +1,5 @@
 const { especialidades, medicos } = require('../data/mockData');
-const { sendSuccess, sendError, nextId } = require('../utils/helpers');
-
-// Normaliza nombres para comparación insensible a mayúsculas y tildes
-const normalizar = (texto) =>
-  texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const { sendSuccess, sendError, nextId, normalizarTexto } = require('../utils/helpers');
 
 /**
  * GET /api/especialidades
@@ -46,7 +42,7 @@ const getEspecialidadesByMedico = async (req, res) => {
     }
 
     const resultado = especialidades.filter(
-      (e) => normalizar(e.nombre) === normalizar(medico.especialidad)
+      (e) => normalizarTexto(e.nombre) === normalizarTexto(medico.especialidad)
     );
     return sendSuccess(res, resultado);
   } catch (error) {
@@ -64,7 +60,7 @@ const createEspecialidad = async (req, res) => {
 
     // Verificar nombre duplicado
     const existeNombre = especialidades.find(
-      (e) => normalizar(e.nombre) === normalizar(nombre)
+      (e) => normalizarTexto(e.nombre) === normalizarTexto(nombre)
     );
     if (existeNombre) {
       return sendError(res, 'Ya existe una especialidad con ese nombre', 400);
@@ -104,7 +100,7 @@ const updateEspecialidad = async (req, res) => {
       const duplicada = especialidades.find(
         (e) =>
           e.id !== especialidades[index].id &&
-          normalizar(e.nombre) === normalizar(nombre)
+          normalizarTexto(e.nombre) === normalizarTexto(nombre)
       );
       if (duplicada) {
         return sendError(res, 'Ya existe una especialidad con ese nombre', 400);
@@ -137,7 +133,7 @@ const deleteEspecialidad = async (req, res) => {
 
     // No permitir eliminar si hay médicos con esa especialidad
     const enUso = medicos.some(
-      (m) => normalizar(m.especialidad) === normalizar(especialidades[index].nombre)
+      (m) => normalizarTexto(m.especialidad) === normalizarTexto(especialidades[index].nombre)
     );
     if (enUso) {
       return sendError(res, 'No se puede eliminar: hay médicos asignados a esta especialidad', 409);

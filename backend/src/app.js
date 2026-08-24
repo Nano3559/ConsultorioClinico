@@ -28,7 +28,9 @@ app.get('/', (req, res) => {
       pacientes: '/api/pacientes',
       medicos: '/api/medicos',
       especialidades: '/api/especialidades',
+      horarios: '/api/horarios',
       citas: '/api/citas',
+      disponibilidad: '/api/disponibilidad',
       consultas: '/api/consultas',
       pagos: '/api/pagos',
       reportes: '/api/reportes',
@@ -42,7 +44,9 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/pacientes', require('./routes/pacienteRoutes'));
 app.use('/api/medicos', require('./routes/medicoRoutes'));
 app.use('/api/especialidades', require('./routes/especialidadRoutes'));
+app.use('/api/horarios', require('./routes/horarioRoutes'));
 app.use('/api/citas', require('./routes/citaRoutes'));
+app.use('/api/disponibilidad', require('./routes/disponibilidadRoutes'));
 app.use('/api/consultas', require('./routes/consultaRoutes'));
 app.use('/api/pagos', require('./routes/pagoRoutes'));
 app.use('/api/reportes', require('./routes/reporteRoutes'));
