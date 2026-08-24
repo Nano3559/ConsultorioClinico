@@ -1,4 +1,4 @@
-const { citas, pagos, medicos } = require('../data/mockData');
+const { getSupabase } = require('../config/supabase');
 const { sendSuccess, sendError } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
 
@@ -8,34 +8,35 @@ const { ESTADOS_CITA } = require('../utils/constants');
  */
 const reporteCitas = async (req, res) => {
   try {
-    let resultado = [...citas];
+    const supabase = getSupabase();
     const { fecha_inicio, fecha_fin, medico_id, especialidad, estado } = req.query;
 
-    // Filtro por rango de fechas
-    if (fecha_inicio) {
-      resultado = resultado.filter((c) => c.fecha >= fecha_inicio);
-    }
-    if (fecha_fin) {
-      resultado = resultado.filter((c) => c.fecha <= fecha_fin);
-    }
+    let query = supabase.from('citas').select('*').order('fecha').order('hora');
+    if (fecha_inicio) query = query.gte('fecha', fecha_inicio);
+    if (fecha_fin) query = query.lte('fecha', fecha_fin);
+    if (medico_id) query = query.eq('medico_id', medico_id);
+    if (estado) query = query.eq('estado', estado);
 
-    // Filtro por médico
-    if (medico_id) {
-      resultado = resultado.filter((c) => c.medico_id === parseInt(medico_id));
-    }
-
-    // Filtro por especialidad
+    let resultado;
     if (especialidad) {
-      const medicosFiltrados = medicos.filter(
-        (m) => m.especialidad.toLowerCase().includes(especialidad.toLowerCase())
-      );
-      const idsMedicos = medicosFiltrados.map((m) => m.id);
-      resultado = resultado.filter((c) => idsMedicos.includes(c.medico_id));
+      // Filtra por especialidad a través de los médicos que coinciden
+      const { data: medicos, error: medError } = await supabase
+        .from('medicos')
+        .select('id')
+        .ilike('especialidad', `%${especialidad}%`);
+      if (medError) throw medError;
+
+      const idsMedicos = (medicos || []).map((m) => m.id);
+      if (idsMedicos.length === 0) resultado = [];
+      else resultado = await aplicarFiltros(query.in('medico_id', idsMedicos));
+    } else {
+      resultado = await aplicarFiltros(query);
     }
 
-    // Filtro por estado
-    if (estado) {
-      resultado = resultado.filter((c) => c.estado === estado);
+    async function aplicarFiltros(q) {
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
     }
 
     // Estadísticas del reporte
@@ -57,6 +58,7 @@ const reporteCitas = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('reportes.reporteCitas:', error);
     return sendError(res, 'Error al generar reporte de citas', 500);
   }
 };
@@ -67,50 +69,41 @@ const reporteCitas = async (req, res) => {
  */
 const reporteIngresos = async (req, res) => {
   try {
-    let pagosFiltrados = [...pagos];
+    const supabase = getSupabase();
     const { fecha_inicio, fecha_fin, metodo_pago } = req.query;
 
-    // Filtrar solo pagos confirmados
-    pagosFiltrados = pagosFiltrados.filter((p) => p.estado === 'pagado');
+    let query = supabase.from('pagos').select('*').eq('estado', 'pagado');
+    if (fecha_inicio) query = query.gte('fecha_pago', fecha_inicio);
+    if (fecha_fin) query = query.lte('fecha_pago', `${fecha_fin}T23:59:59`);
+    if (metodo_pago) query = query.eq('metodo_pago', metodo_pago);
 
-    // Filtro por rango de fechas
-    if (fecha_inicio) {
-      pagosFiltrados = pagosFiltrados.filter(
-        (p) => p.fecha_pago && p.fecha_pago >= fecha_inicio
-      );
-    }
-    if (fecha_fin) {
-      pagosFiltrados = pagosFiltrados.filter(
-        (p) => p.fecha_pago && p.fecha_pago <= fecha_fin
-      );
-    }
+    const { data: pagosFiltrados, error } = await query;
+    if (error) throw error;
 
-    // Filtro por método de pago
-    if (metodo_pago) {
-      pagosFiltrados = pagosFiltrados.filter((p) => p.metodo_pago === metodo_pago);
-    }
+    const pagos = pagosFiltrados || [];
 
     // Calcular total
-    const totalIngresos = pagosFiltrados.reduce((sum, p) => sum + p.monto, 0);
+    const totalIngresos = pagos.reduce((sum, p) => sum + parseFloat(p.monto), 0);
 
     // Ingresos por método de pago
-    const porMetodo = pagosFiltrados.reduce((acc, p) => {
-      acc[p.metodo_pago] = (acc[p.metodo_pago] || 0) + p.monto;
+    const porMetodo = pagos.reduce((acc, p) => {
+      acc[p.metodo_pago] = (acc[p.metodo_pago] || 0) + parseFloat(p.monto);
       return acc;
     }, {});
 
     return sendSuccess(res, {
-      pagos: pagosFiltrados,
+      pagos,
       estadisticas: {
         total_ingresos: totalIngresos,
-        cantidad_pagos: pagosFiltrados.length,
-        promedio_pago: pagosFiltrados.length > 0
-          ? (totalIngresos / pagosFiltrados.length).toFixed(2)
+        cantidad_pagos: pagos.length,
+        promedio_pago: pagos.length > 0
+          ? (totalIngresos / pagos.length).toFixed(2)
           : 0,
         por_metodo_pago: porMetodo,
       },
     });
   } catch (error) {
+    console.error('reportes.reporteIngresos:', error);
     return sendError(res, 'Error al generar reporte de ingresos', 500);
   }
 };

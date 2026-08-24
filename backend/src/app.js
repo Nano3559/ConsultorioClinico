@@ -67,13 +67,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Exportar app para Vercel
+// Exportar app para Vercel y para server.js (único punto que escucha el puerto)
 module.exports = app;
-
-// Iniciar servidor solo en desarrollo
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`Servidor en http://localhost:${PORT}`);
-  });
-}

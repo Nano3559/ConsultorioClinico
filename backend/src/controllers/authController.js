@@ -1,26 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { pool } = require('../config/db');
+const { getSupabase, dbErrorMessage } = require('../config/supabase');
 const config = require('../config/config');
 const { sendSuccess, sendError } = require('../utils/helpers');
 const { ROLES } = require('../utils/constants');
 const ROLES_VALUES = Object.values(ROLES);
-
-/**
- * Traduce errores de MySQL a mensajes claros para el cliente.
- */
-const dbErrorMessage = (error) => {
-  if (['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND'].includes(error.code)) {
-    return 'No hay conexión con la base de datos';
-  }
-  if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-    return 'Credenciales de base de datos inválidas';
-  }
-  if (error.code === 'ER_BAD_DB_ERROR') {
-    return 'La base de datos no existe. Ejecuta npm run db:setup';
-  }
-  return null;
-};
 
 /**
  * POST /api/auth/register
@@ -31,39 +15,52 @@ const register = async (req, res) => {
   try {
     const { nombre, email, password, rol } = req.body;
     const rolFinal = ROLES_VALUES.includes(rol) ? rol : ROLES.PACIENTE;
+    const supabase = getSupabase();
 
-    const [existentes] = await pool.query(
-      'SELECT id FROM usuarios WHERE email = ? LIMIT 1',
-      [email]
-    );
-    if (existentes.length > 0) {
+    const { data: existentes } = await supabase
+      .from('usuarios')
+      .select('id')
+      .eq('email', email)
+      .limit(1);
+    if (existentes && existentes.length > 0) {
       return sendError(res, 'El email ya está registrado', 400);
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const [result] = await pool.query(
-      'INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)',
-      [nombre, email, hashedPassword, rolFinal]
-    );
-    const nuevoId = result.insertId;
+    const { data: nuevoUsuario, error: insertError } = await supabase
+      .from('usuarios')
+      .insert({ nombre, email, password: hashedPassword, rol: rolFinal })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      console.error('register:', insertError);
+      return sendError(res, dbErrorMessage(insertError) || 'Error al registrar usuario', 500);
+    }
+    const nuevoId = nuevoUsuario.id;
 
     // Perfil asociado según el rol (mejor esfuerzo; no bloquea el registro)
     try {
       if (rolFinal === ROLES.MEDICO) {
-        await pool.query(
-          `INSERT INTO medicos (usuario_id, nombre, apellido, cedula, especialidad, email)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [nuevoId, nombre, 'Por completar', `M${nuevoId}${Date.now() % 100000}`, 'Medicina General', email]
-        );
+        await supabase.from('medicos').insert({
+          usuario_id: nuevoId,
+          nombre,
+          apellido: 'Por completar',
+          cedula: `M${nuevoId}${Date.now() % 100000}`,
+          especialidad: 'Medicina General',
+          email,
+        });
       }
       if (rolFinal === ROLES.PACIENTE) {
-        await pool.query(
-          `INSERT INTO pacientes (usuario_id, nombre, apellido, cedula, email)
-           VALUES (?, ?, ?, ?, ?)`,
-          [nuevoId, nombre, 'Por completar', `P${nuevoId}${Date.now() % 100000}`, email]
-        );
+        await supabase.from('pacientes').insert({
+          usuario_id: nuevoId,
+          nombre,
+          apellido: 'Por completar',
+          cedula: `P${nuevoId}${Date.now() % 100000}`,
+          email,
+        });
       }
     } catch (perfilErr) {
       console.error('No se pudo crear el perfil del usuario:', perfilErr.message);
@@ -95,12 +92,14 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const supabase = getSupabase();
 
-    const [rows] = await pool.query(
-      'SELECT id, nombre, email, password, rol, activo FROM usuarios WHERE email = ? LIMIT 1',
-      [email]
-    );
-    const usuario = rows[0];
+    const { data: rows } = await supabase
+      .from('usuarios')
+      .select('id, nombre, email, password, rol, activo')
+      .eq('email', email)
+      .limit(1);
+    const usuario = rows && rows[0];
 
     if (!usuario) {
       return sendError(res, 'Credenciales inválidas', 401);
@@ -140,11 +139,13 @@ const login = async (req, res) => {
  */
 const getProfile = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT id, nombre, email, rol, activo, creado_en FROM usuarios WHERE id = ? LIMIT 1',
-      [req.user.id]
-    );
-    const usuario = rows[0];
+    const supabase = getSupabase();
+    const { data: rows } = await supabase
+      .from('usuarios')
+      .select('id, nombre, email, rol, activo, creado_en')
+      .eq('id', req.user.id)
+      .limit(1);
+    const usuario = rows && rows[0];
 
     if (!usuario) {
       return sendError(res, 'Usuario no encontrado', 404);

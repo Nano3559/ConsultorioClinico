@@ -7,7 +7,7 @@ import 'package:consultorio_clinico/services/api_client.dart';
 
 /// Respuestas simuladas de la API para los tests (sin red).
 ///
-/// Emula POST /api/auth/login con las cuentas sembradas en MySQL.
+/// Emula POST /api/auth/login con las cuentas sembradas en Supabase.
 ApiClient fakeApiClient() {
   const rolesByEmail = {
     'admin@consultorio.com': 'admin',
