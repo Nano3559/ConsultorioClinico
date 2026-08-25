@@ -1,0 +1,20 @@
+{
+  "name": "consultorio-backend",
+  "version": "1.0.0",
+  "description": "API para sistema de consultorio médico",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "vercel-build": "npm install"
+  },
+  "dependencies": {
+    ...
+  },
+  "devDependencies": {
+    ...
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
