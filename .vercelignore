@@ -4,3 +4,9 @@ node_modules
 *.log
 .vercel
 .dart_tool
+.git
+.github
+.vscode
+docs
+*.md
+*.txt

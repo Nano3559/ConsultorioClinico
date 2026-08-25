@@ -118,10 +118,10 @@ const getMedicosByEspecialidad = async (req, res) => {
     }
 
     const { data: medicosCoincidentes, error: medError } = await supabase
-      .from('medicos')
-      .select('id, nombre, apellido, consulorio, tarifa_consulta')
-      .eq('activo', true)
-      .ilike('especialidad', especialidad.nombre);
+  .from('medicos')
+  .select('id, nombre, apellido, consulorio, tarifa_consulta')
+  .eq('activo', true)
+  .eq('especialidad_id', especialidad.id);
     if (medError) throw medError;
 
     const idsMedicos = (medicosCoincidentes || []).map((m) => m.id);

@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Ruta raíz - ¡NUEVA!
+// Ruta raíz
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
@@ -67,5 +67,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Exportar app para Vercel y para server.js (único punto que escucha el puerto)
+// Exportar app para Vercel y para server.js
 module.exports = app;
