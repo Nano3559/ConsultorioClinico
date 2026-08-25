@@ -1,0 +1,292 @@
+===============================================================================
+PROMPT DE PROGRESO - CONSULTORIO CLÍNICO (estado actual del proyecto)
+Generado: 2026-08-23
+Uso: entregar este texto como contexto/prompt a una IA o desarrollador para
+continuar el desarrollo desde donde quedó.
+===============================================================================
+
+1) CONTEXTO GENERAL
+-------------------------------------------------------------------------------
+Proyecto: ConsultorioClinico — Sistema de control médico y clínico.
+Monorepo con:
+  - frontend/   Aplicación en Flutter (web/móvil), despliegue en Firebase.
+  - backend/    API REST en Node.js + Express, despliegue en Vercel
+                (vercel.json incluido). Base de datos Supabase (PostgreSQL).
+  - docs/       Documentación del proyecto.
+  - prompt.txt / prompt-modulos.txt / prompt-progreso.txt  Prompts de trabajo.
+
+Stack backend: Express 4, @supabase/supabase-js 2, bcryptjs, jsonwebtoken,
+express-validator 7, helmet, cors, compression, morgan, dotenv.
+
+Arquitectura backend (backend/src):
+  app.js                  Instancia Express + montaje de rutas (exporta para Vercel)
+  server.js               Arranque local (único punto que escucha el puerto)
+  config/config.js        Config por entorno (JWT_SECRET, JWT_EXPIRE, SUPABASE_*)
+  config/supabase.js      Cliente Supabase singleton (service_role) + testConnection()
+                          + dbErrorMessage() traduce errores PostgREST a mensajes claros
+  controllers/            Un controlador por módulo (auth, paciente, medico,
+                          especialidad, horario, cita, disponibilidad, consulta,
+                          pago, reporte, dashboard)
+  middleware/auth.js      verifyToken (JWT Bearer obligatorio) + optionalAuth
+                          (decodifica token si viene; nunca falla)
+  middleware/roles.js     checkRole(...roles) -> 403 si req.user.rol no está permitido
+  middleware/validation.js validate() centraliza express-validator + validadores
+                          reutilizables (cita, horario, pagos, params id/fecha...)
+  routes/                 Un router por módulo, montados bajo /api/<modulo>
+  utils/constants.js      ROLES, ESTADOS_CITA, METODOS_PAGO, ESTADOS_PAGO,
+                          DIAS_SEMANA, INTERVALO_CITA_MINUTOS=30
+  utils/helpers.js        sendSuccess/sendError (respuesta JSON estándar),
+                          formatDate, obtenerDiaSemana, horaAMinutos/minutosAHora...
+  views/ + public/        Landing institucional EJS (login.ejs, citas, medicos...)
+
+Roles del sistema (utils/constants.js -> ROLES):
+  admin | medico | recepcion | paciente
+
+Respuesta JSON estándar:
+  Éxito: { success: true, message, data }
+  Error: { success: false, message, errors? }
+
+2) BASE DE DATOS (Supabase / PostgreSQL)
+-------------------------------------------------------------------------------
+Migraciones en backend/db/migrations/ (ejecutar en orden desde el SQL Editor):
+
+001_initial_schema.sql
+  - set_updated_at(): trigger reutilizable que mantiene actualizado_en.
+  - usuarios: id, nombre, email UNIQUE, password (hash bcrypt), rol CHECK IN
+    ('admin','medico','recepcion','paciente') DEFAULT 'paciente', activo TRUE,
+    creado_en. RLS habilitado.
+  - pacientes: usuario_id FK->usuarios SET NULL, nombre, apellido, cedula UNIQUE,
+    telefono, email, fecha_nacimiento, sexo(M/F/O), direccion, tipo_sangre,
+    alergias, contacto_emergencia, activo, timestamps. RLS + índices.
+  - medicos: usuario_id FK, nombre, apellido, cedula UNIQUE, especialidad,
+    telefono, email, consulorio, tarifa_consulta NUMERIC(10,2), activo,
+    timestamps. RLS + índices.
+  - horarios: medico_id FK CASCADE, dia_semana, hora_inicio TIME, hora_fin TIME,
+    activo. RLS.
+  - citas: paciente_id FK CASCADE, medico_id FK CASCADE, fecha DATE, hora TIME,
+    motivo, estado CHECK IN ('programada','en_curso','completada','cancelada',
+    'no_show') DEFAULT 'programada', observaciones, timestamps.
+    Índice único PARCIAL uq_citas_medico_fecha_hora ON (medico_id, fecha, hora)
+    WHERE estado <> 'cancelada'  => evita doble agenda A NIVEL DE BD.
+  - consultas (historia clínica): cita_id FK SET NULL, paciente_id, medico_id,
+    fecha, diagnostico, tratamiento, notas_clinicas, signos_vitales JSONB.
+  - pagos: paciente_id FK, cita_id FK SET NULL, monto >= 0, metodo_pago CHECK,
+    estado CHECK ('pendiente','pagado','cancelado'), descripcion, fecha_pago.
+
+002_especialidades.sql
+  - Catálogo especialidades: nombre UNIQUE, descripcion, activo, creado_en.
+  - Seed: Medicina General, Pediatría, Cardiología, Dermatología, Ginecología,
+    Traumatología, Odontología.
+
+003_auth.sql  (NUEVA - seguridad y sesiones para login por roles)
+  - usuarios.ultimo_acceso TIMESTAMPTZ y usuarios.password_actualizado_en.
+  - Trigger normalizar_email_usuario: LOWER(BTRIM(email)) al insertar/actualizar
+    (evita duplicados Admin@X.com vs admin@x.com). Normaliza emails existentes.
+  - Tabla sesiones: id, usuario_id FK CASCADE, token_id UUID UNIQUE (jti del
+    JWT), ip_address, user_agent, activa BOOL, expira_en TIMESTAMPTZ, creado_en,
+    cerrada_en. RLS + índices (usuario_id, token_id, activa).
+    Permite LOGOUT REAL (revocación auditada) e historial de accesos por rol.
+  - limpiar_sesiones_antiguas(): borra sesiones cerradas/expiradas >30 días.
+
+IMPORTANTE PENDIENTE: ejecutar 003_auth.sql en Supabase SQL Editor.
+El código funciona sin ella (login/logout no fallan); solo la auditoría de
+sesiones queda inactiva hasta ejecutarla.
+
+3) AUTENTICACIÓN Y ROLES (backend/src/controllers/authController.js)
+-------------------------------------------------------------------------------
+Endpoints (montados en /api/auth):
+
+POST /api/auth/register   [público con optionalAuth]
+  - Reglas de seguridad:
+    * Registro público SOLO crea rol 'paciente' (rol default si no se envía).
+    * Si se pide rol admin/medico/recepcion se EXIGE Bearer token de un admin;
+      si no, responde 403 "Solo un administrador puede crear usuarios con
+      roles privilegiados". (Evita auto-elevación de privilegios.)
+  - Email normalizado (trim+lowercase) en rutas y BD (trigger 003).
+  - Valida email único (400 si duplicado). Password hasheada bcrypt (salt 10).
+  - Si el rol es medico o paciente crea su fila de perfil asociada
+    (medicos/pacientes.usuario_id) de forma tolerante a fallos.
+  - Devuelve { id, nombre, email, rol, perfil:{tipo,id}, token }.
+
+POST /api/auth/login      [público]
+  - Validaciones express-validator: email válido (trim+lowercase),
+    password obligatoria. Errores -> 422.
+  - Usuario no existe o password incorrecta -> 401 'Credenciales inválidas'.
+  - usuario.activo = false -> 403 'Cuenta desactivada...'.
+  - Login case-insensitive de email (normalización en ruta + controlador + BD).
+  - Resuelve perfil vinculado (medico/paciente) por usuario_id.
+  - Firma JWT con payload { id, email, rol, perfilTipo, perfilId, jti },
+    expiración según JWT_EXPIRE (default 24h).
+  - Auditoría (mejor esfuerzo, no bloquea): usuarios.ultimo_acceso=NOW() e
+    INSERT en sesiones (jti, ip, user_agent, expira_en).
+
+GET /api/auth/profile     [verifyToken]
+  - Devuelve datos del usuario autenticado + perfil {tipo,id} + ultimo_acceso.
+
+POST /api/auth/logout     [verifyToken]
+  - Marca la sesión (token_id=jti) como activa=false, cerrada_en=NOW().
+  - Nunca falla para el cliente (logout stateless si la tabla no existe).
+
+Middleware:
+  - verifyToken: exige Bearer; valida firma/expiración (401 Token expirado /
+    inválido). Carga req.user = payload decodificado.
+  - checkRole('admin',...): compara req.user.rol; 401 si no autenticado,
+    403 listando roles requeridos.
+  - optionalAuth: decodifica token si viene y es válido; nunca rechaza.
+
+4) MÓDULOS Y ENDPOINTS (roles permitidos)
+-------------------------------------------------------------------------------
+/api/pacientes
+  GET /            público (lista)
+  GET /:id         público
+  POST             admin, recepcion
+  PUT /:id         admin, recepcion
+  DELETE /:id      admin
+
+/api/medicos
+  GET /            público
+  GET /:id         público
+  GET /:id/especialidades  público
+  GET /:id/horarios público (desde medicoRoutes)
+  POST             admin
+  PUT /:id         admin
+  PATCH /:id/estado admin (activar/desactivar)
+  DELETE /:id      admin (rechaza si tiene citas activas hoy/futuras -> 409)
+
+/api/especialidades
+  GET / , GET /:id , GET /medico/:medicoId   público
+  POST / , PUT /:id , DELETE /:id            admin
+
+/api/horarios   (MIGRADO de mockData a Supabase en esta sesión)
+  GET /                        público
+  GET /disponibles             público (horarios activos de médicos activos)
+  GET /medico/:medicoId        público
+  POST                         admin (valida horas coherentes y solapamiento
+                                     por médico/día contra la BD -> 409)
+  PUT /:id                     admin (valida solapamiento excluyendo el propio)
+  DELETE /:id                  admin
+
+/api/citas      (estados alineados a la BD: programada|en_curso|completada|
+                 cancelada|no_show)
+  GET /                    admin, recepcion
+  GET /agenda/hoy          admin, medico
+  GET /medico/:id          público (valida existencia del médico)
+  GET /paciente/:id        público (valida existencia del paciente)
+  GET /:id                 público
+  POST                     admin, recepcion, paciente
+    - Verifica paciente exista (404), médico exista y activo (404/400).
+    - Rechaza fechas pasadas (400).
+    - Valida que el médico atienda ese día/hora según horarios en BD (400).
+    - Verifica doble agenda (query + índice único parcial de BD -> 400).
+  PUT /:id                 admin, recepcion, paciente (reprogramar)
+    - Rechaza reprogramar completadas/canceladas; mismas validaciones de
+      fecha/horario/disponibilidad excluyendo la propia cita.
+  PATCH /:id/estado        admin, recepcion, medico (CHECK de estados válidos)
+  DELETE /:id              admin, recepcion (marca 'cancelada')
+
+/api/disponibilidad   (MIGRADO de mockData a Supabase en esta sesión)
+  GET /medico/:medicoId/fecha/:fecha   público
+    - Genera slots de 30 min según horarios activos del día en BD, descarta
+      horas pasadas si es hoy y slots ya reservados (citas no canceladas).
+    - Devuelve { medico, fecha, dia_semana, intervalo_minutos,
+      slots_disponibles[], total_disponibles }.
+  GET /especialidad/:especialidadId    público
+    - Médicos activos de esa especialidad (catálogo) + días_atencion
+      (unión de sus horarios activos).
+
+/api/consultas
+  GET /paciente/:id   público
+  GET /:id            público
+  POST                admin, medico
+  PUT /:id            admin, medico
+
+/api/pagos
+  GET /               admin, recepcion
+  GET /paciente/:id   público
+  POST                admin, recepcion
+
+/api/reportes
+  GET /citas           filtros fecha_inicio/fecha_fin/medico_id/especialidad/
+                       estado + estadisticas (usa ESTADOS_CITA alineados a BD)
+  GET /ingresos        filtros fecha/metodo_pago sobre pagos 'pagado'
+
+/api/dashboard
+  GET /                resumen (citas de hoy, completadas, pendientes, etc.)
+
+/api/health  GET  público.  Ruta raíz "/" lista todos los endpoints.
+
+5) USUARIOS SEMILLA (db/seed.js)
+-------------------------------------------------------------------------------
+Ejecución: npm run db:seed            (solo siembra si usuarios está vacía)
+           npm run db:seed -- --reset (restablece contraseñas/perfiles de los
+           usuarios semilla YA existentes; útil si los hashes quedaron viejos)
+
+  admin@consultorio.com      admin123       admin
+  carlos@consultorio.com     medico123      medico   (perfil médico c/esp.)
+  laura@consultorio.com      medico123      medico   (Pediatría)
+  maria@consultorio.com      recepcion123   recepcion
+  pedro@gmail.com            paciente123    paciente (perfil paciente)
+
+6) CORRECCIONES REALIZADAS EN LA ÚLTIMA SESIÓN (importante para continuar)
+-------------------------------------------------------------------------------
+1. Se RESOLVIERON conflictos de merge sin resolver (marcadores <<<<<<< >>>>>>>)
+   en citaController.js y medicoController.js que ROMPIAN el arranque del API.
+   Se conservó la lógica Supabase y se reintegraron las validaciones valiosas
+   de la rama vieja (fecha pasada, horario del médico) ahora contra la BD.
+2. medicoController.remove() usaba arrays mock; reescrito a Supabase (bloquea
+   eliminar médicos con citas activas hoy/futuras, luego DELETE real).
+3. ESTADOS_CITA estaba DESALINEADO con el CHECK de la tabla citas (el código
+   usaba pendiente/confirmada/atendida/no_asistio pero la BD espera
+   programada/en_curso/completada/cancelada/no_show). constants.js ahora usa
+   PROGRAMADA/EN_CURSO/COMPLETADA/CANCELADA/NO_SHOW y reporteController fue
+   corregido. La creación de citas usaba ESTADOS_CITA.PROGRAMADA=undefined ->
+   insert roto; ya corregido.
+4. horarioController.js y disponibilidadController.js estaban 100% mockData;
+   reescritos completos contra Supabase manteniendo mismos endpoints y reglas
+   (solapamientos, slots, días de atención).
+5. Seguridad de registro: antes CUALQUIERA podía registrarse como admin/medico/
+   recepcion. Ahora el registro público solo crea pacientes; roles privilegiados
+   exigen token de admin (middleware optionalAuth nuevo).
+6. Emails normalizados (trim+lowercase) en register/login/rutas + trigger en
+   BD (003). Antes un login con mayúsculas fallaba silenciosamente.
+7. Login ahora devuelve el PERFIL vinculado ({tipo:'medico'|'paciente', id})
+   y lo embebe en el JWT (perfilTipo/perfilId) para que cada rol entre directo
+   a su vista/datos. También registra ultimo_acceso y fila en sesiones (jti).
+8. Nuevo endpoint POST /api/auth/logout (revoca la sesión por jti).
+9. Migración 003_auth.sql creada (ultimo_acceso, normalización email, tabla
+   sesiones, función de limpieza).
+10. seed.js: modo --reset para restablecer contraseñas de usuarios semilla ya
+    existentes (los hashes en BD no coincidian con las contraseñas documentadas;
+    ya fueron restablecidos ejecutando node db/seed.js --reset).
+11. VERIFICADO END-TO-END contra la BD real de Supabase: health 200; validación
+    422; registro admin sin token -> 403; registro paciente público -> 201;
+    login OK para los 4 roles (incluye email en MAYÚSCULAS/espacios);
+    profile y logout OK con Bearer token.
+
+7) CÓMO EJECUTAR
+-------------------------------------------------------------------------------
+Backend local:
+  cd backend
+  npm install
+  Configurar .env: PORT, JWT_SECRET, JWT_EXPIRE, SUPABASE_URL,
+                   SUPABASE_SERVICE_ROLE_KEY (recomendado) o SUPABASE_ANON_KEY
+  npm run dev          (nodemon)  |  npm start
+  npm run db:seed [-- --reset]
+Base de datos: ejecutar migraciones 001 -> 002 -> 003 en el SQL Editor de
+Supabase (RLS habilitado en todas las tablas; el API usa service_role que las
+bysea por diseño; acceso anónimo directo bloqueado).
+
+8) PENDIENTES / PRÓXIMOS PASOS SUGERIDOS
+-------------------------------------------------------------------------------
+- [ ] EJECUTAR backend/db/migrations/003_auth.sql en Supabase SQL Editor
+      (sin ella el logout/auditoría funcionan pero no persisten sesiones).
+- [ ] Frontend Flutter: pantalla de login consumiendo POST /api/auth/login y
+      router por rol usando data.rol y data.perfil (admin/medico/recepcion/
+      paciente), guardando token de forma segura.
+- [ ] Opcional: FK medicos.especialidad_id -> especialidades.id (hoy la
+      especialidad es texto libre en medicos; el catálogo ya existe).
+- [ ] Opcional: gestión CRUD de usuarios (listar/cambiar rol/activar-
+      desactivar) solo admin, reutilizando ROLES y checkRole.
+- [ ] Opcional: refrescar tokens / expiración renovada y política de contraseñas
+      más fuerte (isStrongPassword).
+===============================================================================

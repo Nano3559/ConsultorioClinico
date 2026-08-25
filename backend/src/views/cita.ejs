@@ -1,0 +1,94 @@
+<%- include('partials/header') %>
+
+<section class="page-header bg-primary text-white py-5 mt-5">
+  <div class="container">
+    <h1 class="display-5 fw-bold">Solicitar Cita</h1>
+    <p class="lead opacity-75">Agenda tu cita en línea de forma rápida y sencilla</p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <% if (success) { %>
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i><%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <h4 class="fw-bold mb-4"><i class="bi bi-calendar-plus text-primary me-2"></i>Formulario de Solicitud</h4>
+            <form action="/cita" method="POST">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Nombre *</label>
+                  <input type="text" class="form-control" name="nombre" required placeholder="Tu nombre">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Apellido *</label>
+                  <input type="text" class="form-control" name="apellido" required placeholder="Tu apellido">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Cédula de Identidad *</label>
+                  <input type="text" class="form-control" name="ci" required placeholder="0000000000">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Fecha de Nacimiento *</label>
+                  <input type="date" class="form-control" name="fechaNacimiento" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Teléfono *</label>
+                  <input type="tel" class="form-control" name="telefono" required placeholder="+593 99 000 0000">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Correo Electrónico *</label>
+                  <input type="email" class="form-control" name="email" required placeholder="correo@ejemplo.com">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Especialidad *</label>
+                  <select class="form-select" name="especialidad" required>
+                    <option value="">Seleccionar especialidad</option>
+                    <% especialidades.forEach(function(e) { %>
+                      <option value="<%= e.nombre %>"><%= e.nombre %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Médico *</label>
+                  <select class="form-select" name="medico" required>
+                    <option value="">Seleccionar médico</option>
+                    <% medicos.forEach(function(m) { %>
+                      <option value="<%= m.nombre %>"><%= m.nombre %> - <%= m.especialidad %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Fecha de Cita *</label>
+                  <input type="date" class="form-control" name="fechaCita" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Hora de Cita *</label>
+                  <input type="time" class="form-control" name="horaCita" required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Motivo de Consulta *</label>
+                  <textarea class="form-control" name="motivo" rows="4" required placeholder="Describe brevemente el motivo de tu consulta..."></textarea>
+                </div>
+                <div class="col-12">
+                  <button type="submit" class="btn btn-primary btn-lg w-100">
+                    <i class="bi bi-send me-2"></i>Solicitar Cita
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>
