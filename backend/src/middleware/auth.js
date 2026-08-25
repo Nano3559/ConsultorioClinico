@@ -26,4 +26,24 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-module.exports = { verifyToken };
+/**
+ * Middleware opcional: decodifica el token si viene, pero nunca falla.
+ * Se usa en rutas públicas que mejoran su comportamiento cuando hay sesión
+ * (ej: registro, donde solo un admin puede crear usuarios privilegiados).
+ */
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      req.user = jwt.verify(authHeader.split(' ')[1], config.jwtSecret);
+    } catch (_error) {
+      // Token inválido/expirado: se continúa como anónimo
+      req.user = undefined;
+    }
+  }
+
+  next();
+};
+
+module.exports = { verifyToken, optionalAuth };

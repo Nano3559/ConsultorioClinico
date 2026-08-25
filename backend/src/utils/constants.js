@@ -5,12 +5,14 @@ const ROLES = {
   PACIENTE: 'paciente',
 };
 
+// Debe coincidir con el CHECK de la columna citas.estado en la BD:
+// ('programada', 'en_curso', 'completada', 'cancelada', 'no_show')
 const ESTADOS_CITA = {
-  PENDIENTE: 'pendiente',
-  CONFIRMADA: 'confirmada',
-  ATENDIDA: 'atendida',
+  PROGRAMADA: 'programada',
+  EN_CURSO: 'en_curso',
+  COMPLETADA: 'completada',
   CANCELADA: 'cancelada',
-  NO_ASISTIO: 'no_asistio',
+  NO_SHOW: 'no_show',
 };
 
 // Duración de cada turno al generar los slots de disponibilidad (minutos)

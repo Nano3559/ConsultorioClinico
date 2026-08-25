@@ -41,10 +41,10 @@ const reporteCitas = async (req, res) => {
 
     // Estadísticas del reporte
     const total = resultado.length;
-    const completadas = resultado.filter((c) => c.estado === ESTADOS_CITA.ATENDIDA).length;
+    const completadas = resultado.filter((c) => c.estado === ESTADOS_CITA.COMPLETADA).length;
     const canceladas = resultado.filter((c) => c.estado === ESTADOS_CITA.CANCELADA).length;
     const programadas = resultado.filter(
-      (c) => c.estado === ESTADOS_CITA.PENDIENTE || c.estado === ESTADOS_CITA.CONFIRMADA
+      (c) => c.estado === ESTADOS_CITA.PROGRAMADA || c.estado === ESTADOS_CITA.EN_CURSO
     ).length;
 
     return sendSuccess(res, {
