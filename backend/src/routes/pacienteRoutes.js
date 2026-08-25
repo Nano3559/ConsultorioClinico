@@ -15,13 +15,13 @@ const pacienteValidation = [
   body('telefono').notEmpty().withMessage('El teléfono es obligatorio'),
 ];
 
-// Todas las rutas requieren autenticación
-router.use(verifyToken);
-
+// Rutas públicas (lectura)
 router.get('/', getAll);
 router.get('/:id', getById);
-router.post('/', checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
-router.put('/:id', checkRole('admin', 'recepcion'), update);
-router.delete('/:id', checkRole('admin'), remove);
+
+// Rutas protegidas (escritura)
+router.post('/', verifyToken, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
+router.put('/:id', verifyToken, checkRole('admin', 'recepcion'), update);
+router.delete('/:id', verifyToken, checkRole('admin'), remove);
 
 module.exports = router;

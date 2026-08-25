@@ -18,14 +18,14 @@ const especialidadValidation = [
   body('nombre').notEmpty().withMessage('El nombre es obligatorio'),
 ];
 
-// Todas las rutas requieren autenticación
-router.use(verifyToken);
-
+// Rutas públicas (lectura)
 router.get('/', getEspecialidades);
 router.get('/medico/:medicoId', getEspecialidadesByMedico);
 router.get('/:id', getEspecialidadById);
-router.post('/', checkRole('admin'), especialidadValidation, validate, createEspecialidad);
-router.put('/:id', checkRole('admin'), updateEspecialidad);
-router.delete('/:id', checkRole('admin'), deleteEspecialidad);
+
+// Rutas protegidas (escritura)
+router.post('/', verifyToken, checkRole('admin'), especialidadValidation, validate, createEspecialidad);
+router.put('/:id', verifyToken, checkRole('admin'), updateEspecialidad);
+router.delete('/:id', verifyToken, checkRole('admin'), deleteEspecialidad);
 
 module.exports = router;
