@@ -1,20 +1,27 @@
 /**
- * Siembra datos ficticios (demostración) en Supabase usando el backend.
+ * Siembra datos ficticios (demostración) CONSUMIENDO LA API REST.
  *
  *   node db/seed_ficticio.js
  *
- * Requiere las variables de entorno del backend (SUPABASE_URL y
- * SUPABASE_SERVICE_ROLE_KEY o SUPABASE_ANON_KEY) en el archivo .env, y que las
- * migraciones db/migrations/001..004*.sql ya se hayan ejecutado en Supabase.
+ * Equivale a que un ADMINISTRADOR cargue la información desde la interfaz:
+ *  - Se autentica con la cuenta admin (ADMIN_EMAIL / ADMIN_PASSWORD).
+ *  - Crea médicos (POST /api/medicos) y sus horarios (POST /api/medicos/:id/horarios).
+ *  - Crea pacientes (POST /api/pacientes).
+ *  - Crea citas (POST /api/citas) y ajusta su estado (PATCH /api/citas/:id/estado).
+ *  - Registra consultas (POST /api/consultas) y pagos (POST /api/pagos).
  *
- * Equivale a que un administrador cargue la información inicial: crea médicos
- * (con su horario), pacientes, citas, consultas (historia clínica) y pagos.
- * Es idempotente: si ya detecta datos ficticios previos, no duplica.
+ * Requisitos:
+ *  - Backend corriendo (API_BASE_URL, por defecto http://localhost:3000/api).
+ *  - Tablas creadas (migraciones db/migrations/001..004*.sql) y db:seed ejecutado.
+ *  - Node >= 18 (usa fetch global).
+ *
+ * Es idempotente: si ya detecta médicos ficticios, no duplica.
  */
-require('dotenv').config();
-const { getSupabase } = require('../src/config/supabase');
+const BASE = process.env.API_BASE_URL || 'http://localhost:3000/api';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@consultorio.com';
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'admin123';
 
-const MARCADOR_CEDULA = '5678901'; // cédula del primer médico ficticio
+const MARCADOR_CEDULA = '5678901';
 
 const MEDICOS = [
   {
@@ -93,145 +100,141 @@ const PACIENTES = [
   { nombre: 'Rocío', apellido: 'Vera', cedula: '9801012', telefono: '0981 300 212', email: 'rocio.vera@mail.com', fecha_nacimiento: '1999-10-28', sexo: 'F', direccion: 'Ñemby', tipo_sangre: 'AB-', alergias: 'Ninguna', contacto_emergencia: '0981 999 012' },
 ];
 
-function diasDesde(hoy, delta) {
+const DIA_A_JS = { 'Domingo': 0, 'Lunes': 1, 'Martes': 2, 'Miércoles': 3, 'Jueves': 4, 'Viernes': 5, 'Sábado': 6 };
+
+function nextDateForWeekday(dia, weeksAhead = 0) {
+  const target = DIA_A_JS[dia];
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const diff = (target - hoy.getDay() + 7) % 7;
   const d = new Date(hoy);
-  d.setDate(d.getDate() + delta);
+  d.setDate(d.getDate() + diff + weeksAhead * 7);
+  if (d < hoy) d.setDate(d.getDate() + 7);
   return d.toISOString().split('T')[0];
 }
 
-async function main() {
-  const supabase = getSupabase();
+async function api(path, method, body, token) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const r = await fetch(BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    throw new Error(`${method} ${path} -> ${r.status} ${j.message || JSON.stringify(j)}`);
+  }
+  return j.data !== undefined ? j.data : j;
+}
 
-  // Idempotencia: si ya existe el médico ficticio marcador, no duplicar.
-  const { data: existente } = await supabase
-    .from('medicos')
-    .select('id')
-    .eq('cedula', MARCADOR_CEDULA)
-    .limit(1);
-  if (existente && existente.length > 0) {
-    console.log('ℹ️  Los datos ficticios ya fueron cargados. No se duplican.');
+async function login() {
+  const r = await fetch(`${BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASS }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`Login admin fallo: ${r.status} ${j.message || JSON.stringify(j)}`);
+  const token = j.data && j.data.token ? j.data.token : j.token;
+  if (!token) throw new Error('No se obtuvo token del login');
+  return token;
+}
+
+async function main() {
+  // Idempotencia: ¿ya existen los médicos ficticios?
+  const lista = await api('/medicos', 'GET');
+  const medicosExistentes = (lista.data || lista || []).filter
+    ? (lista.data || lista)
+    : [];
+  if (Array.isArray(medicosExistentes) && medicosExistentes.some((m) => m.cedula === MARCADOR_CEDULA)) {
+    console.log('ℹ️  Los datos ficticios ya fueron cargados vía API. No se duplican.');
     return;
   }
 
+  const token = await login();
+  console.log('🔑 Sesión admin iniciada.');
+
   const medicoId = {};
   for (const m of MEDICOS) {
-    const { data, error } = await supabase
-      .from('medicos')
-      .insert({
-        nombre: m.nombre, apellido: m.apellido, cedula: m.cedula,
-        especialidad: m.especialidad, email: m.email, telefono: m.telefono,
-        tarifa_consulta: m.tarifa_consulta,
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    medicoId[m.cedula] = data.id;
+    const creado = await api('/medicos', 'POST', {
+      nombre: m.nombre, apellido: m.apellido, cedula: m.cedula,
+      especialidad: m.especialidad, email: m.email, telefono: m.telefono,
+      tarifa_consulta: m.tarifa_consulta,
+    }, token);
+    const id = creado.id;
+    medicoId[m.cedula] = id;
     for (const h of m.horarios) {
-      const { error: hErr } = await supabase.from('horarios').insert({
-        medico_id: data.id, dia_semana: h.dia_semana,
-        hora_inicio: h.hora_inicio, hora_fin: h.hora_fin, activo: true,
-      });
-      if (hErr) console.log('⚠️  horario no insertado:', hErr.message);
+      await api(`/medicos/${id}/horarios`, 'POST', {
+        dia_semana: h.dia_semana, hora_inicio: h.hora_inicio, hora_fin: h.hora_fin,
+      }, token);
     }
-    console.log(`👨‍⚕️ Médico: ${m.nombre} ${m.apellido} (${m.especialidad})`);
+    console.log(`👨‍⚕️ Médico: ${m.nombre} ${m.apellido} (${m.especialidad}) + horarios`);
   }
 
   const pacienteId = {};
   for (const p of PACIENTES) {
-    const { data, error } = await supabase
-      .from('pacientes')
-      .insert({
-        nombre: p.nombre, apellido: p.apellido, cedula: p.cedula,
-        telefono: p.telefono, email: p.email, fecha_nacimiento: p.fecha_nacimiento,
-        sexo: p.sexo, direccion: p.direccion, tipo_sangre: p.tipo_sangre,
-        alergias: p.alergias, contacto_emergencia: p.contacto_emergencia,
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    pacienteId[p.cedula] = data.id;
+    const creado = await api('/pacientes', 'POST', {
+      nombre: p.nombre, apellido: p.apellido, cedula: p.cedula,
+      telefono: p.telefono, email: p.email, fecha_nacimiento: p.fecha_nacimiento,
+      sexo: p.sexo, direccion: p.direccion, tipo_sangre: p.tipo_sangre,
+      alergias: p.alergias, contacto_emergencia: p.contacto_emergencia,
+    }, token);
+    pacienteId[p.cedula] = creado.id;
     console.log(`🧑 Paciente: ${p.nombre} ${p.apellido}`);
   }
 
-  const hoy = new Date();
-  const citasDef = [
-    { mc: '5678901', pc: '9801001', delta: 0, hora: '08:00', motivo: 'Control pediátrico', estado: 'completada' },
-    { mc: '5678901', pc: '9801004', delta: 0, hora: '09:00', motivo: 'Vacunación', estado: 'completada' },
-    { mc: '5678902', pc: '9801003', delta: 0, hora: '14:00', motivo: 'Dolor torácico', estado: 'completada' },
-    { mc: '5678903', pc: '9801008', delta: 0, hora: '09:00', motivo: 'Control prenatal', estado: 'completada' },
-    { mc: '5678904', pc: '9801005', delta: 0, hora: '13:00', motivo: 'Lesión deportiva', estado: 'completada' },
-    { mc: '5678906', pc: '9801002', delta: 0, hora: '10:00', motivo: 'Consulta general', estado: 'programada' },
-    { mc: '5678906', pc: '9801006', delta: 1, hora: '11:00', motivo: 'Chequeo', estado: 'programada' },
-    { mc: '5678905', pc: '9801010', delta: 1, hora: '08:00', motivo: 'Acné', estado: 'programada' },
-    { mc: '5678902', pc: '9801007', delta: 2, hora: '15:00', motivo: 'Hipertensión', estado: 'programada' },
-    { mc: '5678903', pc: '9801012', delta: 2, hora: '09:00', motivo: 'Planificación', estado: 'programada' },
-    { mc: '5678901', pc: '9801009', delta: -3, hora: '08:00', motivo: 'Fiebre', estado: 'cancelada' },
-    { mc: '5678904', pc: '9801011', delta: -1, hora: '14:00', motivo: 'Dolor lumbar', estado: 'no_show' },
-    { mc: '5678906', pc: '9801001', delta: 3, hora: '12:00', motivo: 'Control general', estado: 'programada' },
-    { mc: '5678905', pc: '9801004', delta: 4, hora: '08:00', motivo: 'Revisión cutaneous', estado: 'programada' },
-  ];
-
-  const citaId = [];
-  for (const c of citasDef) {
-    const { data, error } = await supabase
-      .from('citas')
-      .insert({
-        paciente_id: pacienteId[c.pc], medico_id: medicoId[c.mc],
-        fecha: diasDesde(hoy, c.delta), hora: c.hora, motivo: c.motivo, estado: c.estado,
-      })
-      .select('id')
-      .single();
-    if (error) {
-      console.log('⚠️  cita no insertada:', error.message);
-      continue;
-    }
-    citaId.push({ id: data.id, def: c });
-    console.log(`📅 Cita: ${diasDesde(hoy, c.delta)} ${c.hora} (${c.estado})`);
-  }
-
-  const consultasDef = {
-    completada: [
-      { diag: 'Cuadro respiratorio leve', trat: 'Reposo y hidratación, sintomáticos.' },
-      { diag: 'Arritmia detectada', trat: 'EKG y derivación a cardiología.' },
-      { diag: 'Embarazo de 12 semanas', trat: 'Control mensual, ácido fólico.' },
-      { diag: 'Esguince de tobillo', trat: 'Reposo, frío y vendaje.' },
-      { diag: 'Vacunación al día', trat: 'Refuerzo según calendario.' },
-    ],
-  };
-  let ci = 0;
-  for (const c of citaId) {
-    if (c.def.estado !== 'completada') continue;
-    const def = consultasDef.completada[ci % consultasDef.completada.length];
-    ci++;
-    const { error } = await supabase.from('consultas').insert({
-      cita_id: c.id, paciente_id: pacienteId[c.def.pc], medico_id: medicoId[c.def.mc],
-      fecha: diasDesde(hoy, c.def.delta), diagnostico: def.diag, tratamiento: def.trat,
-      notas_clinicas: 'Sin complicaciones.',
+  // Generar planes de citas: hasta 2 horarios por médico, semanas 0 y 1.
+  const planes = [];
+  let pi = 0;
+  MEDICOS.forEach((m, mi) => {
+    m.horarios.slice(0, 2).forEach((h) => {
+      [0, 1].forEach((wk) => {
+        const pc = PACIENTES[pi % PACIENTES.length].cedula;
+        pi++;
+        let estado = wk === 0 ? 'completada' : 'programada';
+        if (mi === 0 && wk === 0) estado = 'cancelada';
+        if (mi === 1 && wk === 0) estado = 'no_show';
+        planes.push({ mc: m.cedula, pc, dia: h.dia_semana, hora: h.hora_inicio, wk, estado, motivo: 'Consulta de demostración' });
+      });
     });
-    if (error) console.log('⚠️  consulta no insertada:', error.message);
-    else console.log('📋 Consulta registrada');
-  }
+  });
 
   const metodos = ['efectivo', 'tarjeta', 'transferencia'];
-  let pi = 0;
-  for (const c of citaId) {
-    if (c.def.estado === 'cancelada' || c.def.estado === 'no_show') continue;
-    const monto = 30 + (pi % 5) * 5;
-    const { error } = await supabase.from('pagos').insert({
-      paciente_id: pacienteId[c.def.pc], cita_id: c.id, monto,
-      metodo_pago: metodos[pi % metodos.length],
-      estado: c.def.estado === 'completada' ? 'pagado' : 'pendiente',
-      descripcion: 'Consulta ' + c.def.motivo,
-    });
-    if (error) console.log('⚠️  pago no insertado:', error.message);
-    else console.log(`💳 Pago ${monto} (${metodos[pi % metodos.length]})`);
-    pi++;
+  let ci = 0;
+  for (const plan of planes) {
+    const fecha = nextDateForWeekday(plan.dia, plan.wk);
+    const cita = await api('/citas', 'POST', {
+      paciente_id: pacienteId[plan.pc],
+      medico_id: medicoId[plan.mc],
+      fecha,
+      hora: plan.hora,
+      motivo: plan.motivo,
+    }, token);
+    const citaId = cita.id;
+
+    if (plan.estado !== 'programada') {
+      await api(`/citas/${citaId}/estado`, 'PATCH', { estado: plan.estado }, token);
+    }
+    console.log(`📅 Cita ${fecha} ${plan.hora} -> ${plan.estado}`);
+
+    if (plan.estado === 'completada') {
+      const diag = 'Control clínico sin complicaciones.';
+      const trat = 'Indicaciones generales y seguimiento.';
+      await api('/consultas', 'POST', {
+        cita_id: citaId, paciente_id: pacienteId[plan.pc], medico_id: medicoId[plan.mc],
+        diagnostico: diag, tratamiento: trat, notas_clinicas: 'Registro de demostración.',
+      }, token);
+      const monto = 30 + (ci % 5) * 5;
+      await api('/pagos', 'POST', {
+        paciente_id: pacienteId[plan.pc], cita_id: citaId, monto,
+        metodo_pago: metodos[ci % metodos.length], descripcion: 'Consulta ' + plan.motivo,
+      }, token);
+      console.log(`📋 Consulta + 💳 Pago ${monto} (${metodos[ci % metodos.length]})`);
+    }
+    ci++;
   }
 
-  console.log('✅ Datos ficticios cargados correctamente.');
+  console.log('✅ Datos ficticios cargados en la base de datos a través de la API.');
 }
 
 main().catch((err) => {
-  console.error('❌ Error al cargar datos ficticios:', err.message);
+  console.error('❌ Error al cargar datos ficticios vía API:', err.message);
   process.exit(1);
 });

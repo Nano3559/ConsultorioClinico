@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { getAll, getById, create, update, toggleEstado, remove, getHorarios } = require('../controllers/medicoController');
+const { getAll, getById, create, update, toggleEstado, remove, getHorarios, createHorario } = require('../controllers/medicoController');
 const { getEspecialidadesByMedico } = require('../controllers/especialidadController');
 const { verifyToken } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
@@ -24,6 +24,7 @@ const medicoValidation = [
 router.get('/', getAll);
 router.get('/:id', idParamValidation, validate, getById);
 router.get('/:id/horarios', verifyToken, idParamValidation, validate, getHorarios);
+router.post('/:id/horarios', verifyToken, checkRole('admin'), idParamValidation, validate, createHorario);
 router.get('/:medicoId/especialidades', medicoIdParamValidation, validate, getEspecialidadesByMedico);
 
 // Rutas protegidas (solo admin)
