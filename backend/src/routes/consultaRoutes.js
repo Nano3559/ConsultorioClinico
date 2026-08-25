@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { getByPaciente, getById, create, update } = require('../controllers/consultaController');
+const { getAll, getByPaciente, getById, create, update } = require('../controllers/consultaController');
 const { verifyToken } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
 const { validate } = require('../middleware/validation');
@@ -17,6 +17,7 @@ const consultaValidation = [
 // Todas las rutas requieren autenticación
 router.use(verifyToken);
 
+router.get('/', checkRole('admin', 'medico', 'recepcion'), getAll);
 router.get('/paciente/:id', getByPaciente);
 router.get('/:id', getById);
 router.post('/', checkRole('admin', 'medico'), consultaValidation, validate, create);
