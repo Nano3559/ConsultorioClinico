@@ -1,37 +1,57 @@
 import 'package:flutter/foundation.dart';
 import '../data/models/user.dart';
-import '../data/mock/mock_data.dart';
+import '../services/api_client.dart';
 
-/// Autenticación. Con datos mock por ahora; al conectar el backend delegará
-/// en POST /api/auth/login.
+/// Autenticación contra el backend (POST /api/auth/login con Supabase + JWT).
 class AuthProvider extends ChangeNotifier {
+  AuthProvider({ApiClient? api}) : _api = api ?? ApiClient();
+
+  final ApiClient _api;
+
   User? _currentUser;
+  String? _token;
 
   User? get currentUser => _currentUser;
   UserRole? get role => _currentUser?.role;
   bool get isLogged => _currentUser != null;
 
-  String? login(String email, String password) {
+  /// Token JWT de la sesión activa; úsalo en las demás llamadas a la API.
+  String? get token => _token;
+
+  /// Intenta iniciar sesión. Devuelve null en éxito o el mensaje de error.
+  Future<String?> login(String email, String password) async {
     final normalized = email.trim().toLowerCase();
-    // Demo: cualquier contraseña (mínimo 4 caracteres) con un correo registrado.
-    if (password.length < 4) {
-      return 'La contraseña debe tener al menos 4 caracteres';
+    if (password.isEmpty) {
+      return 'La contraseña es requerida';
     }
-    User? user;
-    for (final u in MockData.users) {
-      if (u.email == normalized) {
-        user = u;
-        break;
-      }
+
+    final result = await _api.postJson('/auth/login', {
+      'email': normalized,
+      'password': password,
+    });
+
+    if (!result.isSuccess) return result.error;
+
+    final data = result.data!['data'];
+    if (data is! Map<String, dynamic>) {
+      return 'Respuesta inesperada del servidor';
     }
-    if (user == null) return 'Credenciales inválidas';
-    _currentUser = user;
+
+    _token = data['token']?.toString();
+    _currentUser = User(
+      id: data['id']?.toString() ?? '',
+      name: data['nombre']?.toString() ?? '',
+      email: data['email']?.toString() ?? normalized,
+      role: UserRole.fromApi(data['rol']?.toString() ?? ''),
+    );
+
     notifyListeners();
     return null;
   }
 
   void logout() {
     _currentUser = null;
+    _token = null;
     notifyListeners();
   }
 }

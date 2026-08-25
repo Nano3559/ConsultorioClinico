@@ -4,8 +4,16 @@ import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_validators.dart';
-import '../../data/mock/mock_data.dart';
+import '../../data/models/user.dart';
 import '../../state/auth_provider.dart';
+
+/// Cuentas sembradas en la base de datos para pruebas por rol.
+const _demoAccounts = [
+  (UserRole.admin, 'admin@consultorio.com', 'admin123'),
+  (UserRole.medico, 'carlos@consultorio.com', 'medico123'),
+  (UserRole.recepcion, 'maria@consultorio.com', 'recepcion123'),
+  (UserRole.paciente, 'pedro@gmail.com', 'paciente123'),
+];
 
 /// Pantalla de acceso por rol (Ejercicio: Login).
 class LoginPage extends StatefulWidget {
@@ -32,10 +40,9 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
     final auth = context.read<AuthProvider>();
-    final error = auth.login(_email.text, _password.text);
+    final error = await auth.login(_email.text, _password.text);
+    if (!mounted) return;
     setState(() => _loading = false);
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -44,9 +51,9 @@ class _LoginPageState extends State<LoginPage> {
     context.go('/app');
   }
 
-  void _quickLogin(String email) {
+  void _quickLogin(String email, String password) {
     _email.text = email;
-    _password.text = '123456';
+    _password.text = password;
   }
 
   @override
@@ -148,11 +155,11 @@ class _LoginPageState extends State<LoginPage> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            for (final u in MockData.users)
+                            for (final (role, email, password) in _demoAccounts)
                               ActionChip(
-                                avatar: Icon(u.role.icon, size: 18, color: AppColors.primary),
-                                label: Text(u.role.label),
-                                onPressed: () => _quickLogin(u.email),
+                                avatar: Icon(role.icon, size: 18, color: AppColors.primary),
+                                label: Text(role.label),
+                                onPressed: () => _quickLogin(email, password),
                               ),
                           ],
                         ),

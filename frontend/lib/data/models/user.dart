@@ -10,6 +10,20 @@ enum UserRole {
   const UserRole(this.label, this.icon);
   final String label;
   final IconData icon;
+
+  /// Mapea el rol recibido desde la API (ENUM de la BD) al enum local.
+  static UserRole fromApi(String value) {
+    switch (value) {
+      case 'admin':
+        return UserRole.admin;
+      case 'medico':
+        return UserRole.medico;
+      case 'recepcion':
+        return UserRole.recepcion;
+      default:
+        return UserRole.paciente;
+    }
+  }
 }
 
 /// Usuario del sistema (inicialmente con mock, luego desde la API).

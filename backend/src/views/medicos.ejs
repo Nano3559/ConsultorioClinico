@@ -1,0 +1,80 @@
+<%- include('partials/header') %>
+
+<section class="page-header bg-primary text-white py-5 mt-5">
+  <div class="container">
+    <h1 class="display-5 fw-bold">Nuestros Médicos</h1>
+    <p class="lead opacity-75">Conoce a nuestro equipo de profesionales certificados</p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <% medicos.forEach(function(m) { %>
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 border-0 shadow-sm doctor-card">
+            <div class="card-body p-4 text-center">
+              <div class="doctor-avatar-lg mx-auto mb-3">
+                <i class="bi bi-person-circle text-primary"></i>
+              </div>
+              <h5 class="fw-bold mb-1"><%= m.nombre %></h5>
+              <p class="text-primary mb-2"><%= m.especialidad %></p>
+              <p class="text-muted small mb-3"><%= m.descripcion %></p>
+              <div class="mb-3">
+                <span class="badge bg-light text-dark me-2"><i class="bi bi-clock me-1"></i><%= m.horarios %></span>
+              </div>
+              <div class="mb-3">
+                <span class="badge bg-primary bg-opacity-10 text-primary"><i class="bi bi-award me-1"></i><%= m.experiencia %></span>
+              </div>
+              <p class="small text-muted mb-3"><i class="bi bi-mortarboard me-1"></i><%= m.formacion %></p>
+              <button class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modal-<%= m.id %>">
+                <i class="bi bi-person-lines-fill me-2"></i>Ver Perfil
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="modal-<%= m.id %>" tabindex="-1">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><%= m.nombre %></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body text-center p-4">
+                <div class="doctor-avatar-xl mx-auto mb-3">
+                  <i class="bi bi-person-circle text-primary"></i>
+                </div>
+                <h4 class="fw-bold"><%= m.nombre %></h4>
+                <p class="text-primary"><%= m.especialidad %></p>
+                <p class="text-muted"><%= m.descripcion %></p>
+                <hr>
+                <div class="row text-start">
+                  <div class="col-6 mb-2">
+                    <strong><i class="bi bi-clock me-2"></i>Horarios:</strong>
+                    <p class="text-muted mb-0"><%= m.horarios %></p>
+                  </div>
+                  <div class="col-6 mb-2">
+                    <strong><i class="bi bi-award me-2"></i>Experiencia:</strong>
+                    <p class="text-muted mb-0"><%= m.experiencia %></p>
+                  </div>
+                  <div class="col-12 mt-2">
+                    <strong><i class="bi bi-mortarboard me-2"></i>Formación:</strong>
+                    <p class="text-muted mb-0"><%= m.formacion %></p>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <a href="/cita" class="btn btn-primary">
+                  <i class="bi bi-calendar-plus me-2"></i>Solicitar Cita
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>
