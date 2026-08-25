@@ -1,28 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getPorMedicoYFecha,
-  getMedicosPorEspecialidad,
-} = require('../controllers/disponibilidadController');
-const {
-  validate,
-  medicoIdParamValidation,
-  especialidadIdParamValidation,
-  fechaParamValidation,
-} = require('../middleware/validation');
+const disponibilidadController = require('../controllers/disponibilidadController');
 
-// Rutas públicas
-router.get(
-  '/medico/:medicoId/fecha/:fecha',
-  [...medicoIdParamValidation, ...fechaParamValidation],
-  validate,
-  getPorMedicoYFecha
-);
-router.get(
-  '/especialidad/:especialidadId',
-  especialidadIdParamValidation,
-  validate,
-  getMedicosPorEspecialidad
-);
+// Rutas públicas (no requieren autenticación)
+router.get('/medico/:medicoId/fecha/:fecha', disponibilidadController.getDisponibilidadByMedico);
+router.get('/especialidad/:especialidadId', disponibilidadController.getMedicosByEspecialidad);
 
 module.exports = router;
