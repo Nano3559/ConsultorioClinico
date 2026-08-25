@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
@@ -77,11 +77,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                        width: 120,
-                        height: 120,
-                        child: Lottie.asset('assets/lottie/pulso.json'),
-                      ),
+                      Icon(Icons.local_hospital, size: 80, color: Colors.white.withValues(alpha: 0.9)),
                       SizedBox(height: 8),
                       Text(
                         'ConsultorioClínico',
@@ -110,9 +106,9 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         Center(
                           child: SizedBox(
-                            width: 64,
-                            height: 64,
-                            child: Lottie.asset('assets/lottie/pulso.json'),
+                            width: 96,
+                            height: 96,
+                            child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json'),
                           ),
                         ),
                         const SizedBox(height: 8),

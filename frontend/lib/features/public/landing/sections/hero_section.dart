@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 import '../../../../core/constants/app_colors.dart';
 
 /// Sección hero: portada con mensaje principal y tarjeta de próxima cita.
@@ -49,6 +50,12 @@ class _HeroText extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        SizedBox(
+          width: 96,
+          height: 96,
+          child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json', repeat: false),
+        ),
+        const SizedBox(height: 16),
         Text(
           'El control médico y clínico de tu consultorio, en un solo lugar',
           style: TextStyle(
