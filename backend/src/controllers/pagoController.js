@@ -106,8 +106,47 @@ const getByPaciente = async (req, res) => {
   }
 };
 
+/**
+ * PATCH /api/pagos/:id/estado
+ * Cambiar el estado de un pago (pendiente | pagado | cancelado)
+ */
+const updateEstado = async (req, res) => {
+  try {
+    const { estado } = req.body;
+    if (!Object.values(ESTADOS_PAGO).includes(estado)) {
+      return sendError(
+        res,
+        `Estado inválido. Valores permitidos: ${Object.values(ESTADOS_PAGO).join(', ')}`,
+        400
+      );
+    }
+
+    const supabase = getSupabase();
+    const cambios = { estado };
+    if (estado === ESTADOS_PAGO.PAGADO) {
+      cambios.fecha_pago = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
+      .from('pagos')
+      .update(cambios)
+      .eq('id', req.params.id)
+      .select('*');
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return sendError(res, 'Pago no encontrado', 404);
+    }
+    return sendSuccess(res, data[0], 'Estado del pago actualizado');
+  } catch (error) {
+    console.error('pagos.updateEstado:', error);
+    return sendError(res, 'Error al actualizar el pago', 500);
+  }
+};
+
 module.exports = {
   getAll,
   create,
   getByPaciente,
+  updateEstado,
 };

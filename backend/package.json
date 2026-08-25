@@ -7,6 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "db:seed": "node db/seed.js",
+    "db:migrate": "node db/migrate.js",
     "vercel-build": "npm install"
   },
   "dependencies": {
@@ -20,7 +21,8 @@
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "mysql2": "^3.23.4"
+    "mysql2": "^3.23.4",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

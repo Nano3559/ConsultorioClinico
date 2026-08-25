@@ -2,6 +2,31 @@ const { getSupabase } = require('../config/supabase');
 const { sendSuccess, sendError } = require('../utils/helpers');
 
 /**
+ * GET /api/consultas
+ * Listar todas las consultas (historia clínica global). Admin/medico/recepcion.
+ * Filtro opcional: ?paciente_id=123
+ */
+const getAll = async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    let query = supabase
+      .from('consultas')
+      .select('*')
+      .order('fecha', { ascending: false });
+    if (req.query.paciente_id) {
+      query = query.eq('paciente_id', req.query.paciente_id);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return sendSuccess(res, data || []);
+  } catch (error) {
+    console.error('consultas.getAll:', error);
+    return sendError(res, 'Error al listar consultas', 500);
+  }
+};
+
+/**
  * GET /api/consultas/paciente/:id
  * Obtener historial clínico de un paciente
  */
@@ -154,6 +179,7 @@ const update = async (req, res) => {
 };
 
 module.exports = {
+  getAll,
   getByPaciente,
   getById,
   create,

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { getAll, create, getByPaciente } = require('../controllers/pagoController');
+const { getAll, create, getByPaciente, updateEstado } = require('../controllers/pagoController');
 const { verifyToken } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
 const { validate } = require('../middleware/validation');
@@ -19,5 +19,6 @@ router.use(verifyToken);
 router.get('/', checkRole('admin', 'recepcion'), getAll);
 router.post('/', checkRole('admin', 'recepcion'), pagoValidation, validate, create);
 router.get('/paciente/:id', getByPaciente);
+router.patch('/:id/estado', checkRole('admin', 'recepcion'), updateEstado);
 
 module.exports = router;
