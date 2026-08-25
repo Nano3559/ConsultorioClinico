@@ -116,8 +116,7 @@ class _TodayAppointments extends StatelessWidget {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   leading: Container(
                     width: 50,
-                    height: 30,
-                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.primaryBg,
                       borderRadius: BorderRadius.circular(8),
