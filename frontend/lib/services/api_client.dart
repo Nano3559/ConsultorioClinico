@@ -52,7 +52,7 @@ class ApiConfig {
   /// flutter run --dart-define=API_BASE_URL=http://localhost:3000/api
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultTo: 'https://consultorio-clinico.vercel.app/api',
+    defaultValue: 'https://consultorio-clinico.vercel.app/api',
   );
 
   static const Duration timeout = Duration(seconds: 15);
