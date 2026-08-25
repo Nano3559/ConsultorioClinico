@@ -142,6 +142,21 @@ class ApiClient {
     }
   }
 
+  Future<ApiResult<Map<String, dynamic>>> deleteJson(
+    String path, {
+    String? token,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+      final res = await _client
+          .delete(uri, headers: _headers(token: token))
+          .timeout(ApiConfig.timeout);
+      return _parse(res);
+    } catch (e) {
+      return ApiResult.failure('Sin conexión con el servidor');
+    }
+  }
+
   ApiResult<Map<String, dynamic>> _parse(http.Response res) {
     final decoded = jsonDecode(utf8.decode(res.bodyBytes));
     if (decoded is Map<String, dynamic>) {

@@ -294,10 +294,11 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         phone: _phone.text.trim(),
         email: _email.text.trim(),
       );
-      clinic.addPatient(patient);
+      final created = await clinic.addPatient(patient);
+      if (created != null) patient = created;
     }
 
-    final error = clinic.bookAppointment(
+    final error = await clinic.bookAppointment(
       patientId: patient.id,
       doctorId: _doctorId!,
       date: _date,

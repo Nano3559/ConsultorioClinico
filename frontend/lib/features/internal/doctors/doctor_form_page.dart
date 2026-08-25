@@ -63,7 +63,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     return kTimeSlots.sublist(s, e + 1);
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_specialtyId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona una especialidad')));
@@ -75,7 +75,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     });
     final clinic = context.read<ClinicProvider>();
     if (_isEdit) {
-      clinic.updateDoctor(widget.doctor!.copyWith(
+      await clinic.updateDoctor(widget.doctor!.copyWith(
         name: _name.text.trim(),
         title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),
         specialtyId: _specialtyId,
@@ -85,7 +85,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         active: _active,
       ));
     } else {
-      clinic.addDoctor(Doctor(
+      await clinic.addDoctor(Doctor(
         id: 'd${DateTime.now().millisecondsSinceEpoch}',
         name: _name.text.trim(),
         title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),

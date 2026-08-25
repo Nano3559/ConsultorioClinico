@@ -9,6 +9,7 @@ const { validate } = require('../middleware/validation');
 // Validaciones
 const pagoValidation = [
   body('paciente_id').isInt().withMessage('El ID del paciente es obligatorio'),
+  body('cita_id').optional().isInt().withMessage('El ID de la cita debe ser entero'),
   body('monto').isFloat({ min: 0.01 }).withMessage('El monto debe ser mayor a 0'),
   body('metodo_pago').notEmpty().withMessage('El método de pago es obligatorio'),
 ];
