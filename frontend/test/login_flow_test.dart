@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -30,11 +30,14 @@ void main() {
     expect(find.text('ConsultorioClínico'), findsWidgets);
 
     await tester.tap(find.text('Ingresar al sistema'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
 
     await tester.enterText(find.byType(TextFormField).first, 'admin@consultorio.com');
     await tester.enterText(find.byType(TextFormField).last, 'admin123');
     await tester.tap(find.text('Ingresar'));
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     expect(find.text('Resumen del día'), findsOneWidget);

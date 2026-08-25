@@ -51,36 +51,48 @@ class PatientMyAppointmentsPage extends StatelessWidget {
           for (final a in list)
             Card(
               margin: const EdgeInsets.only(bottom: 10),
-              child: ListTile(
-                leading: Container(
-                  width: 56,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBg,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(a.time, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
-                      Text('${a.date.day}/${a.date.month}', style: const TextStyle(fontSize: 11, color: AppColors.primaryDark)),
-                    ],
-                  ),
-                ),
-                title: Text(clinic.doctorName(a.doctorId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                subtitle: Text(a.reason),
-                trailing: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    AppStatusBadge(status: a.status),
-                    if (a.status == AppointmentStatus.pendiente ||
-                        a.status == AppointmentStatus.confirmada)
-                      TextButton(
-                        onPressed: () => _confirmCancel(context, clinic, a.id),
-                        child: const Text('Cancelar', style: TextStyle(color: AppColors.danger)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Container(
+                      width: 56,
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBg,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                  ],
-                ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(a.time, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+                            Text('${a.date.day}/${a.date.month}', style: const TextStyle(fontSize: 11, color: AppColors.primaryDark)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    title: Text(clinic.doctorName(a.doctorId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                    subtitle: Text(a.reason),
+                    trailing: AppStatusBadge(status: a.status),
+                  ),
+                  if (a.status == AppointmentStatus.pendiente ||
+                      a.status == AppointmentStatus.confirmada)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: () => _confirmCancel(context, clinic, a.id),
+                        child: const Text('Cancelar', style: TextStyle(fontSize: 13, color: AppColors.danger)),
+                      ),
+                    ),
+                ],
               ),
             ),
         const SizedBox(height: 8),

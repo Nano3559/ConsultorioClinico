@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_validators.dart';
@@ -72,12 +73,12 @@ class _LoginPageState extends State<LoginPage> {
                     colors: [AppColors.primaryDark, AppColors.primaryLight],
                   ),
                 ),
-                child: const Center(
+                child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.local_hospital, color: Colors.white, size: 72),
-                      SizedBox(height: 16),
+                      Icon(Icons.local_hospital, size: 80, color: Colors.white.withValues(alpha: 0.9)),
+                      SizedBox(height: 8),
                       Text(
                         'ConsultorioClínico',
                         style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800),
@@ -103,6 +104,14 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Center(
+                          child: SizedBox(
+                            width: 96,
+                            height: 96,
+                            child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         const Text('Bienvenido', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.dark)),
                         const SizedBox(height: 6),
                         const Text('Ingresa con tu cuenta para continuar.', style: TextStyle(color: AppColors.muted)),
@@ -151,11 +160,14 @@ class _LoginPageState extends State<LoginPage> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            TextButton(onPressed: () => context.go('/'), child: const Text('← Volver al inicio')),
-                          ],
+                        Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: TextButton(
+                              onPressed: () => context.go('/'),
+                              child: const Text('← Volver al inicio'),
+                            ),
+                          ),
                         ),
                       ],
                     ),

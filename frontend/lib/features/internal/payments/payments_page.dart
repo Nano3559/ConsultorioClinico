@@ -125,28 +125,30 @@ class _PaymentsPageState extends State<PaymentsPage> {
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '${clinic.patientName(p.patientId)} — ${p.method.label}',
-                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark),
-              ),
-            ),
-            for (final s in PaymentStatus.values)
-              if (s != p.status)
-                ListTile(
-                  leading: Icon(Icons.circle, color: s.color, size: 16),
-                  title: Text('Marcar como ${s.label}'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    clinic.setPaymentStatus(p.id, s);
-                  },
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  '${clinic.patientName(p.patientId)} — ${p.method.label}',
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark),
                 ),
-            const SizedBox(height: 8),
-          ],
+              ),
+              for (final s in PaymentStatus.values)
+                if (s != p.status)
+                  ListTile(
+                    leading: Icon(Icons.circle, color: s.color, size: 16),
+                    title: Text('Marcar como ${s.label}'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      clinic.setPaymentStatus(p.id, s);
+                    },
+                  ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );

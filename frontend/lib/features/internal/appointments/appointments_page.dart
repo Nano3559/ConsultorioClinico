@@ -34,9 +34,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     }).toList();
 
     final isWide = MediaQuery.sizeOf(context).width >= 840;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
         ResponsiveRow(
           children: [
@@ -99,12 +100,22 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         else
           for (final a in list)
             Card(
-              margin: const EdgeInsets.only(bottom: 10),
+              margin: EdgeInsets.only(bottom: isMobile ? 6 : 10),
               child: ListTile(
+                dense: isMobile,
+                contentPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 10, vertical: 2) : null,
                 leading: AppStatusBadge(status: a.status),
-                title: Text(clinic.patientName(a.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                title: Text(
+                  clinic.patientName(a.patientId),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark, fontSize: isMobile ? 14 : 16),
+                ),
                 subtitle: Text(
                   '${AppFormatters.shortDate(a.date)} · ${a.time} · ${clinic.doctorName(a.doctorId)}\n${a.reason}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: isMobile ? 12 : 14),
                 ),
                 isThreeLine: true,
                 trailing: IconButton(
