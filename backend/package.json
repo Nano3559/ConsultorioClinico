@@ -9,7 +9,7 @@
     "db:seed": "node db/seed.js",
     "db:seed:ficticio": "node db/seed_ficticio.js",
     "db:migrate": "node db/migrate.js",
-    "vercel-build": "npm install --legacy-peer-deps"
+    "vercel-build": "echo \"deps instaladas por Vercel\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
