@@ -1,33 +1,32 @@
-<<<<<<< HEAD
-const { citas, pacientes, medicos, horarios } = require('../data/mockData');
+const { getSupabase } = require('../config/supabase');
 const {
   sendSuccess,
   sendError,
-  nextId,
   formatDate,
   obtenerDiaSemana,
   horaAMinutos,
 } = require('../utils/helpers');
-=======
-const { getSupabase } = require('../config/supabase');
-const { sendSuccess, sendError, formatDate } = require('../utils/helpers');
->>>>>>> 3b4875435caf1037dbf2038e764fd35db6f300a0
 const { ESTADOS_CITA } = require('../utils/constants');
 
 /**
- * Verifica que el médico atienda en la fecha/hora indicada según sus horarios
+ * Verifica contra la BD que el médico atienda en la fecha/hora indicada
+ * según sus horarios registrados.
  */
-const medicoAtiendeEnSlot = (medicoId, fecha, hora) => {
+const medicoAtiendeEnSlot = async (supabase, medicoId, fecha, hora) => {
   const diaSemana = obtenerDiaSemana(fecha);
   const mins = horaAMinutos(hora);
 
+  const { data: horarios, error } = await supabase
+    .from('horarios')
+    .select('dia_semana, hora_inicio, hora_fin')
+    .eq('medico_id', medicoId)
+    .eq('activo', true)
+    .eq('dia_semana', diaSemana);
+
+  if (error || !horarios || horarios.length === 0) return false;
+
   return horarios.some(
-    (h) =>
-      h.medico_id === medicoId &&
-      h.activo &&
-      h.dia_semana === diaSemana &&
-      mins >= horaAMinutos(h.hora_inicio) &&
-      mins < horaAMinutos(h.hora_fin)
+    (h) => mins >= horaAMinutos(h.hora_inicio) && mins < horaAMinutos(h.hora_fin)
   );
 };
 
@@ -199,43 +198,17 @@ const create = async (req, res) => {
       return sendError(res, 'El médico seleccionado no está activo', 400);
     }
 
-<<<<<<< HEAD
     // Validar que la fecha no sea pasada
     if (!esFechaValida(fecha)) {
       return sendError(res, 'No se pueden crear citas en fechas pasadas', 400);
     }
 
     // Validar que el médico atienda en ese día y hora según su horario
-    if (!medicoAtiendeEnSlot(medico.id, fecha, hora)) {
+    const atiende = await medicoAtiendeEnSlot(supabase, medico_id, fecha, hora);
+    if (!atiende) {
       return sendError(res, 'El médico no atiende en esa fecha u hora según su horario', 400);
     }
 
-    // Verificar disponibilidad (no doble agenda)
-    const existeCita = citas.find(
-      (c) =>
-        c.medico_id === parseInt(medico_id) &&
-        c.fecha === fecha &&
-        c.hora === hora &&
-        c.estado !== ESTADOS_CITA.CANCELADA
-    );
-
-    if (existeCita) {
-      return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
-    }
-
-    const nuevaCita = {
-      id: nextId(citas),
-      paciente_id: parseInt(paciente_id),
-      medico_id: parseInt(medico_id),
-      fecha,
-      hora,
-      motivo,
-      estado: ESTADOS_CITA.PENDIENTE,
-      observaciones: observaciones || '',
-      creado_en: new Date().toISOString(),
-      actualizado_en: new Date().toISOString(),
-    };
-=======
     // Verificar disponibilidad (no doble agenda). La BD también lo garantiza
     // con un índice único parcial sobre citas no canceladas.
     const { data: ocupadas } = await supabase
@@ -263,7 +236,6 @@ const create = async (req, res) => {
       })
       .select('*')
       .single();
->>>>>>> 3b4875435caf1037dbf2038e764fd35db6f300a0
 
     if (error) {
       if (error.code === '23505') {
@@ -296,17 +268,8 @@ const update = async (req, res) => {
     }
     const cita = actuales[0];
 
-<<<<<<< HEAD
-    if (
-      citas[index].estado === ESTADOS_CITA.ATENDIDA ||
-      citas[index].estado === ESTADOS_CITA.CANCELADA ||
-      citas[index].estado === ESTADOS_CITA.NO_ASISTIO
-    ) {
-      return sendError(res, 'No se puede reprogramar una cita atendida, cancelada o sin asistencia', 400);
-=======
-    if (cita.estado === 'completada' || cita.estado === 'cancelada') {
+    if (cita.estado === ESTADOS_CITA.COMPLETADA || cita.estado === ESTADOS_CITA.CANCELADA) {
       return sendError(res, 'No se puede reprogramar una cita completada o cancelada', 400);
->>>>>>> 3b4875435caf1037dbf2038e764fd35db6f300a0
     }
 
     const { fecha, hora, motivo, observaciones } = req.body;
@@ -315,31 +278,17 @@ const update = async (req, res) => {
 
     // Verificar disponibilidad si cambia fecha/hora
     if (fecha || hora) {
-<<<<<<< HEAD
-      const nuevaFecha = fecha || citas[index].fecha;
-      const nuevaHora = hora || citas[index].hora;
-
       // Validar que la nueva fecha no sea pasada
       if (!esFechaValida(nuevaFecha)) {
         return sendError(res, 'No se puede reprogramar a una fecha pasada', 400);
       }
 
       // Validar que el médico atienda en el nuevo día y hora
-      if (!medicoAtiendeEnSlot(citas[index].medico_id, nuevaFecha, nuevaHora)) {
+      const atiende = await medicoAtiendeEnSlot(supabase, cita.medico_id, nuevaFecha, nuevaHora);
+      if (!atiende) {
         return sendError(res, 'El médico no atiende en esa fecha u hora según su horario', 400);
       }
 
-      const existeCita = citas.find(
-        (c) =>
-          c.medico_id === citas[index].medico_id &&
-          c.fecha === nuevaFecha &&
-          c.hora === nuevaHora &&
-          c.id !== citas[index].id &&
-          c.estado !== ESTADOS_CITA.CANCELADA
-      );
-
-      if (existeCita) {
-=======
       const { data: ocupadas } = await supabase
         .from('citas')
         .select('id')
@@ -350,7 +299,6 @@ const update = async (req, res) => {
         .neq('estado', 'cancelada')
         .limit(1);
       if (ocupadas && ocupadas.length > 0) {
->>>>>>> 3b4875435caf1037dbf2038e764fd35db6f300a0
         return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
       }
     }
@@ -422,24 +370,14 @@ const remove = async (req, res) => {
     if (!actuales || actuales.length === 0) {
       return sendError(res, 'Cita no encontrada', 404);
     }
-<<<<<<< HEAD
-
-    if (cita.estado === ESTADOS_CITA.CANCELADA) {
-      return sendError(res, 'La cita ya está cancelada', 400);
-    }
-
-    cita.estado = ESTADOS_CITA.CANCELADA;
-    cita.actualizado_en = new Date().toISOString();
-=======
-    if (actuales[0].estado === 'cancelada') {
+    if (actuales[0].estado === ESTADOS_CITA.CANCELADA) {
       return sendError(res, 'La cita ya está cancelada', 400);
     }
 
     const { error } = await supabase
       .from('citas')
-      .update({ estado: 'cancelada' })
+      .update({ estado: ESTADOS_CITA.CANCELADA })
       .eq('id', req.params.id);
->>>>>>> 3b4875435caf1037dbf2038e764fd35db6f300a0
 
     if (error) throw error;
     return sendSuccess(res, null, 'Cita cancelada exitosamente');
