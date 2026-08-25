@@ -26,6 +26,38 @@ class Patient {
 
   String get fullName => '$firstName $lastName';
 
+  /// Construye un Patient desde la fila de Supabase (snake_case).
+  factory Patient.fromApi(Map<String, dynamic> json) {
+    final birth = json['fecha_nacimiento'];
+    return Patient(
+      id: json['id'].toString(),
+      firstName: (json['nombre'] ?? '').toString(),
+      lastName: (json['apellido'] ?? '').toString(),
+      ci: (json['cedula'] ?? '').toString(),
+      birthDate: birth == null
+          ? DateTime(1900)
+          : (birth is DateTime ? birth : DateTime.tryParse(birth.toString()) ?? DateTime(1900)),
+      phone: (json['telefono'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      antecedentes: '',
+      alergias: (json['alergias'] ?? '').toString(),
+      observaciones: (json['contacto_emergencia'] ?? '').toString(),
+    );
+  }
+
+  /// Cuerpo para POST/PUT del backend.
+  Map<String, dynamic> toApiJson() => {
+        'nombre': firstName,
+        'apellido': lastName,
+        'cedula': ci,
+        'telefono': phone,
+        'email': email,
+        'fecha_nacimiento':
+            '${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+        'alergias': alergias,
+        'contacto_emergencia': observaciones,
+      };
+
   Patient copyWith({
     String? firstName,
     String? lastName,

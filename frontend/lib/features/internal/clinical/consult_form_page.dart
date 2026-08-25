@@ -45,14 +45,14 @@ class _ConsultFormPageState extends State<ConsultFormPage> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_doctorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona el médico que realizó la consulta')));
       return;
     }
     final clinic = context.read<ClinicProvider>();
-    clinic.addConsult(ConsultRecord(
+    await clinic.addConsult(ConsultRecord(
       id: 'h${DateTime.now().millisecondsSinceEpoch}',
       patientId: widget.patientId,
       doctorId: _doctorId!,
