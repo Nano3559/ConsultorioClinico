@@ -39,6 +39,9 @@ app.get('/', (req, res) => {
   });
 });
 
+// Rutas de diagnóstico
+app.use('/api/test', require('./routes/testRoutes'));
+
 // Rutas
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/pacientes', require('./routes/pacienteRoutes'));

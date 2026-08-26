@@ -1,18 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const config = require('./config');
 
-/**
- * Cliente oficial de Supabase (PostgreSQL).
- *
- * Variables requeridas en .env (ver .env.example):
- *   SUPABASE_URL          URL del proyecto (https://xxxx.supabase.co)
- *   SUPABASE_ANON_KEY     Clave pública anon
- *   SUPABASE_SERVICE_ROLE_KEY  (recomendado en el backend) clave service_role
- *
- * El servidor usa service_role cuando está disponible porque es un contexto
- * confiable que ya valida identidad/roles con JWT propio; con eso las políticas
- * RLS no bloquean operaciones legítimas del API.
- */
 let _client = null;
 
 function getSupabase() {
@@ -22,20 +10,26 @@ function getSupabase() {
   const key = config.supabase.serviceRoleKey || config.supabase.anonKey;
 
   if (!url || !key) {
+    console.error('[Supabase] FALLO: Variables no configuradas');
+    console.error('[Supabase] URL:', url ? 'OK' : 'FALTA');
+    console.error('[Supabase] KEY:', key ? 'OK' : 'FALTA');
     throw new Error(
       'Supabase no configurado. Define SUPABASE_URL y SUPABASE_ANON_KEY (o SUPABASE_SERVICE_ROLE_KEY) en .env'
     );
   }
 
+  console.log('[Supabase] Creando cliente...');
+  console.log('[Supabase] URL:', url);
+  console.log('[Supabase] Key tipo:', config.supabase.serviceRoleKey ? 'service_role' : 'anon');
+
   _client = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  console.log('[Supabase] Cliente creado OK');
   return _client;
 }
 
-/**
- * Health-check de la conexión con Supabase.
- */
 async function testConnection() {
   const supabase = getSupabase();
   const { error } = await supabase.from('usuarios').select('id').limit(1);
@@ -45,9 +39,6 @@ async function testConnection() {
   return true;
 }
 
-/**
- * Traduce errores del PostgREST/Supabase a mensajes claros para el cliente.
- */
 function dbErrorMessage(error) {
   if (!error) return null;
   if (error.code === 'ECONNREFUSED' || /fetch failed|network/i.test(error.message || '')) {

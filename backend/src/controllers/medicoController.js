@@ -15,11 +15,15 @@ const getAll = async (req, res) => {
       .eq('activo', true)
       .order('id');
 
-    if (error) throw error;
+    if (error) {
+      console.error('medicos.getAll SUPABASE ERROR:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+    console.log('medicos.getAll OK, registros:', data ? data.length : 0);
     return sendSuccess(res, data);
   } catch (error) {
-    console.error('medicos.getAll:', error);
-    return sendError(res, 'Error al listar médicos', 500);
+    console.error('medicos.getAll ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al listar médicos: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -42,8 +46,8 @@ const getById = async (req, res) => {
     }
     return sendSuccess(res, data[0]);
   } catch (error) {
-    console.error('medicos.getById:', error);
-    return sendError(res, 'Error al obtener médico', 500);
+    console.error('medicos.getById ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al obtener médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -93,8 +97,8 @@ const getById = async (req, res) => {
     }
     return sendSuccess(res, data, 'Médico creado exitosamente', 201);
   } catch (error) {
-    console.error('medicos.create:', error);
-    return sendError(res, 'Error al crear médico', 500);
+    console.error('medicos.create ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al crear médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -129,8 +133,8 @@ const update = async (req, res) => {
     }
     return sendSuccess(res, data[0], 'Médico actualizado exitosamente');
   } catch (error) {
-    console.error('medicos.update:', error);
-    return sendError(res, 'Error al actualizar médico', 500);
+    console.error('medicos.update ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al actualizar médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -163,8 +167,8 @@ const toggleEstado = async (req, res) => {
     const estado = nuevoEstado ? 'activado' : 'desactivado';
     return sendSuccess(res, data, `Médico ${estado} exitosamente`);
   } catch (error) {
-    console.error('medicos.toggleEstado:', error);
-    return sendError(res, 'Error al cambiar estado del médico', 500);
+    console.error('medicos.toggleEstado ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al cambiar estado del médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -275,8 +279,8 @@ const remove = async (req, res) => {
 
     return sendSuccess(res, null, 'Médico eliminado exitosamente');
   } catch (error) {
-    console.error('medicos.remove:', error);
-    return sendError(res, 'Error al eliminar médico', 500);
+    console.error('medicos.remove ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al eliminar médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
