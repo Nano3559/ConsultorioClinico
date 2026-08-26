@@ -10,6 +10,7 @@ const { validate } = require('../middleware/validation');
 const consultaValidation = [
   body('paciente_id').isInt().withMessage('El ID del paciente es obligatorio'),
   body('medico_id').isInt().withMessage('El ID del médico es obligatorio'),
+  body('cita_id').optional().isInt().withMessage('El ID de la cita debe ser entero'),
   body('diagnostico').notEmpty().withMessage('El diagnóstico es obligatorio'),
   body('tratamiento').notEmpty().withMessage('El tratamiento es obligatorio'),
 ];

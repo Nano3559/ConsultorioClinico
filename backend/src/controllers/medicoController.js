@@ -55,15 +55,20 @@ const getById = async (req, res) => {
  * POST /api/medicos
  * Crear nuevo médico
  */
-const create = async (req, res) => {
+  const create = async (req, res) => {
   try {
     const { nombre, apellido, cedula, especialidad, telefono, email, consulorio, tarifa_consulta } = req.body;
     const supabase = getSupabase();
 
+    // La cédula es única; si el formulario no la envía, generamos un marcador.
+    const cedulaFinal = cedula && String(cedula).trim()
+      ? String(cedula).trim()
+      : `M${Date.now()}`;
+
     const { data: existentes } = await supabase
       .from('medicos')
       .select('id')
-      .eq('cedula', cedula)
+      .eq('cedula', cedulaFinal)
       .limit(1);
     if (existentes && existentes.length > 0) {
       return sendError(res, 'Ya existe un médico con esa cédula', 400);
@@ -74,10 +79,10 @@ const create = async (req, res) => {
       .insert({
         nombre,
         apellido,
-        cedula,
+        cedula: cedulaFinal,
         especialidad,
         telefono,
-        email,
+        email: email && String(email).trim() ? email : null,
         consulorio,
         tarifa_consulta: parseFloat(tarifa_consulta) || 0,
       })
@@ -200,6 +205,44 @@ const getHorarios = async (req, res) => {
 };
 
 /**
+ * POST /api/medicos/:id/horarios
+ * Agregar un horario de atención al médico (solo admin)
+ */
+const createHorario = async (req, res) => {
+  try {
+    const { dia_semana, hora_inicio, hora_fin } = req.body;
+    const supabase = getSupabase();
+
+    const { data: medicos } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!medicos || medicos.length === 0) {
+      return sendError(res, 'Médico no encontrado', 404);
+    }
+
+    const { data, error } = await supabase
+      .from('horarios')
+      .insert({
+        medico_id: req.params.id,
+        dia_semana,
+        hora_inicio,
+        hora_fin,
+        activo: true,
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return sendSuccess(res, data, 'Horario agregado exitosamente', 201);
+  } catch (error) {
+    console.error('medicos.createHorario:', error);
+    return sendError(res, 'Error al agregar horario', 500);
+  }
+};
+
+/**
  * DELETE /api/medicos/:id
  * Eliminar médico
  */
@@ -249,4 +292,5 @@ module.exports = {
   toggleEstado,
   remove,
   getHorarios,
+  createHorario,
 };

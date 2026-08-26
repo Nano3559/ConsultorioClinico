@@ -22,6 +22,58 @@ enum PaymentStatus {
   final String label;
   final Color color;
   final Color bg;
+
+  String toApi() {
+    switch (this) {
+      case PaymentStatus.pagado:
+        return 'pagado';
+      case PaymentStatus.pendiente:
+        return 'pendiente';
+      case PaymentStatus.anulado:
+        return 'cancelado';
+    }
+  }
+
+  static PaymentStatus fromApi(String? value) {
+    switch (value) {
+      case 'pagado':
+        return PaymentStatus.pagado;
+      case 'pendiente':
+        return PaymentStatus.pendiente;
+      case 'cancelado':
+        return PaymentStatus.anulado;
+      default:
+        return PaymentStatus.pendiente;
+    }
+  }
+}
+
+extension PaymentMethodApi on PaymentMethod {
+  String toApi() {
+    switch (this) {
+      case PaymentMethod.efectivo:
+        return 'efectivo';
+      case PaymentMethod.tarjeta:
+        return 'tarjeta';
+      case PaymentMethod.transferencia:
+        return 'transferencia';
+      case PaymentMethod.qr:
+        return 'otro';
+    }
+  }
+
+  static PaymentMethod fromApi(String? value) {
+    switch (value) {
+      case 'tarjeta':
+        return PaymentMethod.tarjeta;
+      case 'transferencia':
+        return PaymentMethod.transferencia;
+      case 'efectivo':
+        return PaymentMethod.efectivo;
+      default:
+        return PaymentMethod.efectivo;
+    }
+  }
 }
 
 /// Registro de pago de una consulta.
@@ -45,6 +97,24 @@ class Payment {
   final DateTime date;
   final PaymentMethod method;
   final PaymentStatus status;
+
+  /// Construye un Payment desde la fila de Supabase.
+  factory Payment.fromApi(Map<String, dynamic> json) {
+    final monto = json['monto'];
+    final fecha = json['fecha_pago'] ?? json['creado_en'];
+    return Payment(
+      id: json['id'].toString(),
+      patientId: json['paciente_id'].toString(),
+      doctorId: '',
+      appointmentId: (json['cita_id'] ?? '').toString(),
+      amount: monto is num ? monto.toDouble() : double.tryParse(monto?.toString() ?? '') ?? 0,
+      date: fecha is DateTime
+          ? fecha
+          : DateTime.tryParse(fecha?.toString() ?? '') ?? DateTime.now(),
+      method: PaymentMethodApi.fromApi(json['metodo_pago']),
+      status: PaymentStatus.fromApi(json['estado']),
+    );
+  }
 
   Payment copyWith({PaymentStatus? status, PaymentMethod? method}) {
     return Payment(

@@ -29,17 +29,37 @@ const SEED_USERS = [
 async function crearPerfil(supabase, u, usuarioId) {
   if (u.rol === 'medico') {
     const { data: existe } = await supabase.from('medicos').select('id').eq('usuario_id', usuarioId).limit(1);
-    if (existe && existe.length > 0) return;
-    const { error } = await supabase.from('medicos').insert({
-      usuario_id: usuarioId,
-      nombre: u.nombre,
-      apellido: u.perfil.apellido,
-      cedula: u.perfil.cedula,
-      especialidad: u.perfil.especialidad,
-      email: u.email,
-      tarifa_consulta: u.perfil.tarifa,
-    });
-    if (error) throw error;
+    let medicoId;
+    if (existe && existe.length > 0) {
+      medicoId = existe[0].id;
+    } else {
+      const { data, error } = await supabase
+        .from('medicos')
+        .insert({
+          usuario_id: usuarioId,
+          nombre: u.nombre,
+          apellido: u.perfil.apellido,
+          cedula: u.perfil.cedula,
+          especialidad: u.perfil.especialidad,
+          email: u.email,
+          tarifa_consulta: u.perfil.tarifa,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      medicoId = data.id;
+    }
+    // Horarios de ejemplo para que la reserva tenga franjas disponibles.
+    await supabase.from('horarios').delete().eq('medico_id', medicoId);
+    const horarios = [
+      { medico_id: medicoId, dia_semana: 'Lunes', hora_inicio: '08:00', hora_fin: '12:00', activo: true },
+      { medico_id: medicoId, dia_semana: 'Martes', hora_inicio: '14:00', hora_fin: '18:00', activo: true },
+      { medico_id: medicoId, dia_semana: 'Miércoles', hora_inicio: '08:00', hora_fin: '12:00', activo: true },
+      { medico_id: medicoId, dia_semana: 'Jueves', hora_inicio: '14:00', hora_fin: '18:00', activo: true },
+      { medico_id: medicoId, dia_semana: 'Viernes', hora_inicio: '08:00', hora_fin: '12:00', activo: true },
+    ];
+    const { error: hErr } = await supabase.from('horarios').insert(horarios);
+    if (hErr) console.log('⚠️ No se sembraron horarios:', hErr.message);
   }
   if (u.rol === 'paciente') {
     const { data: existe } = await supabase.from('pacientes').select('id').eq('usuario_id', usuarioId).limit(1);

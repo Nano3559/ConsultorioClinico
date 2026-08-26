@@ -13,6 +13,40 @@ enum AppointmentStatus {
   final String label;
   final Color color;
   final Color bg;
+
+  /// Estado esperado por el backend (Supabase: citas.estado).
+  String toApi() {
+    switch (this) {
+      case AppointmentStatus.pendiente:
+        return 'programada';
+      case AppointmentStatus.confirmada:
+        return 'en_curso';
+      case AppointmentStatus.atendida:
+        return 'completada';
+      case AppointmentStatus.cancelada:
+        return 'cancelada';
+      case AppointmentStatus.noAsistio:
+        return 'no_show';
+    }
+  }
+
+  /// Convierte el estado del backend al enum local.
+  static AppointmentStatus fromApi(String? value) {
+    switch (value) {
+      case 'programada':
+        return AppointmentStatus.pendiente;
+      case 'en_curso':
+        return AppointmentStatus.confirmada;
+      case 'completada':
+        return AppointmentStatus.atendida;
+      case 'cancelada':
+        return AppointmentStatus.cancelada;
+      case 'no_show':
+        return AppointmentStatus.noAsistio;
+      default:
+        return AppointmentStatus.pendiente;
+    }
+  }
 }
 
 /// Insignia de estado reutilizable.

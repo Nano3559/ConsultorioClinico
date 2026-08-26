@@ -170,8 +170,8 @@ void _reschedule(BuildContext context, ClinicProvider clinic, Appointment a) {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
             FilledButton(
-              onPressed: () {
-                final err = clinic.rescheduleAppointment(a.id, newDate, newTime);
+              onPressed: () async {
+                final err = await clinic.rescheduleAppointment(a.id, newDate, newTime);
                 Navigator.pop(ctx);
                 if (err != null) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));

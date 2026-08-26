@@ -35,6 +35,49 @@ class Doctor {
 
   String get displayName => '$title $name';
 
+  /// Construye un Doctor desde la fila de Supabase.
+  /// [specialtyId] es el id de la especialidad ya resuelto por nombre.
+  factory Doctor.fromApi(
+    Map<String, dynamic> json, {
+    String specialtyId = '',
+    DoctorSchedule schedule = const DoctorSchedule({}),
+  }) {
+    final nombre = (json['nombre'] ?? '').toString();
+    final apellido = (json['apellido'] ?? '').toString();
+    return Doctor(
+      id: json['id'].toString(),
+      name: '$nombre $apellido'.trim(),
+      specialtyId: specialtyId,
+      description: '',
+      yearsExperience: 0,
+      schedule: schedule,
+      active: json['activo'] ?? true,
+      title: 'Dr./Dra.',
+    );
+  }
+
+  /// Cuerpo para POST/PUT del backend (la especialidad se envía por nombre).
+  Map<String, dynamic> toApiJson({required String especialidad}) {
+    final partes = name.trim().split(RegExp(r'\s+'));
+    final nombre = partes.isNotEmpty ? partes.first : name;
+    final apellido = partes.length > 1 ? partes.sublist(1).join(' ') : '';
+    const cedula = '';
+    const telefono = '';
+    const email = '';
+    const consulorio = '';
+    const tarifaConsulta = 0;
+    return {
+      'nombre': nombre,
+      'apellido': apellido,
+      if (cedula.isNotEmpty) 'cedula': cedula,
+      'especialidad': especialidad,
+      if (telefono.isNotEmpty) 'telefono': telefono,
+      if (email.isNotEmpty) 'email': email,
+      if (consulorio.isNotEmpty) 'consulorio': consulorio,
+      'tarifa_consulta': tarifaConsulta,
+    };
+  }
+
   Doctor copyWith({
     String? name,
     String? specialtyId,

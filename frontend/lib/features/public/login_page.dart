@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_validators.dart';
 import '../../data/models/user.dart';
 import '../../state/auth_provider.dart';
+import '../../state/clinic_provider.dart';
 
 /// Cuentas sembradas en la base de datos para pruebas por rol.
 const _demoAccounts = [
@@ -41,6 +42,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     final auth = context.read<AuthProvider>();
+    final clinic = context.read<ClinicProvider>();
     final error = await auth.login(_email.text, _password.text);
     if (!mounted) return;
     setState(() => _loading = false);
@@ -48,6 +50,8 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
+    clinic.setAuthToken(auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+    clinic.loadAll();
     context.go('/app');
   }
 

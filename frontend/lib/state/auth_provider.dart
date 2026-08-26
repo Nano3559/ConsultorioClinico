@@ -10,6 +10,8 @@ class AuthProvider extends ChangeNotifier {
 
   User? _currentUser;
   String? _token;
+  String? _perfilTipo;
+  String? _perfilId;
 
   User? get currentUser => _currentUser;
   UserRole? get role => _currentUser?.role;
@@ -17,6 +19,10 @@ class AuthProvider extends ChangeNotifier {
 
   /// Token JWT de la sesión activa; úsalo en las demás llamadas a la API.
   String? get token => _token;
+
+  /// Tipo de perfil asociado al usuario ('medico' | 'paciente') y su id en la BD.
+  String? get perfilTipo => _perfilTipo;
+  String? get perfilId => _perfilId;
 
   /// Intenta iniciar sesión. Devuelve null en éxito o el mensaje de error.
   Future<String?> login(String email, String password) async {
@@ -38,6 +44,11 @@ class AuthProvider extends ChangeNotifier {
     }
 
     _token = data['token']?.toString();
+    final perfil = data['perfil'];
+    if (perfil is Map<String, dynamic>) {
+      _perfilTipo = perfil['tipo']?.toString();
+      _perfilId = perfil['id']?.toString();
+    }
     _currentUser = User(
       id: data['id']?.toString() ?? '',
       name: data['nombre']?.toString() ?? '',
