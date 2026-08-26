@@ -1,6 +1,6 @@
 ===============================================================================
 PROMPT DE PROGRESO - CONSULTORIO CLÍNICO (estado actual del proyecto)
-Generado: 2026-08-23
+Generado: 2026-08-25
 Uso: entregar este texto como contexto/prompt a una IA o desarrollador para
 continuar el desarrollo desde donde quedó.
 ===============================================================================
@@ -78,7 +78,7 @@ Migraciones en backend/db/migrations/ (ejecutar en orden desde el SQL Editor):
   - Seed: Medicina General, Pediatría, Cardiología, Dermatología, Ginecología,
     Traumatología, Odontología.
 
-003_auth.sql  (NUEVA - seguridad y sesiones para login por roles)
+003_auth.sql
   - usuarios.ultimo_acceso TIMESTAMPTZ y usuarios.password_actualizado_en.
   - Trigger normalizar_email_usuario: LOWER(BTRIM(email)) al insertar/actualizar
     (evita duplicados Admin@X.com vs admin@x.com). Normaliza emails existentes.
@@ -88,9 +88,28 @@ Migraciones en backend/db/migrations/ (ejecutar en orden desde el SQL Editor):
     Permite LOGOUT REAL (revocación auditada) e historial de accesos por rol.
   - limpiar_sesiones_antiguas(): borra sesiones cerradas/expiradas >30 días.
 
-IMPORTANTE PENDIENTE: ejecutar 003_auth.sql en Supabase SQL Editor.
-El código funciona sin ella (login/logout no fallan); solo la auditoría de
-sesiones queda inactiva hasta ejecutarla.
+004_especialidades.sql (CORREGIDA)
+  - Agrega columnas icono/color/actualizado_en a especialidades si faltan.
+  - Crea trigger updated_at en especialidades.
+  - Agrega FK especialidad_id en medicos para vinculación normalizada.
+  - Migra texto de medicos.especialidad → especialidades.id.
+  - Vincula usuarios ↔ pacientes/medicos faltantes via usuario_id.
+  - NOTA: Ya no crea la tabla especialidades (eso lo hace 002).
+
+005_notificaciones.sql (NUEVA)
+  - Tabla notificaciones: id, usuario_id FK CASCADE, titulo, mensaje,
+    tipo CHECK IN ('sistema','cita_recordatorio','cita_confirmada',
+    'cita_cancelada','cita_reprogramada','pago_recibido','mensaje'),
+    leida BOOL, referencia JSONB, timestamps. RLS + índices.
+  - marcar_notificacion_leida(): marca notificación como leída.
+  - crear_recordatorio_cita(): crea notificación de recordatorio 24h antes.
+  - limpiar_notificaciones_antiguas(): borra notificaciones leídas >60 días.
+
+006_seed_usuarios.sql (NUEVA)
+  - Crea usuarios semilla (admin, medicos, recepcion, paciente) si no existen.
+  - Crea perfiles de médicos/pacientes asociados si faltan.
+  - NOTA: Contraseñas temporales 'PENDIENTE_HASH'; ejecutar npm run db:seed -- --reset
+    después para generar hashes bcrypt correctos.
 
 3) AUTENTICACIÓN Y ROLES (backend/src/controllers/authController.js)
 -------------------------------------------------------------------------------
@@ -227,7 +246,7 @@ Ejecución: npm run db:seed            (solo siembra si usuarios está vacía)
   maria@consultorio.com      recepcion123   recepcion
   pedro@gmail.com            paciente123    paciente (perfil paciente)
 
-6) CORRECCIONES REALIZADAS EN LA ÚLTIMA SESIÓN (importante para continuar)
+6) CORRECCIONES Y MEJORAS REALIZADAS (importante para continuar)
 -------------------------------------------------------------------------------
 1. Se RESOLVIERON conflictos de merge sin resolver (marcadores <<<<<<< >>>>>>>)
    en citaController.js y medicoController.js que ROMPIAN el arranque del API.
@@ -262,6 +281,20 @@ Ejecución: npm run db:seed            (solo siembra si usuarios está vacía)
     422; registro admin sin token -> 403; registro paciente público -> 201;
     login OK para los 4 roles (incluye email en MAYÚSCULAS/espacios);
     profile y logout OK con Bearer token.
+12. CORREGIDA migración 004_especialidades.sql: eliminado CREATE TABLE duplicado
+    que entraba en conflicto con 002. Ahora solo agrega columnas/icono/color/
+    FK especialidad_id en medicos y vincula usuarios ↔ perfiles.
+13. NUEVA migración 005_notificaciones.sql: tabla notificaciones in-app con
+    tipos (sistema, cita_recordatorio, cita_confirmada, cita_cancelada,
+    cita_reprogramada, pago_recibido, mensaje), funciones de recordatorio
+    y limpieza automática.
+14. NUEVA migración 006_seed_usuarios.sql: crea usuarios semilla + perfiles
+    asociados si no existen (idempotente).
+15. Scripts npm añadidos: db:seed, db:seed:ficticio, db:migrate,
+    db:migrate:status, db:init, db:check.
+16. Helper unificado db/index.js para inicialización de BD (verificar conexión,
+    migraciones y seed en un solo comando).
+17. Eliminado archivo duplicado citasRoutes.js (no era usado por app.js).
 
 7) CÓMO EJECUTAR
 -------------------------------------------------------------------------------
@@ -272,21 +305,28 @@ Backend local:
                    SUPABASE_SERVICE_ROLE_KEY (recomendado) o SUPABASE_ANON_KEY
   npm run dev          (nodemon)  |  npm start
   npm run db:seed [-- --reset]
-Base de datos: ejecutar migraciones 001 -> 002 -> 003 en el SQL Editor de
-Supabase (RLS habilitado en todas las tablas; el API usa service_role que las
-bysea por diseño; acceso anónimo directo bloqueado).
+Base de datos: ejecutar migraciones 001 -> 002 -> 003 -> 004 -> 005 -> 006
+en el SQL Editor de Supabase (RLS habilitado en todas las tablas; el API usa
+service_role que las bypasea por diseño; acceso anónimo directo bloqueado).
+O si SUPABASE_DB_URL está configurada: npm run db:migrate
+Inicialización completa: npm run db:init
+Verificar conexión: npm run db:check
 
 8) PENDIENTES / PRÓXIMOS PASOS SUGERIDOS
 -------------------------------------------------------------------------------
-- [ ] EJECUTAR backend/db/migrations/003_auth.sql en Supabase SQL Editor
-      (sin ella el logout/auditoría funcionan pero no persisten sesiones).
+- [X] Migración 003_auth.sql (ejecutar en Supabase SQL Editor)
+- [X] Migración 004_especialidades.sql corregida (sin conflicto con 002)
+- [X] Migración 005_notificaciones.sql (tabla de notificaciones in-app)
+- [X] Migración 006_seed_usuarios.sql (usuarios semilla via SQL)
+- [X] Scripts db:seed, db:migrate, db:init, db:check en package.json
+- [X] Helper unificado db/index.js para inicialización de BD
+- [X] Eliminado archivo duplicado citasRoutes.js (no usado)
 - [ ] Frontend Flutter: pantalla de login consumiendo POST /api/auth/login y
       router por rol usando data.rol y data.perfil (admin/medico/recepcion/
       paciente), guardando token de forma segura.
-- [ ] Opcional: FK medicos.especialidad_id -> especialidades.id (hoy la
-      especialidad es texto libre en medicos; el catálogo ya existe).
-- [ ] Opcional: gestión CRUD de usuarios (listar/cambiar rol/activar-
+- [ ] Opcional: CRUD de usuarios (listar/cambiar rol/activar-
       desactivar) solo admin, reutilizando ROLES y checkRole.
 - [ ] Opcional: refrescar tokens / expiración renovada y política de contraseñas
       más fuerte (isStrongPassword).
+- [ ] Opcional: endpoint para notificaciones (controller + routes)
 ===============================================================================
