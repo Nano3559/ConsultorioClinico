@@ -82,6 +82,11 @@ const getDisponibilidadByMedico = async (req, res) => {
       return sendError(res, 'El médico no está activo actualmente', 400);
     }
 
+    // Rechazar fechas pasadas (los horarios de hoy descartan horas vencidas)
+    if (fecha < formatDate(new Date())) {
+      return sendError(res, 'No se puede consultar disponibilidad en fechas pasadas', 400);
+    }
+
     const { diaSemana, slots } = await generarSlotsDisponibles(supabase, medico.id, fecha);
 
     return sendSuccess(res, {
@@ -89,7 +94,9 @@ const getDisponibilidadByMedico = async (req, res) => {
       medico: `${medico.nombre} ${medico.apellido}`,
       fecha,
       dia_semana: diaSemana,
-      horarios_disponibles: slots,
+      intervalo_minutos: INTERVALO_CITA_MINUTOS,
+      slots_disponibles: slots,
+      total_disponibles: slots.length,
     });
 
   } catch (error) {
@@ -118,10 +125,10 @@ const getMedicosByEspecialidad = async (req, res) => {
     }
 
     const { data: medicosCoincidentes, error: medError } = await supabase
-  .from('medicos')
-  .select('id, nombre, apellido, consulorio, tarifa_consulta')
-  .eq('activo', true)
-  .eq('especialidad_id', especialidad.id);
+      .from('medicos')
+      .select('id, nombre, apellido, consulorio, tarifa_consulta')
+      .eq('activo', true)
+      .eq('especialidad_id', especialidad.id);
     if (medError) throw medError;
 
     const idsMedicos = (medicosCoincidentes || []).map((m) => m.id);
