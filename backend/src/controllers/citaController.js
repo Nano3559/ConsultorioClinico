@@ -416,6 +416,28 @@ const remove = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/citas/mis-citas
+ * Obtener citas del paciente autenticado
+ */
+const getMisCitas = async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('citas')
+      .select('*')
+      .eq('paciente_id', req.user.id)
+      .order('fecha')
+      .order('hora');
+
+    if (error) throw error;
+    return sendSuccess(res, data);
+  } catch (error) {
+    console.error('citas.getMisCitas:', error);
+    return sendError(res, 'Error al obtener tus citas', 500);
+  }
+};
+
 module.exports = {
   getAll,
   getById,
@@ -426,4 +448,5 @@ module.exports = {
   getHoy,
   getByMedico,
   getByPaciente,
+  getMisCitas,
 };
