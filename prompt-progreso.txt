@@ -88,9 +88,16 @@ Migraciones en backend/db/migrations/ (ejecutar en orden desde el SQL Editor):
     Permite LOGOUT REAL (revocación auditada) e historial de accesos por rol.
   - limpiar_sesiones_antiguas(): borra sesiones cerradas/expiradas >30 días.
 
-IMPORTANTE PENDIENTE: ejecutar 003_auth.sql en Supabase SQL Editor.
-El código funciona sin ella (login/logout no fallan); solo la auditoría de
-sesiones queda inactiva hasta ejecutarla.
+008_validaciones.sql  (NUEVA - integridad a nivel BD)
+  - Extensión btree_gist.
+  - CHECK horarios.dia_semana IN (catálogo Lunes..Domingo) y hora_fin > hora_inicio.
+  - Constraint de EXCLUSIÓN (tsrange '[)') que impide solapamientos de horario
+    por médico y día a nivel BD (refuerza la validación de /api/horarios).
+  - CHECK medicos.tarifa_consulta >= 0.
+
+IMPORTANTE PENDIENTE: ejecutar 003_auth.sql y 008_validaciones.sql en Supabase
+SQL Editor. El código funciona sin ellas; 005 solo garantiza integridad
+(útil si se inserta directo en la BD).
 
 3) AUTENTICACIÓN Y ROLES (backend/src/controllers/authController.js)
 -------------------------------------------------------------------------------
@@ -185,12 +192,13 @@ Middleware:
   DELETE /:id              admin, recepcion (marca 'cancelada')
 
 /api/disponibilidad   (MIGRADO de mockData a Supabase en esta sesión)
-  GET /medico/:medicoId/fecha/:fecha   público
+  GET /medico/:medicoId/fecha/:fecha   público (valida medicoId y fecha YYYY-MM-DD)
+    - Rechaza fechas pasadas (400).
     - Genera slots de 30 min según horarios activos del día en BD, descarta
       horas pasadas si es hoy y slots ya reservados (citas no canceladas).
-    - Devuelve { medico, fecha, dia_semana, intervalo_minutos,
+    - Devuelve { medico_id, medico, fecha, dia_semana, intervalo_minutos,
       slots_disponibles[], total_disponibles }.
-  GET /especialidad/:especialidadId    público
+  GET /especialidad/:especialidadId    público (valida especialidadId)
     - Médicos activos de esa especialidad (catálogo) + días_atencion
       (unión de sus horarios activos).
 
@@ -278,8 +286,8 @@ bysea por diseño; acceso anónimo directo bloqueado).
 
 8) PENDIENTES / PRÓXIMOS PASOS SUGERIDOS
 -------------------------------------------------------------------------------
-- [ ] EJECUTAR backend/db/migrations/003_auth.sql en Supabase SQL Editor
-      (sin ella el logout/auditoría funcionan pero no persisten sesiones).
+- [ ] EJECUTAR backend/db/migrations/003_auth.sql y 008_validaciones.sql en
+      Supabase SQL Editor (005: constraints de validación a nivel BD).
 - [ ] Frontend Flutter: pantalla de login consumiendo POST /api/auth/login y
       router por rol usando data.rol y data.perfil (admin/medico/recepcion/
       paciente), guardando token de forma segura.
