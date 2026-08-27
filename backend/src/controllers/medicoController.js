@@ -1,6 +1,30 @@
+const crypto = require('crypto');
 const { getSupabase } = require('../config/supabase');
-const { sendSuccess, sendError, formatDate } = require('../utils/helpers');
+const { sendSuccess, sendError, formatDate, normalizarTexto, horaAMinutos } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
+
+/**
+ * Resuelve especialidad_id a partir del nombre (normalizado), buscando en la
+ * tabla catálogo especialidades. Devuelve { id, nombre } o { id: null, nombre }.
+ * Es la única fuente de verdad para evitar desnormalización (texto vs. FK).
+ */
+const resolverEspecialidad = async (supabase, nombreEspecialidad) => {
+  const nombre = (nombreEspecialidad || '').trim();
+  if (!nombre) return { id: null, nombre };
+
+  const { data: rows, error } = await supabase
+    .from('especialidades')
+    .select('id, nombre')
+    .eq('activo', true);
+  if (error) {
+    if (error.code === '42P01') return { id: null, nombre }; // tabla aún no existe
+    throw error;
+  }
+  const match = (rows || []).find(
+    (e) => normalizarTexto(e.nombre) === normalizarTexto(nombre)
+  );
+  return match ? { id: match.id, nombre: match.nombre } : { id: null, nombre };
+};
 
 /**
  * GET /api/medicos
@@ -60,10 +84,11 @@ const getById = async (req, res) => {
     const { nombre, apellido, cedula, especialidad, telefono, email, consulorio, tarifa_consulta } = req.body;
     const supabase = getSupabase();
 
-    // La cédula es única; si el formulario no la envía, generamos un marcador.
+    // La cédula es única; si el formulario no la envía, generamos un marcador
+    // con sufijo aleatorio para evitar colisiones con el UNIQUE de la BD.
     const cedulaFinal = cedula && String(cedula).trim()
       ? String(cedula).trim()
-      : `M${Date.now()}`;
+      : `M${Date.now()}${crypto.randomBytes(4).toString('hex')}`;
 
     const { data: existentes } = await supabase
       .from('medicos')
@@ -74,13 +99,17 @@ const getById = async (req, res) => {
       return sendError(res, 'Ya existe un médico con esa cédula', 400);
     }
 
+    // Normalizar: resolver especialidad_id desde el catálogo por nombre.
+    const esp = await resolverEspecialidad(supabase, especialidad);
+
     const { data, error } = await supabase
       .from('medicos')
       .insert({
         nombre,
         apellido,
         cedula: cedulaFinal,
-        especialidad,
+        especialidad: esp.nombre,
+        especialidad_id: esp.id,
         telefono,
         email: email && String(email).trim() ? email : null,
         consulorio,
@@ -117,6 +146,14 @@ const update = async (req, res) => {
     if (req.body.tarifa_consulta !== undefined) {
       cambios.tarifa_consulta = parseFloat(req.body.tarifa_consulta);
     }
+
+    // Mantener especialidad_id en sincronía con el texto de especialidad.
+    if (cambios.especialidad !== undefined) {
+      const esp = await resolverEspecialidad(supabase, cambios.especialidad);
+      cambios.especialidad = esp.nombre;
+      cambios.especialidad_id = esp.id;
+    }
+
     if (Object.keys(cambios).length === 0) {
       return sendError(res, 'No hay campos para actualizar', 400);
     }
@@ -127,7 +164,12 @@ const update = async (req, res) => {
       .eq('id', req.params.id)
       .select('*');
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(res, 'Ya existe un médico con esa cédula', 400);
+      }
+      throw error;
+    }
     if (!data || data.length === 0) {
       return sendError(res, 'Médico no encontrado', 404);
     }
@@ -212,6 +254,11 @@ const createHorario = async (req, res) => {
   try {
     const { dia_semana, hora_inicio, hora_fin } = req.body;
     const supabase = getSupabase();
+
+    // Validar que la hora de fin sea posterior a la de inicio.
+    if (horaAMinutos(hora_fin) <= horaAMinutos(hora_inicio)) {
+      return sendError(res, 'La hora de fin debe ser posterior a la de inicio', 400);
+    }
 
     const { data: medicos } = await supabase
       .from('medicos')

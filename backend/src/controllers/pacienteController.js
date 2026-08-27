@@ -117,7 +117,12 @@ const update = async (req, res) => {
       .eq('id', req.params.id)
       .select('*');
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(res, 'Ya existe un paciente con esa cédula', 400);
+      }
+      throw error;
+    }
     if (!data || data.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
