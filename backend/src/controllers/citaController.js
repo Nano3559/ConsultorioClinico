@@ -306,8 +306,8 @@ const update = async (req, res) => {
     const cambios = {};
     if (fecha) cambios.fecha = fecha;
     if (hora) cambios.hora = hora;
-    if (motivo) cambios.motivo = motivo;
-    if (observaciones !== undefined) cambios.observaciones = observaciones;
+    if (motivo !== undefined) cambios.motivo = motivo || '';
+    if (observaciones !== undefined) cambios.observaciones = observaciones || '';
 
     const { data, error } = await supabase
       .from('citas')
@@ -328,6 +328,14 @@ const update = async (req, res) => {
  * PATCH /api/citas/:id/estado
  * Cambiar estado de la cita
  */
+const TRANSICIONES_ESTADO = {
+  programada: ['en_curso', 'cancelada', 'no_show'],
+  en_curso: ['completada', 'cancelada'],
+  completada: [],
+  cancelada: ['programada'],
+  no_show: ['programada'],
+};
+
 const updateEstado = async (req, res) => {
   try {
     const { estado } = req.body;
@@ -337,6 +345,30 @@ const updateEstado = async (req, res) => {
     }
 
     const supabase = getSupabase();
+    const { data: actuales } = await supabase
+      .from('citas')
+      .select('estado')
+      .eq('id', req.params.id)
+      .limit(1);
+
+    if (!actuales || actuales.length === 0) {
+      return sendError(res, 'Cita no encontrada', 404);
+    }
+
+    const estadoActual = actuales[0].estado;
+    if (estadoActual === estado) {
+      return sendError(res, 'La cita ya tiene ese estado', 400);
+    }
+
+    const transicionesValidas = TRANSICIONES_ESTADO[estadoActual] || [];
+    if (!transicionesValidas.includes(estado)) {
+      return sendError(
+        res,
+        `No se puede cambiar de "${estadoActual}" a "${estado}". Transiciones permitidas: ${transicionesValidas.join(', ') || 'ninguna'}`,
+        400
+      );
+    }
+
     const { data, error } = await supabase
       .from('citas')
       .update({ estado })
@@ -344,9 +376,6 @@ const updateEstado = async (req, res) => {
       .select('*');
 
     if (error) throw error;
-    if (!data || data.length === 0) {
-      return sendError(res, 'Cita no encontrada', 404);
-    }
     return sendSuccess(res, data[0], 'Estado de cita actualizado');
   } catch (error) {
     console.error('citas.updateEstado:', error);
