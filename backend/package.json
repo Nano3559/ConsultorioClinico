@@ -6,7 +6,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "vercel-build": "npm install"
+    "vercel-build": "npm install",
+    "db:seed": "node db/seed.js",
+    "db:seed:ficticio": "node db/seed_ficticio.js",
+    "db:migrate": "node db/migrate.js",
+    "db:migrate:status": "node db/migrate.js --status",
+    "db:init": "node db/index.js",
+    "db:check": "node db/index.js --check"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
