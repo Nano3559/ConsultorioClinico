@@ -259,11 +259,11 @@ const deleteEspecialidad = async (req, res) => {
       return sendError(res, 'Especialidad no encontrada', 404);
     }
 
-    // No permitir eliminar si hay médicos con esa especialidad
+    // No permitir eliminar si hay médicos con esa especialidad (por FK)
     const { count, error: usoError } = await supabase
       .from('medicos')
       .select('id', { count: 'exact', head: true })
-      .ilike('especialidad', rows[0].nombre)
+      .eq('especialidad_id', id)
       .eq('activo', true);
     if (usoError) throw usoError;
     if (count > 0) {
