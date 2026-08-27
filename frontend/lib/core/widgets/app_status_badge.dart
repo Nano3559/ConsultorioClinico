@@ -4,8 +4,8 @@ import '../constants/app_colors.dart';
 /// Estado de una cita/consulta con su etiqueta y colores.
 enum AppointmentStatus {
   pendiente('Pendiente', AppColors.warning, AppColors.warningBg),
-  confirmada('Confirmada', AppColors.info, AppColors.infoBg),
-  atendida('Atendida', AppColors.success, AppColors.successBg),
+  confirmada('En curso', AppColors.info, AppColors.infoBg),
+  atendida('Completada', AppColors.success, AppColors.successBg),
   cancelada('Cancelada', AppColors.danger, AppColors.dangerBg),
   noAsistio('No asistió', AppColors.purple, AppColors.purpleBg);
 
