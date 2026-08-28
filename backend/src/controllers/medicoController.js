@@ -81,7 +81,7 @@ const getById = async (req, res) => {
  */
   const create = async (req, res) => {
   try {
-    const { nombre, apellido, cedula, especialidad, telefono, email, consulorio, tarifa_consulta } = req.body;
+    const { nombre, apellido, cedula, especialidad, telefono, email, consulorio, tarifa_consulta, titulo, descripcion, anios_experiencia } = req.body;
     const supabase = getSupabase();
 
     // La cédula es única; si el formulario no la envía, generamos un marcador
@@ -114,6 +114,9 @@ const getById = async (req, res) => {
         email: email && String(email).trim() ? email : null,
         consulorio,
         tarifa_consulta: parseFloat(tarifa_consulta) || 0,
+        titulo: (titulo && String(titulo).trim()) ? String(titulo).trim() : 'Dr./Dra.',
+        descripcion: descripcion || '',
+        anios_experiencia: parseInt(anios_experiencia, 10) || 0,
       })
       .select('*')
       .single();
@@ -138,13 +141,16 @@ const getById = async (req, res) => {
 const update = async (req, res) => {
   try {
     const supabase = getSupabase();
-    const permitidos = ['nombre', 'apellido', 'cedula', 'especialidad', 'telefono', 'email', 'consulorio'];
+    const permitidos = ['nombre', 'apellido', 'cedula', 'especialidad', 'telefono', 'email', 'consulorio', 'titulo', 'descripcion'];
     const cambios = {};
     for (const campo of permitidos) {
       if (req.body[campo] !== undefined) cambios[campo] = req.body[campo];
     }
     if (req.body.tarifa_consulta !== undefined) {
       cambios.tarifa_consulta = parseFloat(req.body.tarifa_consulta);
+    }
+    if (req.body.anios_experiencia !== undefined) {
+      cambios.anios_experiencia = parseInt(req.body.anios_experiencia, 10) || 0;
     }
 
     // Mantener especialidad_id en sincronía con el texto de especialidad.

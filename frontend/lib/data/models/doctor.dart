@@ -44,15 +44,16 @@ class Doctor {
   }) {
     final nombre = (json['nombre'] ?? '').toString();
     final apellido = (json['apellido'] ?? '').toString();
+    final titulo = (json['titulo'] ?? '').toString().trim();
     return Doctor(
       id: json['id'].toString(),
       name: '$nombre $apellido'.trim(),
       specialtyId: specialtyId,
-      description: '',
-      yearsExperience: 0,
+      description: (json['descripcion'] ?? '').toString(),
+      yearsExperience: int.tryParse((json['anios_experiencia'] ?? '0').toString()) ?? 0,
       schedule: schedule,
       active: json['activo'] ?? true,
-      title: 'Dr./Dra.',
+      title: titulo.isEmpty ? 'Dr./Dra.' : titulo,
     );
   }
 
@@ -74,6 +75,9 @@ class Doctor {
       if (telefono.isNotEmpty) 'telefono': telefono,
       if (email.isNotEmpty) 'email': email,
       if (consulorio.isNotEmpty) 'consulorio': consulorio,
+      'titulo': title,
+      'descripcion': description,
+      'anios_experiencia': yearsExperience,
       'tarifa_consulta': tarifaConsulta,
     };
   }
