@@ -27,6 +27,7 @@ router.use(verifyToken);
 
 // Rutas especiales (deben ir antes de /:id)
 router.get('/mis-citas', checkRole('paciente'), getMisCitas);
+router.get('/mis/citas', checkRole('paciente'), getMisCitas);
 router.get('/agenda/hoy', checkRole('admin', 'medico'), getHoy);
 router.get('/medico/:id', idParamValidation, validate, getByMedico);
 router.get('/paciente/:id', idParamValidation, validate, getByPaciente);
