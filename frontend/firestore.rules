@@ -25,9 +25,9 @@ service cloud.firestore {
       allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
     }
 
-    // ---- Medicos (directorio) ----
+    // ---- Medicos (directorio publico de atencion) ----
     match /medicos/{medicoId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() || resource.data.activo == true;
       allow write: if isAdmin() || (isSignedIn() && request.auth.uid == medicoId);
     }
 
@@ -37,9 +37,9 @@ service cloud.firestore {
       allow write: if isStaff();
     }
 
-    // ---- Especialidades ----
+    // ---- Especialidades (catalogo publico) ----
     match /especialidades/{id} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -69,10 +69,24 @@ service cloud.firestore {
                     || (resource.data.paciente_id == request.auth.uid);
     }
 
-    // ---- Horarios disponibles ----
+    // ---- Horarios disponibles (catalogo publico) ----
     match /horarios/{id} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin() || (isSignedIn() && resource.data.medico_id == request.auth.uid);
+    }
+
+    // ---- Disponibilidad (turnos ocupados; sin datos de paciente, legible publicamente) ----
+    // El id del documento es deterministico: "{medico_id}__{fecha}__{hora}".
+    // La regla de create impide crear un turno ya existente => no hay doble reserva.
+    match /disponibilidad/{id} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && !exists(/databases/$(database)/documents/disponibilidad/$(id));
+      allow update: if false;
+      allow delete: if isAdmin()
+        || isStaff()
+        || (isSignedIn() && request.auth.uid == resource.data.medico_id)
+        || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/citas/$(resource.data.cita_id)).data.paciente_id);
     }
   }
 }

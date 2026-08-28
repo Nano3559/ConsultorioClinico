@@ -36,15 +36,30 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   String? _doctorId;
   String? _time;
   bool _submitting = false;
+  String? _availKey;
 
   @override
   void initState() {
     super.initState();
     final auth = context.read<AuthProvider>();
+    final clinic = context.read<ClinicProvider>();
     final isMedico = auth.currentUser?.role == UserRole.medico;
     _specialtyId = widget.specialtyId;
     // Un médico solo puede agendar citas para sí mismo (se ignora el param ?medico=).
     _doctorId = isMedico ? auth.currentUser?.doctorId : widget.doctorId;
+    // Catálogo público (especialidades, médicos, horarios) sin sesión.
+    clinic.loadPublicCatalog();
+    if (_doctorId != null) {
+      Future.microtask(() => clinic.loadAvailability(_doctorId!, _date));
+    }
+  }
+
+  void _loadAvail() {
+    if (_doctorId == null) return;
+    final key = '$_doctorId|${_date.year}-${_date.month}-${_date.day}';
+    if (key == _availKey) return;
+    _availKey = key;
+    context.read<ClinicProvider>().loadAvailability(_doctorId!, _date);
   }
 
   @override
@@ -64,6 +79,19 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     final clinic = context.watch<ClinicProvider>();
     final auth = context.watch<AuthProvider>();
     final isMedico = auth.currentUser?.role == UserRole.medico;
+
+    if (clinic.specialties.isEmpty && clinic.isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Solicitar cita'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/'),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
     final doctors = isMedico
         ? clinic.doctors.where((d) => d.id == _doctorId).toList()
         : clinic.doctors
@@ -153,6 +181,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                         : (v) => setState(() {
                               _doctorId = v;
                               _time = null;
+                              _loadAvail();
                             }),
                   ),
                   const SizedBox(height: 14),
@@ -169,9 +198,25 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   if (_doctorId != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        'Horario: ${AppFormatters.day(_date)}, ${_date.day}/${_date.month} · ${_doctorName(clinic)}',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Horario: ${AppFormatters.day(_date)}, ${_date.day}/${_date.month} · ${_doctorName(clinic)}',
+                            style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                          ),
+                          const SizedBox(height: 4),
+                          if (slots.isEmpty)
+                            const Text(
+                              'No hay turnos disponibles ese día (el médico no atiende o están todos ocupados).',
+                              style: TextStyle(color: AppColors.danger, fontSize: 13),
+                            )
+                          else
+                            Text(
+                              'Turnos disponibles: ${slots.join(', ')}',
+                              style: const TextStyle(color: AppColors.success, fontSize: 13),
+                            ),
+                        ],
                       ),
                     ),
                   const SizedBox(height: 24),
@@ -250,6 +295,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
             _date = picked;
             _time = null;
           });
+          _loadAvail();
         }
       },
       validator: (_) => _date.isBefore(DateTime.now()) ? 'Fecha no válida' : null,

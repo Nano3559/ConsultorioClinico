@@ -39,6 +39,12 @@ class ClinicProvider extends ChangeNotifier {
   UserRole? _role;
   String? _error;
   bool _loading = false;
+  bool _catalogLoaded = false;
+
+  /// Turnos ocupados (medico_id|fecha|hora). Fuente publica: coleccion
+  /// `disponibilidad`. Permite calcular la disponibilidad sin leer las citas
+  /// (que contienen datos de paciente y estan restringidas).
+  final Set<String> _occupied = {};
 
   // ---- Getters inmutables ------------------------------------------------
   List<Specialty> get specialties => List.unmodifiable(_specialties);
@@ -94,6 +100,49 @@ class ClinicProvider extends ChangeNotifier {
 
   bool get _isMedico => _role == UserRole.medico && _uid != null;
   bool get _isPaciente => _role == UserRole.paciente && _uid != null;
+
+  /// Carga el catálogo público (especialidades, horarios y médicos activos)
+  /// sin requerir sesión. No lee colecciones con datos de paciente.
+  Future<void> loadPublicCatalog() async {
+    if (_catalogLoaded) return;
+    _catalogLoaded = true;
+    _loading = true;
+    notifyListeners();
+    try {
+      await _loadEspecialidades();
+      await _loadHorarios();
+      await _loadMedicos();
+    } catch (e) {
+      _error = 'No se pudo cargar el catálogo. Revisa tu conexión.';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Carga los turnos ocupados de un médico en una fecha (colección pública
+  /// `disponibilidad`). Es mejor-esfuerzo: si falla, la regla de Firestore
+  /// sigue impidiendo la doble reserva al intentar guardar.
+  Future<void> loadAvailability(String medicoId, DateTime date) async {
+    try {
+      final f = _fmt(date);
+      final snap = await FirebaseFirestore.instance
+          .collection('disponibilidad')
+          .where('medico_id', isEqualTo: medicoId)
+          .where('fecha', isEqualTo: f)
+          .get();
+      for (final d in snap.docs) {
+        final h = (d.data()['hora'] ?? '').toString();
+        if (h.isNotEmpty) _occupied.add(_occKey(medicoId, f, h));
+      }
+      notifyListeners();
+    } catch (_) {
+      // Silencioso: la disponibilidad es informativa; la regla lo garantiza.
+    }
+  }
+
+  static String _occKey(String m, String f, String h) => '$m|$f|$h';
+  bool _isOccupied(String m, String f, String h) => _occupied.contains(_occKey(m, f, h));
 
   Future<void> _loadEspecialidades() async {
     final data = await _fs.getList('especialidades');
@@ -322,7 +371,9 @@ class ClinicProvider extends ChangeNotifier {
         a.status != AppointmentStatus.cancelada &&
         a.status != AppointmentStatus.noAsistio &&
         a.id != excludeAppointmentId);
-    return !occupied;
+    if (occupied) return false;
+    if (_isOccupied(doctorId, _fmt(date), time)) return false;
+    return true;
   }
 
   List<String> availableSlots(String doctorId, DateTime date) {
@@ -461,17 +512,32 @@ class ClinicProvider extends ChangeNotifier {
     required String reason,
   }) async {
     final medicoId = _isMedico ? (_uid ?? doctorId) : doctorId;
+    final fecha = _fmt(date);
     final body = {
       'paciente_id': patientId,
       'medico_id': medicoId,
-      'fecha': _fmt(date),
+      'fecha': fecha,
       'hora': time,
       'motivo': reason,
       'estado': AppointmentStatus.pendiente.toApi(),
     };
     try {
-      final id = await _fs.add('citas', body);
-      _appointments.add(Appointment.fromApi({...body, 'id': id}));
+      final fs = FirebaseFirestore.instance;
+      final batch = fs.batch();
+      final citaRef = fs.collection('citas').doc();
+      final citaId = citaRef.id;
+      batch.set(citaRef, {...body, 'id': citaId});
+      // Turno ocupado (id deterministico). La regla impide duplicados.
+      final dispId = '${medicoId}__${fecha}__${time}';
+      batch.set(fs.collection('disponibilidad').doc(dispId), {
+        'medico_id': medicoId,
+        'fecha': fecha,
+        'hora': time,
+        'cita_id': citaId,
+      });
+      await batch.commit();
+      _appointments.add(Appointment.fromApi({...body, 'id': citaId}));
+      _occupied.add(_occKey(medicoId, fecha, time));
       notifyListeners();
       return null;
     } catch (e) {
@@ -498,9 +564,19 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> cancelAppointment(String id) async {
+    final i = _appointments.indexWhere((a) => a.id == id);
+    final old = i >= 0 ? _appointments[i] : null;
     try {
       await _fs.update('citas', id, {'estado': AppointmentStatus.cancelada.toApi()});
-      final i = _appointments.indexWhere((a) => a.id == id);
+      if (old != null) {
+        final dispId = '${old.doctorId}__${_fmt(old.date)}__${old.time}';
+        await FirebaseFirestore.instance
+            .collection('disponibilidad')
+            .doc(dispId)
+            .delete()
+            .catchError((_) {});
+        _occupied.remove(_occKey(old.doctorId, _fmt(old.date), old.time));
+      }
       if (i >= 0) {
         _appointments[i] =
             _appointments[i].copyWith(status: AppointmentStatus.cancelada);
@@ -515,13 +591,33 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> rescheduleAppointment(String id, DateTime date, String time) async {
+    final i = _appointments.indexWhere((a) => a.id == id);
+    final old = i >= 0 ? _appointments[i] : null;
+    final medicoId = old?.doctorId ?? _uid ?? '';
+    final nuevaFecha = _fmt(date);
     try {
-      await _fs.update('citas', id, {
-        'fecha': _fmt(date),
+      final fs = FirebaseFirestore.instance;
+      final batch = fs.batch();
+      batch.update(fs.collection('citas').doc(id), {
+        'fecha': nuevaFecha,
         'hora': time,
         'estado': AppointmentStatus.pendiente.toApi(),
       });
-      final i = _appointments.indexWhere((a) => a.id == id);
+      if (old != null) {
+        batch.delete(fs.collection('disponibilidad')
+            .doc('${old.doctorId}__${_fmt(old.date)}__${old.time}'));
+      }
+      batch.set(fs.collection('disponibilidad').doc('${medicoId}__${nuevaFecha}__${time}'), {
+        'medico_id': medicoId,
+        'fecha': nuevaFecha,
+        'hora': time,
+        'cita_id': id,
+      });
+      await batch.commit();
+      if (old != null) {
+        _occupied.remove(_occKey(old.doctorId, _fmt(old.date), old.time));
+      }
+      _occupied.add(_occKey(medicoId, nuevaFecha, time));
       if (i >= 0) {
         _appointments[i] = _appointments[i].copyWith(
             date: date, time: time, status: AppointmentStatus.pendiente);
