@@ -25,6 +25,7 @@ class ConsultRecord {
   /// Construye una ConsultRecord desde la fila de Supabase.
   factory ConsultRecord.fromApi(Map<String, dynamic> json) {
     final fecha = json['fecha'];
+    final pctrl = json['proximo_control'];
     return ConsultRecord(
       id: json['id'].toString(),
       patientId: json['paciente_id'].toString(),
@@ -32,11 +33,13 @@ class ConsultRecord {
       date: fecha is DateTime
           ? fecha
           : DateTime.tryParse(fecha?.toString() ?? '') ?? DateTime.now(),
-      motivo: '',
+      motivo: (json['motivo'] ?? '').toString(),
       diagnostico: (json['diagnostico'] ?? '').toString(),
       tratamiento: (json['tratamiento'] ?? '').toString(),
       observaciones: (json['notas_clinicas'] ?? '').toString(),
-      proximoControl: null,
+      proximoControl: pctrl == null
+          ? null
+          : (pctrl is DateTime ? pctrl : DateTime.tryParse(pctrl.toString())),
     );
   }
 
@@ -45,9 +48,13 @@ class ConsultRecord {
         'cita_id': null,
         'paciente_id': patientId,
         'medico_id': doctorId,
+        'motivo': motivo,
         'diagnostico': diagnostico,
         'tratamiento': tratamiento,
         'notas_clinicas': observaciones,
         'signos_vitales': null,
+        'proximo_control': proximoControl == null
+            ? null
+            : '${proximoControl!.year}-${proximoControl!.month.toString().padLeft(2, '0')}-${proximoControl!.day.toString().padLeft(2, '0')}',
       };
 }
