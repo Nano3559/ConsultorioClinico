@@ -1,0 +1,45 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "citas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "medicoId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "citas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pacienteId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "consultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "medicoId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pagos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "medicoId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "horarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "medicoId", "order": "ASCENDING" },
+        { "fieldPath": "dia", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

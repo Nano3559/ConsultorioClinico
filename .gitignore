@@ -32,3 +32,9 @@ backend/package-lock.json
 Thumbs.db
 .env
 .vercel
+
+# --- Firebase migration secrets / node ---
+firebase-migrator-key.json
+migracion/node_modules/
+migracion/package-lock.json
+
