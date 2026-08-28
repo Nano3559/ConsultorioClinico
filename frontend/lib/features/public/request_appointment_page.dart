@@ -284,23 +284,40 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       return;
     }
     final clinic = context.read<ClinicProvider>();
+    final auth = context.read<AuthProvider>();
+    final staff = auth.isLogged &&
+        (auth.role == UserRole.recepcion ||
+            auth.role == UserRole.admin ||
+            auth.role == UserRole.medico);
     setState(() => _submitting = true);
 
     // Pequeña pausa simulando la verificación en el servidor.
     await Future<void>.delayed(const Duration(milliseconds: 600));
 
-    // Buscar o registrar al paciente por CI.
+    // Buscar paciente existente por CI (solo si hay sesión cargada).
     Patient? existing;
     for (final p in clinic.patients) {
-      if (p.ci == _ci.text.trim()) {
+      if (p.ci.trim().toLowerCase() == _ci.text.trim().toLowerCase()) {
         existing = p;
         break;
       }
     }
-    var patient = existing;
-    if (patient == null) {
-      patient = Patient(
-        id: 'p${DateTime.now().millisecondsSinceEpoch}',
+
+    String patientId;
+    if (existing != null) {
+      patientId = existing.id;
+      if (!staff) {
+        final err = await auth.loginPatient(_ci.text.trim(), _birthDate!);
+        if (err != null) {
+          if (!mounted) return;
+          setState(() => _submitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+          return;
+        }
+      }
+    } else {
+      final nuevo = Patient(
+        id: '',
         firstName: _name.text.trim(),
         lastName: _lastName.text.trim(),
         ci: _ci.text.trim(),
@@ -308,12 +325,32 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         phone: _phone.text.trim(),
         email: _email.text.trim(),
       );
-      final created = await clinic.addPatient(patient);
-      if (created != null) patient = created;
+      final (uid, err) = await auth.registerPatient(nuevo, autoSignIn: !staff);
+      if (!mounted) return;
+      if (err != null) {
+        // Visitante recurrente sin sesión: el correo ya existe, iniciamos sesión.
+        if (err.toLowerCase().contains('registrado') && !staff) {
+          final le = await auth.loginPatient(_ci.text.trim(), _birthDate!);
+          if (le == null && auth.uid != null) {
+            patientId = auth.uid!;
+          } else {
+            setState(() => _submitting = false);
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(le ?? err)));
+            return;
+          }
+        } else {
+          setState(() => _submitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+          return;
+        }
+      } else {
+        patientId = uid!;
+      }
     }
 
     final error = await clinic.bookAppointment(
-      patientId: patient.id,
+      patientId: patientId,
       doctorId: _doctorId!,
       date: _date,
       time: _time!,
@@ -326,7 +363,22 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
-    _showSuccess(patient);
+    if (auth.isLogged) {
+      clinic.setAuthToken(auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+      clinic.loadAll();
+      if (!mounted) return;
+      context.go('/app');
+    } else {
+      _showSuccess(Patient(
+        id: patientId,
+        firstName: _name.text.trim(),
+        lastName: _lastName.text.trim(),
+        ci: _ci.text.trim(),
+        birthDate: _birthDate!,
+        phone: _phone.text.trim(),
+        email: _email.text.trim(),
+      ));
+    }
   }
 
   void _showSuccess(Patient patient) {

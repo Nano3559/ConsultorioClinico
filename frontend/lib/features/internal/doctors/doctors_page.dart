@@ -8,6 +8,7 @@ import '../../../core/widgets/page_header.dart';
 import '../../../data/models/doctor.dart';
 import '../../../state/clinic_provider.dart';
 import 'doctor_form_page.dart';
+import 'doctor_invite_dialog.dart';
 
 /// Gestión de médicos (Ejercicio 7).
 class DoctorsPage extends StatefulWidget {
@@ -48,8 +49,9 @@ class _DoctorsPageState extends State<DoctorsPage> {
           count: clinic.doctors.length,
           actions: [
             FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const DoctorFormPage()),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => const DoctorInviteDialog(),
               ),
               icon: const Icon(Icons.person_add_alt),
               label: const Text('Registrar médico'),

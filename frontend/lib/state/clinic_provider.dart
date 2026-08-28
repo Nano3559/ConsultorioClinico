@@ -93,6 +93,7 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   bool get _isMedico => _role == UserRole.medico && _uid != null;
+  bool get _isPaciente => _role == UserRole.paciente && _uid != null;
 
   Future<void> _loadEspecialidades() async {
     final data = await _fs.getList('especialidades');
@@ -137,7 +138,11 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<void> _loadPacientes() async {
-    final data = await _fs.getList('pacientes');
+    final data = await _fs.getList(
+      'pacientes',
+      scopeField: _isPaciente ? 'uid' : null,
+      scopeValue: _isPaciente ? _uid : null,
+    );
     _patients
       ..clear()
       ..addAll(data.map(Patient.fromApi));
@@ -155,8 +160,10 @@ class ClinicProvider extends ChangeNotifier {
   Future<void> _loadCitas() async {
     final data = await _fs.getList(
       'citas',
-      scopeField: _isMedico ? 'medico_id' : null,
-      scopeValue: _isMedico ? _uid : null,
+      scopeField: _isMedico
+          ? 'medico_id'
+          : (_isPaciente ? 'paciente_id' : null),
+      scopeValue: _isMedico || _isPaciente ? _uid : null,
       orderBy: 'fecha',
     );
     _appointments
@@ -167,8 +174,10 @@ class ClinicProvider extends ChangeNotifier {
   Future<void> _loadConsultas() async {
     final data = await _fs.getList(
       'consultas',
-      scopeField: _isMedico ? 'medico_id' : null,
-      scopeValue: _isMedico ? _uid : null,
+      scopeField: _isMedico
+          ? 'medico_id'
+          : (_isPaciente ? 'paciente_id' : null),
+      scopeValue: _isMedico || _isPaciente ? _uid : null,
       orderBy: 'fecha',
     );
     _consults
@@ -179,8 +188,10 @@ class ClinicProvider extends ChangeNotifier {
   Future<void> _loadPagos() async {
     final data = await _fs.getList(
       'pagos',
-      scopeField: _isMedico ? 'medico_id' : null,
-      scopeValue: _isMedico ? _uid : null,
+      scopeField: _isMedico
+          ? 'medico_id'
+          : (_isPaciente ? 'paciente_id' : null),
+      scopeValue: _isMedico || _isPaciente ? _uid : null,
       orderBy: 'fecha_pago',
     );
     _payments

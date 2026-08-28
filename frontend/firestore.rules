@@ -33,7 +33,7 @@ service cloud.firestore {
 
     // ---- Pacientes (datos demograficos) ----
     match /pacientes/{pacienteId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (request.auth.uid == pacienteId || isStaff());
       allow write: if isStaff();
     }
 
@@ -43,22 +43,30 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ---- Citas (acceso por medico) ----
+    // ---- Citas ----
     match /citas/{citaId} {
-      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
-      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+      allow create: if isAdmin()
+                    || isStaff()
+                    || (isSignedIn() && request.resource.data.paciente_id == request.auth.uid);
+      allow read, update, delete: if isAdmin()
+                    || (isStaff() && resource.data.medico_id == request.auth.uid)
+                    || (resource.data.paciente_id == request.auth.uid);
     }
 
     // ---- Consultas (historia clinica) ----
     match /consultas/{id} {
-      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
-      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+      allow create: if isAdmin() || isStaff();
+      allow read, update, delete: if isAdmin()
+                    || (isStaff() && resource.data.medico_id == request.auth.uid)
+                    || (resource.data.paciente_id == request.auth.uid);
     }
 
     // ---- Pagos ----
     match /pagos/{id} {
-      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
-      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+      allow create: if isAdmin() || isStaff();
+      allow read, update, delete: if isAdmin()
+                    || (isStaff() && resource.data.medico_id == request.auth.uid)
+                    || (resource.data.paciente_id == request.auth.uid);
     }
 
     // ---- Horarios disponibles ----
