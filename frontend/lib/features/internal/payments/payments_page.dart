@@ -7,7 +7,9 @@ import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/payment.dart';
+import '../../../data/models/user.dart';
 import '../../../data/mock/mock_data.dart';
+import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
 
 /// Módulo de pagos (Ejercicio 11).
@@ -188,8 +190,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
   }
 
   void _registerPayment(BuildContext context, ClinicProvider clinic) {
+    final auth = context.read<AuthProvider>();
+    final isMedico = auth.currentUser?.role == UserRole.medico;
     String? patientId;
-    String? doctorId;
+    String? doctorId = isMedico ? auth.currentUser?.doctorId : null;
     double amount = MockData.consultPrice;
     PaymentMethod method = PaymentMethod.efectivo;
     showDialog<void>(
@@ -214,12 +218,17 @@ class _PaymentsPageState extends State<PaymentsPage> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
                     initialValue: doctorId,
-                    decoration: const InputDecoration(labelText: 'Médico'),
+                    decoration: InputDecoration(
+                      labelText: 'Médico',
+                      helperText: isMedico ? 'El pago se registrará a tu nombre.' : null,
+                    ),
                     items: [
                       for (final d in clinic.activeDoctors)
                         DropdownMenuItem(value: d.id, child: Text(d.displayName)),
                     ],
-                    onChanged: (v) => setState(() => doctorId = v),
+                    onChanged: isMedico
+                        ? null
+                        : (v) => setState(() => doctorId = v),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
