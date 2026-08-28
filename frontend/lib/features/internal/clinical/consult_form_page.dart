@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/utils/app_validators.dart';
 import '../../../data/models/consult_record.dart';
+import '../../../data/models/user.dart';
 import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
 
@@ -31,9 +32,9 @@ class _ConsultFormPageState extends State<ConsultFormPage> {
     super.initState();
     final auth = context.read<AuthProvider>();
     final clinic = context.read<ClinicProvider>();
-    String? fallback;
-    if (clinic.activeDoctors.isNotEmpty) fallback = clinic.activeDoctors.first.id;
-    _doctorId = auth.currentUser?.doctorId ?? fallback;
+    // Un médico solo puede registrar consultas a su nombre.
+    _doctorId = auth.currentUser?.doctorId ??
+        (clinic.activeDoctors.isNotEmpty ? clinic.activeDoctors.first.id : null);
   }
 
   @override
@@ -69,6 +70,7 @@ class _ConsultFormPageState extends State<ConsultFormPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
+    final isMedico = context.watch<AuthProvider>().currentUser?.role == UserRole.medico;
     return Scaffold(
       appBar: AppBar(title: const Text('Registrar consulta')),
       body: SingleChildScrollView(
@@ -88,12 +90,17 @@ class _ConsultFormPageState extends State<ConsultFormPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: _doctorId,
-                    decoration: const InputDecoration(labelText: 'Médico'),
+                    decoration: InputDecoration(
+                      labelText: 'Médico',
+                      helperText: isMedico ? 'La consulta se registrará a tu nombre.' : null,
+                    ),
                     items: [
                       for (final d in clinic.activeDoctors)
                         DropdownMenuItem(value: d.id, child: Text(d.displayName)),
                     ],
-                    onChanged: (v) => setState(() => _doctorId = v),
+                    onChanged: isMedico
+                        ? null
+                        : (v) => setState(() => _doctorId = v),
                   ),
                   const SizedBox(height: 14),
                   TextFormField(

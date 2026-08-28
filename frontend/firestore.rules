@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    }
+
+    function isStaff() {
+      return isSignedIn() && userRole() in ['admin', 'recepcion', 'medico'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    // ---- Usuarios (cuentas) ----
+    match /usuarios/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // ---- Medicos (directorio) ----
+    match /medicos/{medicoId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == medicoId);
+    }
+
+    // ---- Pacientes (datos demograficos) ----
+    match /pacientes/{pacienteId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // ---- Especialidades ----
+    match /especialidades/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---- Citas (acceso por medico) ----
+    match /citas/{citaId} {
+      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
+      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+    }
+
+    // ---- Consultas (historia clinica) ----
+    match /consultas/{id} {
+      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
+      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+    }
+
+    // ---- Pagos ----
+    match /pagos/{id} {
+      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
+      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+    }
+
+    // ---- Horarios disponibles ----
+    match /horarios/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || (isSignedIn() && resource.data.medico_id == request.auth.uid);
+    }
+  }
+}

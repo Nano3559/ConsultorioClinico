@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../data/models/user.dart';
 import '../data/models/specialty.dart';
 import '../data/models/doctor.dart';
 import '../data/models/patient.dart';
@@ -8,22 +12,21 @@ import '../data/models/payment.dart';
 import '../data/mock/mock_data.dart';
 import '../core/constants/app_constants.dart';
 import '../core/widgets/app_status_badge.dart';
-import '../services/api_client.dart';
+import '../services/firestore_service.dart';
 
 /// Proveedor principal de la clínica.
 ///
-/// Antes usaba datos mock en memoria. Ahora se apoya en el backend REST
-/// (Node/Express + Supabase) como fuente de verdad: al iniciar sesión se llama
-/// a [loadAll] para poblar las listas desde la BD, y cada mutación (crear,
-/// editar, cancelar, etc.) persiste vía API y luego actualiza la caché local
-/// (actualización optimista) para no bloquear la UI.
+/// Fuente de verdad: Cloud Firestore. Al iniciar sesión, [FirebaseAuth]
+/// notifica el cambio y [loadAll] recarga las listas aplicando el alcance
+/// según el rol (RBAC): un `medico` solo ve sus propias citas, consultas,
+/// pagos y horarios; `admin`/`recepcion` ven todo.
 class ClinicProvider extends ChangeNotifier {
-  ClinicProvider({ApiClient? api}) : _api = api ?? ApiClient() {
-    // Carga inicial: si el backend responde, usa la BD; si no, cae en mock.
+  ClinicProvider() {
+    FirebaseAuth.instance.authStateChanges().listen((_) => loadAll());
     loadAll();
   }
 
-  final ApiClient _api;
+  final FirestoreService _fs = FirestoreService();
 
   final List<Specialty> _specialties = [];
   final List<Doctor> _doctors = [];
@@ -32,10 +35,9 @@ class ClinicProvider extends ChangeNotifier {
   final List<ConsultRecord> _consults = [];
   final List<Payment> _payments = [];
 
-  String? _token;
-  String? _perfilId;
+  String? _uid;
+  UserRole? _role;
   String? _error;
-  bool _usingApi = false;
   bool _loading = false;
 
   // ---- Getters inmutables ------------------------------------------------
@@ -47,140 +49,146 @@ class ClinicProvider extends ChangeNotifier {
   List<Payment> get payments => List.unmodifiable(_payments);
 
   String? get error => _error;
-  bool get usingApi => _usingApi;
+  bool get usingApi => true;
   bool get isLoading => _loading;
-  String? get perfilId => _perfilId;
 
-  /// Inyecta el JWT tras el login para autenticar las llamadas a la API.
+  /// Inyecta el JWT tras el login (compatibilidad). La sesión real la maneja
+  /// Firebase Auth, así que solo disparamos una recarga con el alcance correcto.
   void setAuthToken(String? token, {String? perfilTipo, String? perfilId}) {
-    _token = token;
-    _perfilId = perfilId;
+    loadAll();
   }
 
-  // ---- Carga inicial desde el backend -------------------------------------
+  // ---- Carga inicial desde Firestore -------------------------------------
   Future<void> loadAll() async {
     _loading = true;
     _error = null;
     notifyListeners();
 
     try {
+      _uid = FirebaseAuth.instance.currentUser?.uid;
+      _role = null;
+      if (_uid != null) {
+        final u = await FirebaseFirestore.instance
+            .collection('usuarios')
+            .doc(_uid)
+            .get();
+        if (u.exists) _role = UserRole.fromApi(u.data()!['rol']?.toString() ?? '');
+      }
+
       await _loadEspecialidades();
+      await _loadHorarios();
       await _loadMedicos();
       await _loadPacientes();
       await _loadCitas();
       await _loadConsultas();
       await _loadPagos();
-      _usingApi = true;
+
+      if (_isMedico) _scopePatientsToMedico();
     } catch (e) {
-      // Si no hay backend disponible, caemos en datos de demostración para
-      // que la app siga usable en desarrollo.
-      if (_specialties.isEmpty && _doctors.isEmpty) {
-        _loadMock();
-        _usingApi = false;
-      }
-      _error = 'No se pudo cargar la información del servidor';
+      _error = 'No se pudo cargar la información. Revisa tu conexión.';
     } finally {
       _loading = false;
       notifyListeners();
     }
   }
 
+  bool get _isMedico => _role == UserRole.medico && _uid != null;
+
   Future<void> _loadEspecialidades() async {
-    final res = await _api.getJson('/especialidades', token: _token);
-    final data = _asList(res);
+    final data = await _fs.getList('especialidades');
     _specialties
       ..clear()
-      ..addAll(data.map((e) => Specialty.fromApi(e)));
+      ..addAll(data.map(Specialty.fromApi));
+  }
+
+  Future<void> _loadHorarios() async {
+    final data = await _fs.getList(
+      'horarios',
+      scopeField: _isMedico ? 'medico_id' : null,
+      scopeValue: _isMedico ? _uid : null,
+    );
+    final byDoctor = <String, Map<String, List<String>>>{};
+    for (final h in data) {
+      final med = (h['medico_id'] ?? '').toString();
+      final dia = _shortDay((h['dia_semana'] ?? '').toString());
+      final slots = _expandSlots(
+        (h['hora_inicio'] ?? '').toString(),
+        (h['hora_fin'] ?? '').toString(),
+      );
+      byDoctor[med] ??= {};
+      byDoctor[med]![dia] = [...(byDoctor[med]![dia] ?? []), ...slots];
+    }
+    _schedules
+      ..clear()
+      ..addAll(byDoctor.map((k, v) => MapEntry(k, DoctorSchedule(v))));
   }
 
   Future<void> _loadMedicos() async {
-    final res = await _api.getJson('/medicos', token: _token);
-    final data = _asList(res);
+    final data = await _fs.getList('medicos');
     _doctors.clear();
     for (final m in data) {
-      final schedule = await _loadHorarios(m['id']);
-      final especialidad = (m['especialidad'] ?? '').toString();
-      final specialtyId = _resolveSpecialtyId(especialidad);
-      _doctors.add(Doctor.fromApi(m, specialtyId: specialtyId, schedule: schedule));
-    }
-  }
-
-  Future<DoctorSchedule> _loadHorarios(dynamic medicoId) async {
-    try {
-      final res = await _api.getJson('/medicos/$medicoId/horarios', token: _token);
-      final data = _asList(res);
-      final byDay = <String, List<String>>{};
-      for (final h in data) {
-        final dia = _shortDay((h['dia_semana'] ?? '').toString());
-        final ini = (h['hora_inicio'] ?? '').toString();
-        final fin = (h['hora_fin'] ?? '').toString();
-        final slots = _expandSlots(ini, fin);
-        byDay[dia] = [...(byDay[dia] ?? []), ...slots];
-      }
-      return DoctorSchedule(byDay);
-    } catch (_) {
-      return const DoctorSchedule({});
+      final sid = (m['especialidad_id'] ?? '').toString();
+      _doctors.add(Doctor.fromApi(
+        m,
+        specialtyId: sid,
+        schedule: _schedules[m['id'].toString()] ?? const DoctorSchedule({}),
+      ));
     }
   }
 
   Future<void> _loadPacientes() async {
-    final res = await _api.getJson('/pacientes', token: _token);
-    final data = _asList(res);
+    final data = await _fs.getList('pacientes');
     _patients
       ..clear()
-      ..addAll(data.map((e) => Patient.fromApi(e)));
+      ..addAll(data.map(Patient.fromApi));
+  }
+
+  // Un médico solo debe ver los pacientes que tienen citas o consultas a su nombre.
+  void _scopePatientsToMedico() {
+    final mine = <String>{
+      for (final a in _appointments) a.patientId,
+      for (final c in _consults) c.patientId,
+    };
+    _patients.removeWhere((p) => !mine.contains(p.id));
   }
 
   Future<void> _loadCitas() async {
-    final res = await _api.getJson('/citas', token: _token);
-    final data = _asList(res);
+    final data = await _fs.getList(
+      'citas',
+      scopeField: _isMedico ? 'medico_id' : null,
+      scopeValue: _isMedico ? _uid : null,
+      orderBy: 'fecha',
+    );
     _appointments
       ..clear()
-      ..addAll(data.map((e) => Appointment.fromApi(e)));
+      ..addAll(data.map(Appointment.fromApi));
   }
 
   Future<void> _loadConsultas() async {
-    final res = await _api.getJson('/consultas', token: _token);
-    final data = _asList(res);
+    final data = await _fs.getList(
+      'consultas',
+      scopeField: _isMedico ? 'medico_id' : null,
+      scopeValue: _isMedico ? _uid : null,
+      orderBy: 'fecha',
+    );
     _consults
       ..clear()
-      ..addAll(data.map((e) => ConsultRecord.fromApi(e)));
+      ..addAll(data.map(ConsultRecord.fromApi));
   }
 
   Future<void> _loadPagos() async {
-    final res = await _api.getJson('/pagos', token: _token);
-    final data = _asList(res);
+    final data = await _fs.getList(
+      'pagos',
+      scopeField: _isMedico ? 'medico_id' : null,
+      scopeValue: _isMedico ? _uid : null,
+      orderBy: 'fecha_pago',
+    );
     _payments
       ..clear()
-      ..addAll(data.map((e) => Payment.fromApi(e)));
+      ..addAll(data.map(Payment.fromApi));
   }
 
-  List<Map<String, dynamic>> _asList(ApiResult<Map<String, dynamic>> res) {
-    if (!res.isSuccess) return const [];
-    final payload = res.data!['data'];
-    if (payload is List) return payload.cast<Map<String, dynamic>>();
-    return const [];
-  }
-
-  String _resolveSpecialtyId(String nombre) {
-    final n = nombre.toLowerCase();
-    for (final s in _specialties) {
-      if (s.name.toLowerCase() == n) return s.id;
-    }
-    // Especialidad no catalogada: la creamos sobre la marcha para no romper
-    // los helpers de resolución por id.
-    final id = 'sp_${nombre.replaceAll(' ', '_').toLowerCase()}';
-    if (_specialties.every((s) => s.id != id)) {
-      _specialties.add(Specialty(
-        id: id,
-        name: nombre,
-        description: '',
-        icon: Specialty.iconForName(nombre),
-        color: const Color(0xFF0D9488),
-      ));
-    }
-    return id;
-  }
+  final Map<String, DoctorSchedule> _schedules = {};
 
   static String _shortDay(String dia) {
     const map = {
@@ -241,6 +249,7 @@ class ClinicProvider extends ChangeNotifier {
           p.phone.contains(q);
     }).toList();
   }
+
   String specialtyNameOf(String doctorId) =>
       specialtyById(doctorById(doctorId).specialtyId).name;
 
@@ -327,80 +336,110 @@ class ClinicProvider extends ChangeNotifier {
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  // ---- Mutaciones (persisten en la BD vía API) ----------------------------
+  // ---- Mutaciones (persisten en Firestore) -------------------------------
   Future<Patient?> addPatient(Patient p) async {
-    final res = await _api.postJson('/pacientes', p.toApiJson(), token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      final id = await _fs.add('pacientes', p.toApiJson());
+      final created = Patient.fromApi({...p.toApiJson(), 'id': id});
+      _patients.add(created);
+      notifyListeners();
+      return created;
+    } catch (e) {
+      _error = e.toString();
       notifyListeners();
       return null;
     }
-    final created = Patient.fromApi(res.data!['data'] as Map<String, dynamic>);
-    _patients.add(created);
-    notifyListeners();
-    return created;
   }
 
   Future<String?> updatePatient(Patient p) async {
-    final res = await _api.putJson('/pacientes/${p.id}', p.toApiJson(), token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      await _fs.update('pacientes', p.id, p.toApiJson());
+      final i = _patients.indexWhere((x) => x.id == p.id);
+      if (i >= 0) _patients[i] = p;
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    final updated = Patient.fromApi(res.data!['data'] as Map<String, dynamic>);
-    final i = _patients.indexWhere((x) => x.id == p.id);
-    if (i >= 0) _patients[i] = updated;
-    notifyListeners();
-    return null;
   }
 
   Future<Doctor?> addDoctor(Doctor d) async {
-    final especialidad = specialtyById(d.specialtyId).name;
-    final res = await _api.postJson('/medicos', d.toApiJson(especialidad: especialidad),
-        token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    final data = {
+      'nombre': d.name.split(' ').first,
+      'apellido': d.name.split(' ').skip(1).join(' '),
+      'especialidad_id': d.specialtyId,
+      'activo': d.active,
+    };
+    try {
+      final id = await _fs.add('medicos', data);
+      final created = Doctor(
+        id: id,
+        name: d.name,
+        specialtyId: d.specialtyId,
+        description: d.description,
+        yearsExperience: d.yearsExperience,
+        schedule: d.schedule,
+        active: d.active,
+        title: d.title,
+      );
+      _doctors.add(created);
+      notifyListeners();
+      return created;
+    } catch (e) {
+      _error = e.toString();
       notifyListeners();
       return null;
     }
-    final created = Doctor.fromApi(res.data!['data'] as Map<String, dynamic>,
-        specialtyId: d.specialtyId);
-    _doctors.add(created);
-    notifyListeners();
-    return created;
   }
 
   Future<String?> updateDoctor(Doctor d) async {
-    final especialidad = specialtyById(d.specialtyId).name;
-    final res = await _api.putJson('/medicos/${d.id}', d.toApiJson(especialidad: especialidad),
-        token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    final data = {
+      'nombre': d.name.split(' ').first,
+      'apellido': d.name.split(' ').skip(1).join(' '),
+      'especialidad_id': d.specialtyId,
+      'activo': d.active,
+    };
+    try {
+      await _fs.update('medicos', d.id, data);
+      final i = _doctors.indexWhere((x) => x.id == d.id);
+      if (i >= 0) {
+        _doctors[i] = Doctor(
+          id: d.id,
+          name: d.name,
+          specialtyId: d.specialtyId,
+          description: d.description,
+          yearsExperience: d.yearsExperience,
+          schedule: d.schedule,
+          active: d.active,
+          title: d.title,
+        );
+      }
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    final updated = Doctor.fromApi(res.data!['data'] as Map<String, dynamic>,
-        specialtyId: d.specialtyId);
-    final i = _doctors.indexWhere((x) => x.id == d.id);
-    if (i >= 0) _doctors[i] = updated;
-    notifyListeners();
-    return null;
   }
 
   Future<String?> toggleDoctorActive(String id) async {
-    final res = await _api.patchJson('/medicos/$id/estado', {}, token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      final target = doctorById(id);
+      await _fs.update('medicos', id, {'activo': !target.active});
+      final i = _doctors.indexWhere((x) => x.id == id);
+      if (i >= 0) {
+        _doctors[i] = _doctors[i].copyWith(active: !_doctors[i].active);
+      }
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    final updated = Doctor.fromApi(res.data!['data'] as Map<String, dynamic>,
-        specialtyId: doctorById(id).specialtyId);
-    final i = _doctors.indexWhere((x) => x.id == id);
-    if (i >= 0) _doctors[i] = updated;
-    notifyListeners();
-    return null;
   }
 
   Future<String?> bookAppointment({
@@ -410,116 +449,130 @@ class ClinicProvider extends ChangeNotifier {
     required String time,
     required String reason,
   }) async {
+    final medicoId = _isMedico ? (_uid ?? doctorId) : doctorId;
     final body = {
-      'paciente_id': int.tryParse(patientId) ?? patientId,
-      'medico_id': int.tryParse(doctorId) ?? doctorId,
+      'paciente_id': patientId,
+      'medico_id': medicoId,
       'fecha': _fmt(date),
       'hora': time,
       'motivo': reason,
+      'estado': AppointmentStatus.pendiente.toApi(),
     };
-    final res = await _api.postJson('/citas', body, token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      final id = await _fs.add('citas', body);
+      _appointments.add(Appointment.fromApi({...body, 'id': id}));
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    _appointments
-        .add(Appointment.fromApi(res.data!['data'] as Map<String, dynamic>));
-    notifyListeners();
-    return null;
   }
 
   Future<String?> setAppointmentStatus(String id, AppointmentStatus status) async {
-    final res = await _api.patchJson('/citas/$id/estado', {'estado': status.toApi()},
-        token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      await _fs.update('citas', id, {'estado': status.toApi()});
+      final i = _appointments.indexWhere((a) => a.id == id);
+      if (i >= 0) {
+        _appointments[i] = _appointments[i].copyWith(status: status);
+      }
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    final i = _appointments.indexWhere((a) => a.id == id);
-    if (i >= 0) {
-      _appointments[i] = _appointments[i].copyWith(status: status);
-    }
-    notifyListeners();
-    return null;
   }
 
   Future<String?> cancelAppointment(String id) async {
-    final res = await _api.deleteJson('/citas/$id', token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      await _fs.update('citas', id, {'estado': AppointmentStatus.cancelada.toApi()});
+      final i = _appointments.indexWhere((a) => a.id == id);
+      if (i >= 0) {
+        _appointments[i] =
+            _appointments[i].copyWith(status: AppointmentStatus.cancelada);
+      }
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    final i = _appointments.indexWhere((a) => a.id == id);
-    if (i >= 0) {
-      _appointments[i] = _appointments[i].copyWith(status: AppointmentStatus.cancelada);
-    }
-    notifyListeners();
-    return null;
   }
 
   Future<String?> rescheduleAppointment(String id, DateTime date, String time) async {
-    final res = await _api.putJson('/citas/$id', {'fecha': _fmt(date), 'hora': time},
-        token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      await _fs.update('citas', id, {
+        'fecha': _fmt(date),
+        'hora': time,
+        'estado': AppointmentStatus.pendiente.toApi(),
+      });
+      final i = _appointments.indexWhere((a) => a.id == id);
+      if (i >= 0) {
+        _appointments[i] = _appointments[i].copyWith(
+            date: date, time: time, status: AppointmentStatus.pendiente);
+      }
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    final i = _appointments.indexWhere((a) => a.id == id);
-    if (i >= 0) {
-      _appointments[i] = _appointments[i].copyWith(
-          date: date, time: time, status: AppointmentStatus.pendiente);
-    }
-    notifyListeners();
-    return null;
   }
 
   Future<String?> addConsult(ConsultRecord c) async {
-    final res = await _api.postJson('/consultas', c.toApiJson(), token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      final data = {...c.toApiJson()};
+      if (_isMedico) data['medico_id'] = _uid;
+      final id = await _fs.add('consultas', data);
+      _consults.add(ConsultRecord.fromApi({...data, 'id': id}));
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    _consults.add(ConsultRecord.fromApi(res.data!['data'] as Map<String, dynamic>));
-    notifyListeners();
-    return null;
   }
 
   Future<String?> addPayment(Payment p) async {
     final body = {
-      'paciente_id': int.tryParse(p.patientId) ?? p.patientId,
-      'cita_id': p.appointmentId.isNotEmpty ? (int.tryParse(p.appointmentId) ?? p.appointmentId) : null,
+      'paciente_id': p.patientId,
+      'cita_id': p.appointmentId,
       'monto': p.amount,
       'metodo_pago': p.method.toApi(),
-      'descripcion': '',
+      'estado': p.status.toApi(),
+      'fecha_pago': _fmt(p.date),
+      if (_isMedico) 'medico_id': _uid,
     };
-    final res = await _api.postJson('/pagos', body, token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      final id = await _fs.add('pagos', body);
+      _payments.add(Payment.fromApi({...body, 'id': id}));
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    _payments.add(Payment.fromApi(res.data!['data'] as Map<String, dynamic>));
-    notifyListeners();
-    return null;
   }
 
   Future<String?> setPaymentStatus(String id, PaymentStatus status) async {
-    final res = await _api.patchJson('/pagos/$id/estado', {'estado': status.toApi()},
-        token: _token);
-    if (!res.isSuccess) {
-      _error = res.error;
+    try {
+      await _fs.update('pagos', id, {'estado': status.toApi()});
+      final i = _payments.indexWhere((x) => x.id == id);
+      if (i >= 0) _payments[i] = _payments[i].copyWith(status: status);
       notifyListeners();
-      return res.error;
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
     }
-    final i = _payments.indexWhere((x) => x.id == id);
-    if (i >= 0) _payments[i] = _payments[i].copyWith(status: status);
-    notifyListeners();
-    return null;
   }
 
   // ---- Estadísticas (Dashboard) -------------------------------------------
@@ -527,40 +580,46 @@ class ClinicProvider extends ChangeNotifier {
   int get totalDoctors => _doctors.length;
   int get activeDoctorCount => activeDoctors.length;
   int get appointmentsToday => appointmentsOfDay(DateTime.now()).length;
-  int countByStatus(AppointmentStatus s) => _appointments.where((a) => a.status == s).length;
+  int countByStatus(AppointmentStatus s) =>
+      _appointments.where((a) => a.status == s).length;
   int countByStatusToday(AppointmentStatus s) =>
       appointmentsOfDay(DateTime.now()).where((a) => a.status == s).length;
   double get totalIncome => _payments
       .where((p) => p.status == PaymentStatus.pagado)
-      .fold(0, (sum, p) => sum + p.amount);
-  int get pendingPayments => _payments.where((p) => p.status == PaymentStatus.pendiente).length;
+      .fold(0, (acc, p) => acc + p.amount);
+  int get pendingPayments =>
+      _payments.where((p) => p.status == PaymentStatus.pendiente).length;
 
-  int citasEnRango(DateTime desde, DateTime hasta, {String? doctorId}) => _appointments
-      .where((a) {
+  int citasEnRango(DateTime desde, DateTime hasta, {String? doctorId}) =>
+      _appointments.where((a) {
         final inRange = !a.date.isBefore(desde) && !a.date.isAfter(hasta);
         if (!inRange) return false;
         if (doctorId != null && a.doctorId != doctorId) return false;
         return true;
-      })
-      .length;
+      }).length;
 
-  int citasPorEstadoEnRango(DateTime desde, DateTime hasta, AppointmentStatus s) => _appointments
-      .where((a) =>
-          a.status == s && !a.date.isBefore(desde) && !a.date.isAfter(hasta))
-      .length;
+  int citasPorEstadoEnRango(DateTime desde, DateTime hasta, AppointmentStatus s) =>
+      _appointments
+          .where((a) =>
+              a.status == s &&
+              !a.date.isBefore(desde) &&
+              !a.date.isAfter(hasta))
+          .length;
 
   double ingresosEnRango(DateTime desde, DateTime hasta) => _payments
       .where((p) =>
           p.status == PaymentStatus.pagado &&
           !p.date.isBefore(desde) &&
           !p.date.isAfter(hasta))
-      .fold(0, (sum, p) => sum + p.amount);
+      .fold(0, (acc, p) => acc + p.amount);
 
   Map<Doctor, int> citasPorDoctorEnRango(DateTime desde, DateTime hasta) {
     final map = <Doctor, int>{};
     for (final d in _doctors) {
       map[d] = _appointments.where((a) =>
-          a.doctorId == d.id && !a.date.isBefore(desde) && !a.date.isAfter(hasta)).length;
+          a.doctorId == d.id &&
+          !a.date.isBefore(desde) &&
+          !a.date.isAfter(hasta)).length;
     }
     return map;
   }

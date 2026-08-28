@@ -4,28 +4,49 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_table.dart';
-import '../../../core/widgets/responsive_row.dart';
+import '../../../core/widgets/page_header.dart';
 import '../../../data/models/doctor.dart';
 import '../../../state/clinic_provider.dart';
 import 'doctor_form_page.dart';
 
 /// Gestión de médicos (Ejercicio 7).
-class DoctorsPage extends StatelessWidget {
+class DoctorsPage extends StatefulWidget {
   const DoctorsPage({super.key});
+
+  @override
+  State<DoctorsPage> createState() => _DoctorsPageState();
+}
+
+class _DoctorsPageState extends State<DoctorsPage> {
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
+    final q = _search.text.trim().toLowerCase();
+    final doctors = q.isEmpty
+        ? clinic.doctors
+        : clinic.doctors.where((d) {
+            final s = clinic.specialtyById(d.specialtyId).name.toLowerCase();
+            return d.displayName.toLowerCase().contains(q) || s.contains(q);
+          }).toList();
     final isWide = MediaQuery.sizeOf(context).width >= 840;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
-        ResponsiveRow(
-          children: [
-            const Text(
-              'Profesionales del consultorio',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark),
-            ),
+        PageHeader(
+          title: 'Médicos',
+          subtitle: 'Profesionales del consultorio y sus especialidades.',
+          icon: Icons.medical_services_outlined,
+          count: clinic.doctors.length,
+          actions: [
             FilledButton.icon(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const DoctorFormPage()),
@@ -35,8 +56,17 @@ class DoctorsPage extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _search,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Buscar médico o especialidad',
+            prefixIcon: Icon(Icons.search),
+          ),
+        ),
         const SizedBox(height: 12),
-        if (clinic.doctors.isEmpty)
+        if (doctors.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 48),
             child: AppEmptyState(icon: Icons.medical_services_outlined, title: 'Sin médicos registrados'),
@@ -45,23 +75,17 @@ class DoctorsPage extends StatelessWidget {
           AppTable(
             headers: const ['Médico', 'Especialidad', 'Experiencia', 'Horario', 'Estado', ''],
             rows: [
-              for (final d in clinic.doctors)
+              for (final d in doctors)
                 [
                   TableText(d.displayName, bold: true),
                   TableText(clinic.specialtyById(d.specialtyId).name),
                   TableText('${d.yearsExperience} años'),
                   TableText(_scheduleSummary(d)),
-                  TableText(
-                    d.active ? 'Activo' : 'Inactivo',
-                    bold: true,
-                  ),
+                  TableText(d.active ? 'Activo' : 'Inactivo', bold: true),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Switch(
-                        value: d.active,
-                        onChanged: (_) => clinic.toggleDoctorActive(d.id),
-                      ),
+                      Switch(value: d.active, onChanged: (_) => clinic.toggleDoctorActive(d.id)),
                       IconButton(
                         tooltip: 'Editar',
                         icon: const Icon(Icons.edit_outlined, color: AppColors.muted),
@@ -75,7 +99,7 @@ class DoctorsPage extends StatelessWidget {
             ],
           )
         else
-          for (final d in clinic.doctors) _DoctorTile(doctor: d),
+          for (final d in doctors) _DoctorTile(doctor: d),
       ],
     );
   }

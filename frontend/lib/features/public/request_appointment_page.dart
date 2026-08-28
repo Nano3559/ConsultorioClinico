@@ -5,6 +5,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_formatters.dart';
 import '../../core/utils/app_validators.dart';
 import '../../data/models/patient.dart';
+import '../../data/models/user.dart';
+import '../../state/auth_provider.dart';
 import '../../state/clinic_provider.dart';
 
 /// Formulario público para solicitar una cita (Ejercicio 3).
@@ -38,8 +40,11 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   @override
   void initState() {
     super.initState();
+    final auth = context.read<AuthProvider>();
+    final isMedico = auth.currentUser?.role == UserRole.medico;
     _specialtyId = widget.specialtyId;
-    _doctorId = widget.doctorId;
+    // Un médico solo puede agendar citas para sí mismo (se ignora el param ?medico=).
+    _doctorId = isMedico ? auth.currentUser?.doctorId : widget.doctorId;
   }
 
   @override
@@ -57,13 +62,17 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
-    final doctors = clinic.doctors
-        .where((d) =>
-            d.active &&
-            (_specialtyId == null || d.specialtyId == _specialtyId))
-        .toList();
+    final auth = context.watch<AuthProvider>();
+    final isMedico = auth.currentUser?.role == UserRole.medico;
+    final doctors = isMedico
+        ? clinic.doctors.where((d) => d.id == _doctorId).toList()
+        : clinic.doctors
+            .where((d) =>
+                d.active &&
+                (_specialtyId == null || d.specialtyId == _specialtyId))
+            .toList();
     // Mantener el médico seleccionado coherente con la especialidad.
-    if (_doctorId != null && !doctors.any((d) => d.id == _doctorId)) {
+    if (!isMedico && _doctorId != null && !doctors.any((d) => d.id == _doctorId)) {
       _doctorId = null;
     }
     final slots = _doctorId == null ? const <String>[] : clinic.availableSlots(_doctorId!, _date);
@@ -131,15 +140,20 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: _doctorId,
-                    decoration: const InputDecoration(labelText: 'Médico'),
+                    decoration: InputDecoration(
+                      labelText: 'Médico',
+                      helperText: isMedico ? 'Solo puedes agendar citas para ti.' : null,
+                    ),
                     items: [
                       for (final d in doctors)
                         DropdownMenuItem(value: d.id, child: Text(d.displayName)),
                     ],
-                    onChanged: (v) => setState(() {
-                      _doctorId = v;
-                      _time = null;
-                    }),
+                    onChanged: isMedico
+                        ? null
+                        : (v) => setState(() {
+                              _doctorId = v;
+                              _time = null;
+                            }),
                   ),
                   const SizedBox(height: 14),
                   Row(

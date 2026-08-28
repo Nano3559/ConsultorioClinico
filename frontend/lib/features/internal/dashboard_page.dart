@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_stat_card.dart';
 import '../../core/widgets/app_status_badge.dart';
+import '../../core/widgets/page_header.dart';
 import '../../state/clinic_provider.dart';
 
 /// Panel administrativo con resumen del consultorio (Ejercicio 10).
@@ -21,18 +22,10 @@ class DashboardPage extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
-        Text(
-          'Resumen del día',
-          style: TextStyle(
-            fontSize: isMobile ? 20 : 24,
-            fontWeight: FontWeight.w800,
-            color: AppColors.dark,
-          ),
-        ),
-        SizedBox(height: isMobile ? 2 : 4),
-        Text(
-          'Estado general del consultorio en tiempo real.',
-          style: TextStyle(color: AppColors.muted, fontSize: isMobile ? 13 : 14),
+        PageHeader(
+          title: 'Resumen del día',
+          subtitle: 'Estado general del consultorio en tiempo real.',
+          icon: Icons.dashboard_outlined,
         ),
         SizedBox(height: isMobile ? 12 : 20),
         LayoutBuilder(

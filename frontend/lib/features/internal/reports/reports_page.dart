@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_status_badge.dart';
+import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/payment.dart';
 import '../../../state/clinic_provider.dart';
@@ -63,9 +64,11 @@ class _ReportsPageState extends State<ReportsPage> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text('Reportes', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.dark)),
-        const SizedBox(height: 4),
-        const Text('Citas, ingresos y tendencias con filtros.', style: TextStyle(color: AppColors.muted)),
+        const PageHeader(
+          title: 'Reportes',
+          subtitle: 'Citas, ingresos y tendencias con filtros.',
+          icon: Icons.bar_chart_outlined,
+        ),
         const SizedBox(height: 16),
         _Filters(
           desde: _desde,
