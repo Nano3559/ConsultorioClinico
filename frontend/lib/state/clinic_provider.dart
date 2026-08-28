@@ -82,6 +82,8 @@ class ClinicProvider extends ChangeNotifier {
       await _loadCitas();
       await _loadConsultas();
       await _loadPagos();
+
+      if (_isMedico) _scopePatientsToMedico();
     } catch (e) {
       _error = 'No se pudo cargar la información. Revisa tu conexión.';
     } finally {
@@ -139,6 +141,15 @@ class ClinicProvider extends ChangeNotifier {
     _patients
       ..clear()
       ..addAll(data.map(Patient.fromApi));
+  }
+
+  // Un médico solo debe ver los pacientes que tienen citas o consultas a su nombre.
+  void _scopePatientsToMedico() {
+    final mine = <String>{
+      for (final a in _appointments) a.patientId,
+      for (final c in _consults) c.patientId,
+    };
+    _patients.removeWhere((p) => !mine.contains(p.id));
   }
 
   Future<void> _loadCitas() async {

@@ -5,6 +5,8 @@ import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_status_badge.dart';
+import '../../../data/models/user.dart';
+import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
 import 'patient_form_page.dart';
 import '../clinical/consult_form_page.dart';
@@ -17,8 +19,21 @@ class PatientDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
     final clinic = context.watch<ClinicProvider>();
     final patient = clinic.patientById(patientId);
+    final isMedico = auth.currentUser?.role == UserRole.medico;
+    final authorized = !isMedico || clinic.patients.any((p) => p.id == patientId);
+    if (!authorized) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Acceso restringido')),
+        body: const AppEmptyState(
+          icon: Icons.lock_outline,
+          title: 'Paciente no asignado',
+          subtitle: 'Solo puedes ver pacientes con citas o consultas a tu nombre.',
+        ),
+      );
+    }
     return DefaultTabController(
       length: 3,
       child: Scaffold(
