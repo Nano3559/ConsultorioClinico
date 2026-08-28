@@ -8,6 +8,8 @@ import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/consult_record.dart';
+import '../../../data/models/user.dart';
+import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
 import '../clinical/consult_form_page.dart';
 
@@ -33,6 +35,7 @@ class _ConsultsPageState extends State<ConsultsPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
+    final isMedico = context.watch<AuthProvider>().currentUser?.role == UserRole.medico;
     final q = _search.text.trim().toLowerCase();
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 840;
@@ -75,18 +78,19 @@ class _ConsultsPageState extends State<ConsultsPage> {
         const SizedBox(height: 12),
         ResponsiveRow(
           children: [
-            DropdownButtonFormField<String?>(
-              initialValue: _doctorFilter,
-              isDense: true,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Filtrar por médico'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Todos los médicos')),
-                for (final d in clinic.activeDoctors)
-                  DropdownMenuItem(value: d.id, child: Text(d.displayName)),
-              ],
-              onChanged: (v) => setState(() => _doctorFilter = v),
-            ),
+            if (!isMedico)
+              DropdownButtonFormField<String?>(
+                initialValue: _doctorFilter,
+                isDense: true,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Filtrar por médico'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Todos los médicos')),
+                  for (final d in clinic.activeDoctors)
+                    DropdownMenuItem(value: d.id, child: Text(d.displayName)),
+                ],
+                onChanged: (v) => setState(() => _doctorFilter = v),
+              ),
           ],
         ),
         const SizedBox(height: 12),
