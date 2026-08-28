@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
+import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_table.dart';
+import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/consult_record.dart';
 import '../../../state/clinic_provider.dart';
@@ -20,21 +22,57 @@ class ConsultsPage extends StatefulWidget {
 
 class _ConsultsPageState extends State<ConsultsPage> {
   String? _doctorFilter;
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
+    final q = _search.text.trim().toLowerCase();
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 840;
+    final isMobile = width < 700;
     final list = clinic.consults.where((c) {
       if (_doctorFilter != null && c.doctorId != _doctorFilter) return false;
+      if (q.isNotEmpty) {
+        final hay = '${clinic.patientName(c.patientId)} ${c.motivo} ${c.diagnostico}'.toLowerCase();
+        if (!hay.contains(q)) return false;
+      }
       return true;
     }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
+        PageHeader(
+          title: 'Consultas',
+          subtitle: 'Historia clínica y registro de atenciones.',
+          icon: Icons.medical_information_outlined,
+          count: clinic.consults.length,
+          actions: [
+            FilledButton.icon(
+              onPressed: () => _registerConsult(context, clinic),
+              icon: const Icon(Icons.add),
+              label: const Text('Registrar consulta'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _search,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Buscar paciente, motivo o diagnóstico',
+            prefixIcon: Icon(Icons.search),
+          ),
+        ),
+        const SizedBox(height: 12),
         ResponsiveRow(
           children: [
             DropdownButtonFormField<String?>(
@@ -48,11 +86,6 @@ class _ConsultsPageState extends State<ConsultsPage> {
                   DropdownMenuItem(value: d.id, child: Text(d.displayName)),
               ],
               onChanged: (v) => setState(() => _doctorFilter = v),
-            ),
-            FilledButton.icon(
-              onPressed: () => _registerConsult(context, clinic),
-              icon: const Icon(Icons.add),
-              label: const Text('Registrar consulta'),
             ),
           ],
         ),
@@ -81,22 +114,7 @@ class _ConsultsPageState extends State<ConsultsPage> {
             ],
           )
         else
-          for (final c in list)
-            Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              child: ListTile(
-                leading: const Icon(Icons.medical_information_outlined, color: AppColors.primary),
-                title: Text(clinic.patientName(c.patientId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                subtitle: Text(
-                  '${AppFormatters.shortDate(c.date)} · ${clinic.doctorName(c.doctorId)}\n${c.motivo}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                isThreeLine: true,
-                trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
-                onTap: () => _showDetail(context, clinic, c),
-              ),
-            ),
+          for (final c in list) _ConsultTile(record: c, onTap: () => _showDetail(context, clinic, c)),
       ],
     );
   }
@@ -160,6 +178,58 @@ class _ConsultsPageState extends State<ConsultsPage> {
             child: const Text('Continuar'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ConsultTile extends StatelessWidget {
+  const _ConsultTile({required this.record, required this.onTap});
+
+  final ConsultRecord record;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final clinic = context.read<ClinicProvider>();
+    final c = record;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            AppAvatar(name: clinic.patientName(c.patientId), radius: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    clinic.patientName(c.patientId),
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark, fontSize: 15),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${AppFormatters.shortDate(c.date)} · ${clinic.doctorName(c.doctorId)}',
+                    style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    c.motivo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: AppColors.dark),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.chevron_right, color: AppColors.muted),
+              onPressed: onTap,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_table.dart';
+import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/payment.dart';
 import '../../../data/mock/mock_data.dart';
@@ -19,36 +20,42 @@ class PaymentsPage extends StatefulWidget {
 
 class _PaymentsPageState extends State<PaymentsPage> {
   PaymentStatus? _filter;
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
-    final list = clinic.payments
-        .where((p) => _filter == null || p.status == _filter)
-        .toList()
+    final q = _search.text.trim().toLowerCase();
+    final list = clinic.payments.where((p) {
+      if (_filter != null && p.status != _filter) return false;
+      if (q.isNotEmpty) {
+        final hay = '${clinic.patientName(p.patientId)} ${clinic.doctorName(p.doctorId)} ${p.method.label}'.toLowerCase();
+        if (!hay.contains(q)) return false;
+      }
+      return true;
+    }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
     final total = clinic.payments
         .where((p) => p.status == PaymentStatus.pagado)
         .fold<double>(0, (s, p) => s + p.amount);
     final isWide = MediaQuery.sizeOf(context).width >= 840;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
-        ResponsiveRow(
-          children: [
-            DropdownButtonFormField<PaymentStatus?>(
-              initialValue: _filter,
-              isDense: true,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Estado'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Todos')),
-                for (final s in PaymentStatus.values)
-                  DropdownMenuItem(value: s, child: Text(s.label)),
-              ],
-              onChanged: (v) => setState(() => _filter = v),
-            ),
+        PageHeader(
+          title: 'Pagos',
+          subtitle: 'Registro de cobros del consultorio.',
+          icon: Icons.payments_outlined,
+          count: clinic.payments.length,
+          actions: [
             FilledButton.icon(
               onPressed: () => _registerPayment(context, clinic),
               icon: const Icon(Icons.add),
@@ -56,12 +63,12 @@ class _PaymentsPageState extends State<PaymentsPage> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.successBg,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             children: [
@@ -76,6 +83,32 @@ class _PaymentsPageState extends State<PaymentsPage> {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _search,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Buscar paciente, médico o método',
+            prefixIcon: Icon(Icons.search),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ResponsiveRow(
+          children: [
+            DropdownButtonFormField<PaymentStatus?>(
+              initialValue: _filter,
+              isDense: true,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Estado'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Todos')),
+                for (final s in PaymentStatus.values)
+                  DropdownMenuItem(value: s, child: Text(s.label)),
+              ],
+              onChanged: (v) => setState(() => _filter = v),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (list.isEmpty)
