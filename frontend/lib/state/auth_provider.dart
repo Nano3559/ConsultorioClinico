@@ -237,7 +237,7 @@ class AuthProvider extends ChangeNotifier {
         'rol': 'medico',
         'perfilTipo': 'medico',
         'perfilId': uid,
-        'activo': false,
+        'activo': true,
         'creadoEn': FieldValue.serverTimestamp(),
       });
       await secondary.sendPasswordResetEmail(
