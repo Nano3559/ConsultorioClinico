@@ -85,9 +85,13 @@ class ClinicProvider extends ChangeNotifier {
       await _loadHorarios();
       await _loadMedicos();
       await _loadPacientes();
-      await _loadCitas();
-      await _loadConsultas();
-      await _loadPagos();
+
+      // Las citas/consultas/pagos son privadas: solo se cargan con sesion.
+      if (_uid != null) {
+        await _loadCitas();
+        await _loadConsultas();
+        await _loadPagos();
+      }
 
       if (_isMedico) _scopePatientsToMedico();
     } catch (e) {
@@ -112,6 +116,7 @@ class ClinicProvider extends ChangeNotifier {
       await _loadEspecialidades();
       await _loadHorarios();
       await _loadMedicos();
+      await _loadPacientes();
     } catch (e) {
       _error = 'No se pudo cargar el catálogo. Revisa tu conexión.';
     } finally {

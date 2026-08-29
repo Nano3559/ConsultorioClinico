@@ -179,9 +179,12 @@ class AuthProvider extends ChangeNotifier {
         password: patientPassword(p.ci, p.birthDate),
       );
       final uid = cred.user!.uid;
+      // Escribir los perfiles con la app secundaria (autenticada como el nuevo
+      // paciente) para cumplir las reglas de Firestore.
+      final fs = FirebaseFirestore.instanceFor(app: secondary.app);
       final data = {...p.toApiJson(), 'id': uid, 'uid': uid};
-      await _db.collection('pacientes').doc(uid).set(data);
-      await _db.collection('usuarios').doc(uid).set({
+      await fs.collection('pacientes').doc(uid).set(data);
+      await fs.collection('usuarios').doc(uid).set({
         'uid': uid,
         'nombre': p.fullName,
         'email': patientEmail(p.ci),

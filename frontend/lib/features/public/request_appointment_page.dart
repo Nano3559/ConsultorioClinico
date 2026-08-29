@@ -136,7 +136,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(flex: 1, child: _field(_ci, 'CI', AppValidators.ci)),
+                      Expanded(flex: 1, child: _field(_ci, 'CI', AppValidators.ci, onChanged: _onCiChanged)),
                       const SizedBox(width: 12),
                       Expanded(flex: 2, child: _field(_phone, 'Teléfono', AppValidators.phone)),
                     ],
@@ -255,13 +255,38 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   Widget _field(
     TextEditingController c,
     String label,
-    String? Function(String?) validator,
-  ) {
+    String? Function(String?) validator, {
+    void Function(String)? onChanged,
+  }) {
     return TextFormField(
       controller: c,
       decoration: InputDecoration(labelText: label),
       validator: validator,
+      onChanged: onChanged,
     );
+  }
+
+  /// Si el CI ya existe, autocompleta los datos del paciente.
+  void _onCiChanged(String value) {
+    final ci = value.trim().toLowerCase();
+    if (ci.isEmpty) return;
+    final list = context.read<ClinicProvider>().patients;
+    Patient? found;
+    for (final p in list) {
+      if (p.ci.trim().toLowerCase() == ci) {
+        found = p;
+        break;
+      }
+    }
+    if (found != null) {
+      _name.text = found.firstName;
+      _lastName.text = found.lastName;
+      _phone.text = found.phone;
+      _email.text = found.email;
+      _birthDate = found.birthDate;
+      _birth.text = AppFormatters.shortDate(found.birthDate);
+      setState(() {});
+    }
   }
 
   Widget _birthField() {
@@ -350,7 +375,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     // Pequeña pausa simulando la verificación en el servidor.
     await Future<void>.delayed(const Duration(milliseconds: 600));
 
-    // Buscar paciente existente por CI (solo si hay sesión cargada).
+    // Buscar paciente existente por CI (catálogo público, sin sesión).
     Patient? existing;
     for (final p in clinic.patients) {
       if (p.ci.trim().toLowerCase() == _ci.text.trim().toLowerCase()) {
@@ -361,16 +386,8 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
 
     String patientId;
     if (existing != null) {
+      // Paciente ya registrado: se agenda usando su id, sin requerir login.
       patientId = existing.id;
-      if (!staff) {
-        final err = await auth.loginPatient(_ci.text.trim(), _birthDate!);
-        if (err != null) {
-          if (!mounted) return;
-          setState(() => _submitting = false);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
-          return;
-        }
-      }
     } else {
       final nuevo = Patient(
         id: '',

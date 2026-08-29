@@ -35,9 +35,13 @@ service cloud.firestore {
     }
 
     // ---- Pacientes (datos demograficos) ----
+    // NOTA: se permite lectura publica para habilitar el autocompletado por CI
+    // en "Solicitar cita" sin sesion. Expone datos personales (CI, nombre,
+    // nacimiento, correo, telefono); para produccion conviene mover esta
+    // logica a una Cloud Function (plan Blaze) en lugar de lectura directa.
     match /pacientes/{pacienteId} {
-      allow read: if isSignedIn() && (request.auth.uid == pacienteId || isStaff());
-      allow write: if isStaff();
+      allow read: if true;
+      allow write: if isStaff() || (isSignedIn() && request.auth.uid == pacienteId);
     }
 
     // ---- Especialidades (catalogo publico) ----
@@ -47,10 +51,15 @@ service cloud.firestore {
     }
 
     // ---- Citas ----
+    // La creacion es publica para permitir "Solicitar cita" sin login. Se valida
+    // la presencia de los campos obligatorios. Para produccion, restringir con
+    // una Cloud Function que verifique al paciente.
     match /citas/{citaId} {
-      allow create: if isAdmin()
-                    || isStaff()
-                    || (isSignedIn() && request.resource.data.paciente_id == request.auth.uid);
+      allow create: if request.resource.data.keys().hasAll(['paciente_id','medico_id','fecha','hora','estado'])
+                    && request.resource.data.paciente_id is string
+                    && request.resource.data.paciente_id != ''
+                    && request.resource.data.medico_id is string
+                    && request.resource.data.medico_id != '';
       allow read, update, delete: if isAdmin()
                     || (isStaff() && resource.data.medico_id == request.auth.uid)
                     || (resource.data.paciente_id == request.auth.uid);
@@ -81,10 +90,10 @@ service cloud.firestore {
     // ---- Disponibilidad (turnos ocupados; sin datos de paciente, legible publicamente) ----
     // El id del documento es deterministico: "{medico_id}__{fecha}__{hora}".
     // La regla de create impide crear un turno ya existente => no hay doble reserva.
+    // El create es publico para que "Solicitar cita" funcione sin sesion.
     match /disponibilidad/{id} {
       allow read: if true;
-      allow create: if isSignedIn()
-        && !exists(/databases/$(database)/documents/disponibilidad/$(id));
+      allow create: if !exists(/databases/$(database)/documents/disponibilidad/$(id));
       allow update: if false;
       allow delete: if isAdmin()
         || isStaff()
