@@ -351,9 +351,13 @@ class ClinicProvider extends ChangeNotifier {
       .toList()
     ..sort((a, b) => b.date.compareTo(a.date));
 
-  Payment paymentOfAppointment(String appointmentId) => _payments.firstWhere(
-      (p) => p.appointmentId == appointmentId,
-      orElse: () => _payments.first);
+  /// Devuelve el pago vinculado a una cita, o null si no tiene.
+  Payment? paymentOfAppointment(String appointmentId) {
+    for (final p in _payments) {
+      if (p.appointmentId == appointmentId) return p;
+    }
+    return null;
+  }
 
   // ---- Disponibilidad ------------------------------------------------------
   bool isSlotAvailable({

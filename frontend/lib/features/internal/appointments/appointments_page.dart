@@ -11,6 +11,7 @@ import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/appointment.dart';
 import '../../../data/models/consult_record.dart';
+import '../../../data/models/payment.dart';
 import '../../../state/clinic_provider.dart';
 import 'appointment_actions.dart';
 
@@ -113,7 +114,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
           )
         else if (isWide)
           AppTable(
-            headers: const ['Fecha', 'Hora', 'Paciente', 'Médico', 'Motivo', 'Tratamiento', 'Estado', ''],
+            headers: const ['Fecha', 'Hora', 'Paciente', 'Médico', 'Motivo', 'Tratamiento', 'Cobro', 'Estado', ''],
             rows: [
               for (final a in list) _appointmentRow(context, clinic, a),
             ],
@@ -135,6 +136,7 @@ class _AppointmentTile extends StatelessWidget {
     final clinic = context.read<ClinicProvider>();
     final a = appointment;
     final consulta = _consultaDe(clinic, a);
+    final pagado = clinic.paymentOfAppointment(a.id) != null;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     return Card(
       margin: EdgeInsets.only(bottom: isMobile ? 8 : 10),
@@ -166,24 +168,42 @@ class _AppointmentTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${AppFormatters.shortDate(a.date)} · ${a.time}',
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryBg,
-                        borderRadius: BorderRadius.circular(8),
+                    if (pagado)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.successBg,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Pagado',
+                          style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
                       ),
-                      child: Text(
-                        '${AppFormatters.shortDate(a.date)} · ${a.time}',
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark, fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
                     AppStatusBadge(status: a.status),
                   ],
                 ),
+              ],
+            ),
                 IconButton(
                   icon: const Icon(Icons.more_vert, color: AppColors.muted),
                   onPressed: () => showAppointmentActions(context, clinic, a),
@@ -218,6 +238,7 @@ ConsultRecord? _consultaDe(ClinicProvider clinic, Appointment a) {
 
 List<Widget> _appointmentRow(BuildContext context, ClinicProvider clinic, Appointment a) {
   final c = _consultaDe(clinic, a);
+  final pagado = clinic.paymentOfAppointment(a.id) != null;
   return [
     TableText(AppFormatters.shortDate(a.date)),
     TableText(a.time, bold: true),
@@ -225,6 +246,7 @@ List<Widget> _appointmentRow(BuildContext context, ClinicProvider clinic, Appoin
     TableText(clinic.doctorName(a.doctorId)),
     TableText(a.reason),
     TableText(c != null ? '${c.diagnostico} — ${c.tratamiento}' : '—'),
+    TableText(pagado ? 'Pagado' : 'Pendiente'),
     AppStatusBadge(status: a.status),
     IconButton(
       icon: const Icon(Icons.more_vert, color: AppColors.muted),

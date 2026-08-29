@@ -5,6 +5,7 @@ import '../../../core/widgets/app_status_badge.dart';
 import '../../../data/models/appointment.dart';
 import '../../../state/clinic_provider.dart';
 import '../clinical/consult_form_page.dart';
+import '../payments/payment_dialog.dart';
 
 /// Acciones disponibles para una cita según su estado (Ejercicio 8).
 void showAppointmentActions(
@@ -22,6 +23,8 @@ void showAppointmentActions(
       final alreadyDone = a.status == AppointmentStatus.atendida ||
           a.status == AppointmentStatus.cancelada ||
           a.status == AppointmentStatus.noAsistio;
+      final yaPagada = clinic.paymentOfAppointment(a.id) != null;
+      final puedeAtender = yaPagada || alreadyDone;
       return SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -49,11 +52,37 @@ void showAppointmentActions(
                     ),
                   ),
                   AppStatusBadge(status: a.status),
+                  if (yaPagada)
+                    Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.successBg,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Pagado',
+                        style: TextStyle(
+                          color: AppColors.success,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
             const Divider(height: 1),
             if (!alreadyDone) ...[
+              ListTile(
+                leading: const Icon(Icons.payments_outlined, color: AppColors.primary),
+                title: const Text('Cobrar cita'),
+                subtitle: const Text('Registra el pago antes de atender.'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  showRegisterPaymentDialog(context, clinic, appointment: a);
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.event_available, color: AppColors.info),
                 title: const Text('Confirmar cita'),
@@ -74,8 +103,19 @@ void showAppointmentActions(
             ListTile(
               leading: const Icon(Icons.medical_services_outlined, color: AppColors.primary),
               title: const Text('Registrar consulta'),
-              subtitle: const Text('Abre la historia clínica y registra la consulta.'),
+              subtitle: puedeAtender
+                  ? const Text('Abre la historia clínica y registra la consulta.')
+                  : const Text('Cancela la cita antes de atender.'),
               onTap: () {
+                if (!puedeAtender) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Primero registra el pago de la cita.'),
+                    ),
+                  );
+                  return;
+                }
                 Navigator.pop(ctx);
                 Navigator.of(context).push(
                   MaterialPageRoute(
