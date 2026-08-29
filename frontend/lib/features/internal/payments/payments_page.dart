@@ -194,75 +194,163 @@ class _PaymentsPageState extends State<PaymentsPage> {
     final isMedico = auth.currentUser?.role == UserRole.medico;
     String? patientId;
     String? doctorId = isMedico ? auth.currentUser?.doctorId : null;
-    double amount = MockData.consultPrice;
+    String? appointmentId;
+    final amountCtrl = TextEditingController(text: MockData.consultPrice.toStringAsFixed(2));
     PaymentMethod method = PaymentMethod.efectivo;
+    final formKey = GlobalKey<FormState>();
+
     showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) {
+          final citasDelPaciente = patientId == null
+              ? <dynamic>[]
+              : clinic.appointments.where((a) => a.patientId == patientId).toList();
+
           return AlertDialog(
-            title: const Text('Registrar pago'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String?>(
-                    initialValue: patientId,
-                    decoration: const InputDecoration(labelText: 'Paciente'),
-                    items: [
-                      for (final p in clinic.patients)
-                        DropdownMenuItem(value: p.id, child: Text(p.fullName)),
-                    ],
-                    onChanged: (v) => setState(() => patientId = v),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String?>(
-                    initialValue: doctorId,
-                    decoration: InputDecoration(
-                      labelText: 'Médico',
-                      helperText: isMedico ? 'El pago se registrará a tu nombre.' : null,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            titlePadding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            title: Row(
+              children: const [
+                Icon(Icons.payments_outlined, color: AppColors.primary),
+                SizedBox(width: 10),
+                Text('Registrar pago', style: TextStyle(fontWeight: FontWeight.w800)),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String?>(
+                      value: patientId,
+                      decoration: const InputDecoration(
+                        labelText: 'Paciente',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      hint: const Text('Selecciona un paciente'),
+                      items: [
+                        for (final p in clinic.patients)
+                          DropdownMenuItem(value: p.id, child: Text(p.fullName)),
+                      ],
+                      onChanged: (v) => setState(() {
+                        patientId = v;
+                        appointmentId = null;
+                      }),
+                      validator: (v) => v == null ? 'Selecciona un paciente' : null,
                     ),
-                    items: [
-                      for (final d in clinic.activeDoctors)
-                        DropdownMenuItem(value: d.id, child: Text(d.displayName)),
-                    ],
-                    onChanged: isMedico
-                        ? null
-                        : (v) => setState(() => doctorId = v),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    initialValue: amount.toStringAsFixed(0),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Monto'),
-                    onChanged: (v) => amount = double.tryParse(v) ?? 0,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<PaymentMethod>(
-                    initialValue: method,
-                    decoration: const InputDecoration(labelText: 'Método'),
-                    items: [
-                      for (final m in PaymentMethod.values)
-                        DropdownMenuItem(value: m, child: Text(m.label)),
-                    ],
-                    onChanged: (v) => setState(() => method = v!),
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String?>(
+                      value: doctorId,
+                      decoration: InputDecoration(
+                        labelText: 'Médico',
+                        prefixIcon: const Icon(Icons.medical_services_outlined),
+                        helperText: isMedico ? 'Se registrará a tu nombre' : null,
+                      ),
+                      items: [
+                        for (final d in clinic.activeDoctors)
+                          DropdownMenuItem(value: d.id, child: Text(d.displayName)),
+                      ],
+                      onChanged: isMedico ? null : (v) => setState(() => doctorId = v),
+                      validator: (v) => v == null ? 'Selecciona un médico' : null,
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String?>(
+                      value: appointmentId,
+                      decoration: const InputDecoration(
+                        labelText: 'Cita (opcional)',
+                        prefixIcon: Icon(Icons.event_outlined),
+                      ),
+                      hint: const Text('Sin cita específica'),
+                      items: [
+                        for (final a in citasDelPaciente)
+                          DropdownMenuItem(
+                            value: a.id,
+                            child: Text(
+                              '${AppFormatters.shortDate(a.date)} · ${a.time} — ${clinic.doctorName(a.doctorId)}',
+                            ),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() {
+                        appointmentId = v;
+                        if (v != null) {
+                          final a = clinic.appointments.firstWhere((x) => x.id == v);
+                          if (!isMedico) doctorId = a.doctorId;
+                          amountCtrl.text = MockData.consultPrice.toStringAsFixed(2);
+                        }
+                      }),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: amountCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Monto',
+                        prefixIcon: const Icon(Icons.attach_money),
+                        helperText: 'Precio de consulta: ${AppFormatters.money(MockData.consultPrice)}',
+                        hintText: '0.00',
+                      ),
+                      validator: (v) {
+                        final n = double.tryParse(v ?? '');
+                        if (n == null || n <= 0) return 'Monto inválido';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Método de pago',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.muted),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final m in PaymentMethod.values)
+                          ChoiceChip(
+                            selected: method == m,
+                            onSelected: (_) => setState(() => method = m),
+                            avatar: Icon(
+                              m.icon,
+                              size: 18,
+                              color: method == m ? Colors.white : AppColors.muted,
+                            ),
+                            label: Text(m.label),
+                            selectedColor: AppColors.primary,
+                            labelStyle: TextStyle(
+                              color: method == m ? Colors.white : AppColors.dark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-              FilledButton(
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton.icon(
+                icon: const Icon(Icons.check_circle_outline),
                 onPressed: () {
-                  if (patientId == null || doctorId == null || amount <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Completa los datos del pago')));
-                    return;
-                  }
+                  if (!formKey.currentState!.validate()) return;
+                  if (isMedico && doctorId == null) return;
+                  final amount = double.tryParse(amountCtrl.text) ?? 0;
                   clinic.addPayment(Payment(
                     id: 'pay${DateTime.now().millisecondsSinceEpoch}',
                     patientId: patientId!,
                     doctorId: doctorId!,
-                    appointmentId: '',
+                    appointmentId: appointmentId ?? '',
                     amount: amount,
                     date: DateTime.now(),
                     method: method,
@@ -270,7 +358,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                   ));
                   Navigator.pop(ctx);
                 },
-                child: const Text('Guardar'),
+                label: const Text('Guardar pago'),
               ),
             ],
           );
