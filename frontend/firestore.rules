@@ -61,7 +61,7 @@ service cloud.firestore {
                     && request.resource.data.medico_id is string
                     && request.resource.data.medico_id != '';
       allow read, update, delete: if isAdmin()
-                    || (isStaff() && resource.data.medico_id == request.auth.uid)
+                    || isStaff()
                     || (resource.data.paciente_id == request.auth.uid);
     }
 
@@ -69,7 +69,7 @@ service cloud.firestore {
     match /consultas/{id} {
       allow create: if isAdmin() || isStaff();
       allow read, update, delete: if isAdmin()
-                    || (isStaff() && resource.data.medico_id == request.auth.uid)
+                    || isStaff()
                     || (resource.data.paciente_id == request.auth.uid);
     }
 
@@ -77,7 +77,7 @@ service cloud.firestore {
     match /pagos/{id} {
       allow create: if isAdmin() || isStaff();
       allow read, update, delete: if isAdmin()
-                    || (isStaff() && resource.data.medico_id == request.auth.uid)
+                    || isStaff()
                     || (resource.data.paciente_id == request.auth.uid);
     }
 
