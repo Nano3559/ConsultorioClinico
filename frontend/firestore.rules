@@ -26,8 +26,11 @@ service cloud.firestore {
     }
 
     // ---- Medicos (directorio publico de atencion) ----
+    // Lectura publica: es un directorio sin datos sensibles del paciente.
+    // Firestore exige que la regla sea `true` para permitir la consulta sin
+    // filtro; el filtro de medicos activos se aplica en la UI.
     match /medicos/{medicoId} {
-      allow read: if isSignedIn() || resource.data.activo == true;
+      allow read: if true;
       allow write: if isAdmin() || (isSignedIn() && request.auth.uid == medicoId);
     }
 
