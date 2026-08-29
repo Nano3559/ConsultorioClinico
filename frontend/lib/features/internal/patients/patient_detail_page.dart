@@ -23,6 +23,7 @@ class PatientDetailPage extends StatelessWidget {
     final clinic = context.watch<ClinicProvider>();
     final patient = clinic.patientById(patientId);
     final isMedico = auth.currentUser?.role == UserRole.medico;
+    final puedeRegistrar = isMedico || auth.currentUser?.role == UserRole.admin;
     final authorized = !isMedico || clinic.patients.any((p) => p.id == patientId);
     if (!authorized) {
       return Scaffold(
@@ -47,13 +48,14 @@ class PatientDetailPage extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => PatientFormPage(patient: patient)),
               ),
             ),
-            IconButton(
-              tooltip: 'Nueva consulta',
-              icon: const Icon(Icons.add_box_outlined),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ConsultFormPage(patientId: patientId)),
+            if (puedeRegistrar)
+              IconButton(
+                tooltip: 'Nueva consulta',
+                icon: const Icon(Icons.add_box_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ConsultFormPage(patientId: patientId)),
+                ),
               ),
-            ),
           ],
           bottom: const TabBar(
             tabs: [

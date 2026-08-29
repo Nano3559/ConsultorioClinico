@@ -35,7 +35,9 @@ class _ConsultsPageState extends State<ConsultsPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
-    final isMedico = context.watch<AuthProvider>().currentUser?.role == UserRole.medico;
+    final auth = context.watch<AuthProvider>();
+    final rol = auth.currentUser?.role;
+    final puedeRegistrar = rol == UserRole.medico || rol == UserRole.admin;
     final q = _search.text.trim().toLowerCase();
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 840;
@@ -59,11 +61,12 @@ class _ConsultsPageState extends State<ConsultsPage> {
           icon: Icons.medical_information_outlined,
           count: clinic.consults.length,
           actions: [
-            FilledButton.icon(
-              onPressed: () => _registerConsult(context, clinic),
-              icon: const Icon(Icons.add),
-              label: const Text('Registrar consulta'),
-            ),
+            if (puedeRegistrar)
+              FilledButton.icon(
+                onPressed: () => _registerConsult(context, clinic),
+                icon: const Icon(Icons.add),
+                label: const Text('Registrar consulta'),
+              ),
           ],
         ),
         const SizedBox(height: 14),
@@ -78,7 +81,7 @@ class _ConsultsPageState extends State<ConsultsPage> {
         const SizedBox(height: 12),
         ResponsiveRow(
           children: [
-            if (!isMedico)
+            if (rol != UserRole.medico)
               DropdownButtonFormField<String?>(
                 initialValue: _doctorFilter,
                 isDense: true,

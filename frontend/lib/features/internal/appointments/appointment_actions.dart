@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_status_badge.dart';
 import '../../../data/models/appointment.dart';
+import '../../../data/models/user.dart';
+import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
 import '../clinical/consult_form_page.dart';
 import '../payments/payment_dialog.dart';
@@ -20,6 +23,10 @@ void showAppointmentActions(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) {
+      final auth = context.read<AuthProvider>();
+      final rol = auth.currentUser?.role;
+      final puedeRegistrarConsulta =
+          rol == UserRole.medico || rol == UserRole.admin;
       final alreadyDone = a.status == AppointmentStatus.atendida ||
           a.status == AppointmentStatus.cancelada ||
           a.status == AppointmentStatus.noAsistio;
@@ -100,33 +107,41 @@ void showAppointmentActions(
                 },
               ),
             ],
-            ListTile(
-              leading: const Icon(Icons.medical_services_outlined, color: AppColors.primary),
-              title: const Text('Registrar consulta'),
-              subtitle: puedeAtender
-                  ? const Text('Abre la historia clínica y registra la consulta.')
-                  : const Text('Cancela la cita antes de atender.'),
-              onTap: () {
-                if (!puedeAtender) {
+            if (puedeRegistrarConsulta)
+              ListTile(
+                leading: const Icon(Icons.medical_services_outlined, color: AppColors.primary),
+                title: const Text('Registrar consulta'),
+                subtitle: puedeAtender
+                    ? const Text('Abre la historia clínica y registra la consulta.')
+                    : const Text('Cancela la cita antes de atender.'),
+                onTap: () {
+                  if (!puedeAtender) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Primero registra el pago de la cita.'),
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Primero registra el pago de la cita.'),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ConsultFormPage(
+                        patientId: a.patientId,
+                        appointmentId: a.id,
+                      ),
                     ),
                   );
-                  return;
-                }
-                Navigator.pop(ctx);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ConsultFormPage(
-                      patientId: a.patientId,
-                      appointmentId: a.id,
-                    ),
-                  ),
-                );
-              },
-            ),
+                },
+              )
+            else
+              const ListTile(
+                enabled: false,
+                leading: Icon(Icons.medical_services_outlined, color: AppColors.muted),
+                title: Text('Registrar consulta'),
+                subtitle: Text('Solo el médico puede registrar la consulta.'),
+              ),
             if (!alreadyDone) ...[
               ListTile(
                 leading: const Icon(Icons.schedule_outlined, color: AppColors.warning),

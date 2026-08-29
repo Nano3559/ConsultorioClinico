@@ -66,8 +66,10 @@ service cloud.firestore {
     }
 
     // ---- Consultas (historia clinica) ----
+    // Solo el medico (o admin) puede crear/modificar la historia clinica.
+    // La recepcionista NO registra consultas: solo gestiona agenda y cobros.
     match /consultas/{id} {
-      allow create: if isAdmin() || isStaff();
+      allow create: if isAdmin() || (userRole() == 'medico');
       allow read, update, delete: if isAdmin()
                     || isStaff()
                     || (resource.data.paciente_id == request.auth.uid);
