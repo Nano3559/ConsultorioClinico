@@ -153,21 +153,31 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   const Text('Datos de la cita', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    initialValue: _specialtyId,
+                    value: clinic.specialties.any((s) => s.id == _specialtyId)
+                        ? _specialtyId
+                        : null,
                     decoration: const InputDecoration(labelText: 'Especialidad'),
                     items: [
                       for (final s in clinic.specialties)
                         DropdownMenuItem(value: s.id, child: Text(s.name)),
                     ],
-                    onChanged: (v) => setState(() {
-                      _specialtyId = v;
-                      _doctorId = null;
-                      _time = null;
-                    }),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      final matches = clinic.doctors
+                          .where((d) => d.active && d.specialtyId == v)
+                          .toList();
+                      final firstId = matches.isNotEmpty ? matches.first.id : null;
+                      setState(() {
+                        _specialtyId = v;
+                        _doctorId = firstId;
+                        _time = null;
+                      });
+                      _loadAvail();
+                    },
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    initialValue: _doctorId,
+                    value: doctors.any((d) => d.id == _doctorId) ? _doctorId : null,
                     decoration: InputDecoration(
                       labelText: 'Médico',
                       helperText: isMedico ? 'Solo puedes agendar citas para ti.' : null,
