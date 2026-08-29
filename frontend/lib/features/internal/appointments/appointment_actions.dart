@@ -79,7 +79,10 @@ void showAppointmentActions(
                 Navigator.pop(ctx);
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => ConsultFormPage(patientId: a.patientId),
+                    builder: (_) => ConsultFormPage(
+                      patientId: a.patientId,
+                      appointmentId: a.id,
+                    ),
                   ),
                 );
               },

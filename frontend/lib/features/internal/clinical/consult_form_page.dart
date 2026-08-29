@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/utils/app_validators.dart';
+import '../../../core/widgets/app_status_badge.dart';
+import '../../../data/models/appointment.dart';
 import '../../../data/models/consult_record.dart';
 import '../../../data/models/user.dart';
 import '../../../state/auth_provider.dart';
@@ -10,9 +12,10 @@ import '../../../state/clinic_provider.dart';
 
 /// Formulario para registrar una consulta médica (Ejercicio 6).
 class ConsultFormPage extends StatefulWidget {
-  const ConsultFormPage({super.key, required this.patientId});
+  const ConsultFormPage({super.key, required this.patientId, this.appointmentId});
 
   final String patientId;
+  final String? appointmentId;
 
   @override
   State<ConsultFormPage> createState() => _ConsultFormPageState();
@@ -63,7 +66,15 @@ class _ConsultFormPageState extends State<ConsultFormPage> {
       diagnostico: _diagnostico.text.trim(),
       tratamiento: _tratamiento.text.trim(),
       proximoControl: _proximoControl,
+      citaId: widget.appointmentId,
     ));
+    // Si viene de una cita, la marcamos como atendida automáticamente.
+    if (widget.appointmentId != null) {
+      await clinic.setAppointmentStatus(
+        widget.appointmentId!,
+        AppointmentStatus.atendida,
+      );
+    }
     Navigator.of(context).pop();
   }
 
