@@ -32,7 +32,7 @@ class ConsultRecord {
       date: fecha is DateTime
           ? fecha
           : DateTime.tryParse(fecha?.toString() ?? '') ?? DateTime.now(),
-      motivo: '',
+      motivo: (json['motivo'] ?? '').toString(),
       diagnostico: (json['diagnostico'] ?? '').toString(),
       tratamiento: (json['tratamiento'] ?? '').toString(),
       observaciones: (json['notas_clinicas'] ?? '').toString(),
@@ -45,6 +45,7 @@ class ConsultRecord {
         'cita_id': null,
         'paciente_id': patientId,
         'medico_id': doctorId,
+        'motivo': motivo,
         'diagnostico': diagnostico,
         'tratamiento': tratamiento,
         'notas_clinicas': observaciones,
