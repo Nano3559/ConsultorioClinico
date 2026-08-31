@@ -8,6 +8,31 @@ const {
 } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
 
+// Columnas embebidas (relaciones) para enriquecer las citas con datos legibles
+// de paciente y médico en todas las consultas de la API.
+const SELECT_CITA_RELACIONES =
+  '*, pacientes(id, nombre, apellido, telefono, email), medicos(id, nombre, apellido, especialidad, activo)';
+
+/**
+ * Lee el id de params soportando los aliases de ruta:
+ * :id, :medicoId, :pacienteId
+ */
+const idDeParams = (req) => req.params.id || req.params.medicoId || req.params.pacienteId;
+
+/**
+ * Valida el query param opcional ?estado= contra los estados permitidos.
+ * Retorna false y envía la respuesta de error si es inválido.
+ */
+const validarEstadoQuery = (req, res) => {
+  const { estado } = req.query;
+  const permitidos = Object.values(ESTADOS_CITA);
+  if (estado !== undefined && !permitidos.includes(estado)) {
+    sendError(res, `Estado inválido. Valores permitidos: ${permitidos.join(', ')}`, 400);
+    return false;
+  }
+  return true;
+};
+
 /**
  * Verifica contra la BD que el médico atienda en la fecha/hora indicada
  * según sus horarios registrados.
@@ -36,20 +61,63 @@ const medicoAtiendeEnSlot = async (supabase, medicoId, fecha, hora) => {
 const esFechaValida = (fecha) => fecha >= formatDate(new Date());
 
 /**
+ * Valida que un médico atienda en el tramo solicitado y que no haya otra cita
+ * no cancelada en el mismo médico/fecha/hora (evita doble agenda).
+ * Devuelve { ok: true } o { ok: false, error }.
+ */
+const verificarDisponibilidad = async (supabase, medicoId, fecha, hora, citaIdExcluir = null) => {
+  const atiende = await medicoAtiendeEnSlot(supabase, medicoId, fecha, hora);
+  if (!atiende) {
+    return { ok: false, error: 'El médico no atiende en esa fecha u hora según su horario' };
+  }
+
+  let query = supabase
+    .from('citas')
+    .select('id')
+    .eq('medico_id', medicoId)
+    .eq('fecha', fecha)
+    .eq('hora', hora)
+    .neq('estado', ESTADOS_CITA.CANCELADA);
+  if (citaIdExcluir) query = query.neq('id', citaIdExcluir);
+  query = query.limit(1);
+
+  const { data: ocupadas } = await query;
+  if (ocupadas && ocupadas.length > 0) {
+    return { ok: false, error: 'El médico ya tiene una cita programada en esa fecha y hora' };
+  }
+
+  return { ok: true };
+};
+
+/**
  * GET /api/citas
  * Listar todas las citas (admin/recepción)
+ * Filtros opcionales: ?estado=, ?medico_id=, ?paciente_id=
  */
 const getAll = async (req, res) => {
   try {
-    const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from('citas')
-      .select('*')
-      .order('fecha')
-      .order('hora');
+    if (!validarEstadoQuery(req, res)) return;
 
+    const { estado, medico_id, paciente_id } = req.query;
+    const supabase = getSupabase();
+
+    let query = supabase
+      .from('citas')
+      .select(SELECT_CITA_RELACIONES)
+      .order('fecha', { ascending: true })
+      .order('hora', { ascending: true });
+
+    if (estado) query = query.eq('estado', estado);
+    if (medico_id) query = query.eq('medico_id', medico_id);
+    if (paciente_id) query = query.eq('paciente_id', paciente_id);
+
+    const { data, error } = await query;
     if (error) throw error;
-    return sendSuccess(res, data);
+
+    return sendSuccess(res, {
+      total: (data || []).length,
+      citas: data || [],
+    });
   } catch (error) {
     console.error('citas.getAll:', error);
     return sendError(res, 'Error al listar citas', 500);
@@ -58,20 +126,42 @@ const getAll = async (req, res) => {
 
 /**
  * GET /api/citas/agenda/hoy
- * Obtener citas del día actual
+ * Citas del día actual para la agenda de recepción/médico.
+ * Filtros opcionales: ?estado=, ?medico_id=
  */
 const getHoy = async (req, res) => {
   try {
+    if (!validarEstadoQuery(req, res)) return;
+
+    const { estado, medico_id } = req.query;
     const hoy = formatDate(new Date());
     const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from('citas')
-      .select('*')
-      .eq('fecha', hoy)
-      .order('hora');
 
+    let query = supabase
+      .from('citas')
+      .select(SELECT_CITA_RELACIONES)
+      .eq('fecha', hoy)
+      .order('hora', { ascending: true });
+
+    if (estado) query = query.eq('estado', estado);
+    if (medico_id) query = query.eq('medico_id', medico_id);
+
+    const { data, error } = await query;
     if (error) throw error;
-    return sendSuccess(res, data);
+
+    const citas = data || [];
+    const conteoPorEstado = citas.reduce((acc, c) => {
+      acc[c.estado] = (acc[c.estado] || 0) + 1;
+      return acc;
+    }, {});
+
+    return sendSuccess(res, {
+      fecha: hoy,
+      dia_semana: obtenerDiaSemana(hoy),
+      total_pendientes: citas.filter((c) => c.estado === ESTADOS_CITA.PROGRAMADA).length,
+      conteo_por_estado: conteoPorEstado,
+      citas,
+    });
   } catch (error) {
     console.error('citas.getHoy:', error);
     return sendError(res, 'Error al obtener citas del día', 500);
@@ -79,31 +169,47 @@ const getHoy = async (req, res) => {
 };
 
 /**
- * GET /api/citas/medico/:id
- * Obtener citas por médico
+ * GET /api/citas/medico/:medicoId  (alias: /medico/:id)
+ * Citas por médico, con datos del médico y de los pacientes.
+ * Filtros opcionales: ?estado=
  */
 const getByMedico = async (req, res) => {
   try {
+    if (!validarEstadoQuery(req, res)) return;
+
+    const medicoId = idDeParams(req);
+    const { estado } = req.query;
     const supabase = getSupabase();
 
     const { data: medicos } = await supabase
       .from('medicos')
-      .select('id')
-      .eq('id', req.params.id)
+      .select('id, nombre, apellido, especialidad, consulorio, telefono, email, activo')
+      .eq('id', medicoId)
       .limit(1);
-    if (!medicos || medicos.length === 0) {
+    const medico = medicos && medicos[0];
+
+    if (!medico) {
       return sendError(res, 'Médico no encontrado', 404);
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('citas')
-      .select('*')
-      .eq('medico_id', req.params.id)
-      .order('fecha')
-      .order('hora');
+      .select(SELECT_CITA_RELACIONES)
+      .eq('medico_id', medicoId)
+      .order('fecha', { ascending: true })
+      .order('hora', { ascending: true });
 
+    if (estado) query = query.eq('estado', estado);
+
+    const { data, error } = await query;
     if (error) throw error;
-    return sendSuccess(res, data);
+
+    return sendSuccess(res, {
+      medico_id: medico.id,
+      medico: `${medico.nombre} ${medico.apellido}`,
+      total: (data || []).length,
+      citas: data || [],
+    });
   } catch (error) {
     console.error('citas.getByMedico:', error);
     return sendError(res, 'Error al obtener citas del médico', 500);
@@ -111,31 +217,47 @@ const getByMedico = async (req, res) => {
 };
 
 /**
- * GET /api/citas/paciente/:id
- * Obtener citas por paciente
+ * GET /api/citas/paciente/:pacienteId  (alias: /paciente/:id)
+ * Citas por paciente, con datos del paciente y del médico.
+ * Filtros opcionales: ?estado=
  */
 const getByPaciente = async (req, res) => {
   try {
+    if (!validarEstadoQuery(req, res)) return;
+
+    const pacienteId = idDeParams(req);
+    const { estado } = req.query;
     const supabase = getSupabase();
 
     const { data: pacientes } = await supabase
       .from('pacientes')
-      .select('id')
-      .eq('id', req.params.id)
+      .select('id, nombre, apellido, cedula, telefono, email')
+      .eq('id', pacienteId)
       .limit(1);
-    if (!pacientes || pacientes.length === 0) {
+    const paciente = pacientes && pacientes[0];
+
+    if (!paciente) {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('citas')
-      .select('*')
-      .eq('paciente_id', req.params.id)
-      .order('fecha')
-      .order('hora');
+      .select(SELECT_CITA_RELACIONES)
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: true })
+      .order('hora', { ascending: true });
 
+    if (estado) query = query.eq('estado', estado);
+
+    const { data, error } = await query;
     if (error) throw error;
-    return sendSuccess(res, data);
+
+    return sendSuccess(res, {
+      paciente_id: paciente.id,
+      paciente: `${paciente.nombre} ${paciente.apellido}`,
+      total: (data || []).length,
+      citas: data || [],
+    });
   } catch (error) {
     console.error('citas.getByPaciente:', error);
     return sendError(res, 'Error al obtener citas del paciente', 500);
@@ -144,14 +266,14 @@ const getByPaciente = async (req, res) => {
 
 /**
  * GET /api/citas/:id
- * Obtener cita por ID
+ * Obtener cita por ID (con relaciones de paciente y médico)
  */
 const getById = async (req, res) => {
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from('citas')
-      .select('*')
+      .select(SELECT_CITA_RELACIONES)
       .eq('id', req.params.id)
       .limit(1);
 
@@ -203,24 +325,10 @@ const create = async (req, res) => {
       return sendError(res, 'No se pueden crear citas en fechas pasadas', 400);
     }
 
-    // Validar que el médico atienda en ese día y hora según su horario
-    const atiende = await medicoAtiendeEnSlot(supabase, medico_id, fecha, hora);
-    if (!atiende) {
-      return sendError(res, 'El médico no atiende en esa fecha u hora según su horario', 400);
-    }
-
-    // Verificar disponibilidad (no doble agenda). La BD también lo garantiza
-    // con un índice único parcial sobre citas no canceladas.
-    const { data: ocupadas } = await supabase
-      .from('citas')
-      .select('id')
-      .eq('medico_id', medico_id)
-      .eq('fecha', fecha)
-      .eq('hora', hora)
-      .neq('estado', 'cancelada')
-      .limit(1);
-    if (ocupadas && ocupadas.length > 0) {
-      return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
+    // Validar horario del médico y que el tramo esté libre
+    const tramo = await verificarDisponibilidad(supabase, medico_id, fecha, hora);
+    if (!tramo.ok) {
+      return sendError(res, tramo.error, 400);
     }
 
     const { data, error } = await supabase
@@ -234,7 +342,7 @@ const create = async (req, res) => {
         estado: ESTADOS_CITA.PROGRAMADA,
         observaciones: observaciones || '',
       })
-      .select('*')
+      .select(SELECT_CITA_RELACIONES)
       .single();
 
     if (error) {
@@ -252,7 +360,8 @@ const create = async (req, res) => {
 
 /**
  * PUT /api/citas/:id
- * Reprogramar cita (cambiar fecha/hora)
+ * Reprogramar cita (cambiar fecha/hora). Valida disponibilidad y horario.
+ * Al reprogramar, la cita vuelve a "programada" para requerir confirmación.
  */
 const update = async (req, res) => {
   try {
@@ -268,38 +377,38 @@ const update = async (req, res) => {
     }
     const cita = actuales[0];
 
-    if (cita.estado === ESTADOS_CITA.COMPLETADA || cita.estado === ESTADOS_CITA.CANCELADA) {
-      return sendError(res, 'No se puede reprogramar una cita completada o cancelada', 400);
+    const estadosBloqueados = [
+      ESTADOS_CITA.COMPLETADA,
+      ESTADOS_CITA.CANCELADA,
+      ESTADOS_CITA.NO_SHOW,
+      ESTADOS_CITA.EN_CURSO,
+    ];
+    if (estadosBloqueados.includes(cita.estado)) {
+      return sendError(res, 'No se puede reprogramar una cita en curso, completada, cancelada o sin asistir', 400);
     }
 
     const { fecha, hora, motivo, observaciones } = req.body;
     const nuevaFecha = fecha || cita.fecha;
     const nuevaHora = hora || cita.hora;
 
+    const cambiaTramo = Boolean(fecha || hora);
+
     // Verificar disponibilidad si cambia fecha/hora
-    if (fecha || hora) {
+    if (cambiaTramo) {
       // Validar que la nueva fecha no sea pasada
       if (!esFechaValida(nuevaFecha)) {
         return sendError(res, 'No se puede reprogramar a una fecha pasada', 400);
       }
 
-      // Validar que el médico atienda en el nuevo día y hora
-      const atiende = await medicoAtiendeEnSlot(supabase, cita.medico_id, nuevaFecha, nuevaHora);
-      if (!atiende) {
-        return sendError(res, 'El médico no atiende en esa fecha u hora según su horario', 400);
-      }
-
-      const { data: ocupadas } = await supabase
-        .from('citas')
-        .select('id')
-        .eq('medico_id', cita.medico_id)
-        .eq('fecha', nuevaFecha)
-        .eq('hora', nuevaHora)
-        .neq('id', cita.id)
-        .neq('estado', 'cancelada')
-        .limit(1);
-      if (ocupadas && ocupadas.length > 0) {
-        return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
+      const tramo = await verificarDisponibilidad(
+        supabase,
+        cita.medico_id,
+        nuevaFecha,
+        nuevaHora,
+        cita.id
+      );
+      if (!tramo.ok) {
+        return sendError(res, tramo.error, 400);
       }
     }
 
@@ -308,15 +417,24 @@ const update = async (req, res) => {
     if (hora) cambios.hora = hora;
     if (motivo !== undefined) cambios.motivo = motivo || '';
     if (observaciones !== undefined) cambios.observaciones = observaciones || '';
+    // Un cambio de fecha/hora invalida la confirmación previa
+    if (cambiaTramo && cita.estado === ESTADOS_CITA.CONFIRMADA) {
+      cambios.estado = ESTADOS_CITA.PROGRAMADA;
+    }
 
     const { data, error } = await supabase
       .from('citas')
       .update(cambios)
       .eq('id', cita.id)
-      .select('*')
+      .select(SELECT_CITA_RELACIONES)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(res, 'El médico ya tiene una cita programada en esa fecha y hora', 400);
+      }
+      throw error;
+    }
     return sendSuccess(res, data, 'Cita reprogramada exitosamente');
   } catch (error) {
     console.error('citas.update:', error);
@@ -325,11 +443,59 @@ const update = async (req, res) => {
 };
 
 /**
+ * POST /api/citas/:id/confirmar
+ * Confirmar cita: pasa el estado a "confirmada".
+ * Solo se puede confirmar una cita programada (o en curso como reafirmación).
+ */
+const confirmar = async (req, res) => {
+  try {
+    const supabase = getSupabase();
+
+    const { data: actuales } = await supabase
+      .from('citas')
+      .select('*')
+      .eq('id', req.params.id)
+      .limit(1);
+    if (!actuales || actuales.length === 0) {
+      return sendError(res, 'Cita no encontrada', 404);
+    }
+    const cita = actuales[0];
+
+    if (cita.estado === ESTADOS_CITA.CONFIRMADA) {
+      return sendError(res, 'La cita ya está confirmada', 400);
+    }
+
+    const estadosFinales = [
+      ESTADOS_CITA.COMPLETADA,
+      ESTADOS_CITA.CANCELADA,
+      ESTADOS_CITA.NO_SHOW,
+    ];
+    if (estadosFinales.includes(cita.estado)) {
+      return sendError(res, 'No se puede confirmar una cita completada, cancelada o sin asistir', 400);
+    }
+
+    const { data, error } = await supabase
+      .from('citas')
+      .update({ estado: ESTADOS_CITA.CONFIRMADA })
+      .eq('id', cita.id)
+      .select(SELECT_CITA_RELACIONES)
+      .single();
+
+    if (error) throw error;
+    return sendSuccess(res, data, 'Cita confirmada exitosamente');
+  } catch (error) {
+    console.error('citas.confirmar:', error);
+    return sendError(res, 'Error al confirmar cita', 500);
+  }
+};
+
+/**
  * PATCH /api/citas/:id/estado
- * Cambiar estado de la cita
+ * Cambiar estado de la cita (con máquina de transiciones)
  */
 const TRANSICIONES_ESTADO = {
-  programada: ['en_curso', 'cancelada', 'no_show'],
+  programada: ['confirmada', 'en_curso', 'completada', 'cancelada', 'no_show'],
+  confirmada: ['en_curso', 'completada', 'cancelada', 'no_show'],
   en_curso: ['completada', 'cancelada'],
   completada: [],
   cancelada: ['programada'],
@@ -373,7 +539,7 @@ const updateEstado = async (req, res) => {
       .from('citas')
       .update({ estado })
       .eq('id', req.params.id)
-      .select('*');
+      .select(SELECT_CITA_RELACIONES);
 
     if (error) throw error;
     return sendSuccess(res, data[0], 'Estado de cita actualizado');
@@ -402,14 +568,19 @@ const remove = async (req, res) => {
     if (actuales[0].estado === ESTADOS_CITA.CANCELADA) {
       return sendError(res, 'La cita ya está cancelada', 400);
     }
+    if (actuales[0].estado === ESTADOS_CITA.COMPLETADA) {
+      return sendError(res, 'No se puede cancelar una cita completada', 400);
+    }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('citas')
       .update({ estado: ESTADOS_CITA.CANCELADA })
-      .eq('id', req.params.id);
+      .eq('id', req.params.id)
+      .select(SELECT_CITA_RELACIONES)
+      .single();
 
     if (error) throw error;
-    return sendSuccess(res, null, 'Cita cancelada exitosamente');
+    return sendSuccess(res, data, 'Cita cancelada exitosamente');
   } catch (error) {
     console.error('citas.remove:', error);
     return sendError(res, 'Error al cancelar cita', 500);
@@ -425,13 +596,16 @@ const getMisCitas = async (req, res) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from('citas')
-      .select('*')
+      .select(SELECT_CITA_RELACIONES)
       .eq('paciente_id', req.user.id)
-      .order('fecha')
-      .order('hora');
+      .order('fecha', { ascending: true })
+      .order('hora', { ascending: true });
 
     if (error) throw error;
-    return sendSuccess(res, data);
+    return sendSuccess(res, {
+      total: (data || []).length,
+      citas: data || [],
+    });
   } catch (error) {
     console.error('citas.getMisCitas:', error);
     return sendError(res, 'Error al obtener tus citas', 500);
@@ -449,4 +623,5 @@ module.exports = {
   getByMedico,
   getByPaciente,
   getMisCitas,
+  confirmar,
 };
