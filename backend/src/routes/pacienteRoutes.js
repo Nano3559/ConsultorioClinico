@@ -4,30 +4,34 @@ const { body } = require('express-validator');
 const { getAll, getById, create, update, remove } = require('../controllers/pacienteController');
 const { verifyToken } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
-const { validate } = require('../middleware/validation');
+const { validate, sanitizarTexto } = require('../middleware/validation');
 
 // Validaciones
 const pacienteValidation = [
-  body('nombre').notEmpty().withMessage('El nombre es obligatorio'),
-  body('apellido').notEmpty().withMessage('El apellido es obligatorio'),
-  body('cedula').notEmpty().withMessage('La cédula es obligatoria'),
-  body('email').optional().isEmail().withMessage('Email inválido'),
-  body('telefono').optional(),
+  body('nombre').isLength({ min: 2, max: 120 }).withMessage('El nombre debe tener entre 2 y 120 caracteres').customSanitizer(sanitizarTexto),
+  body('apellido').isLength({ min: 2, max: 120 }).withMessage('El apellido debe tener entre 2 y 120 caracteres').customSanitizer(sanitizarTexto),
+  body('cedula').isLength({ min: 5, max: 20 }).withMessage('La cédula debe tener entre 5 y 20 caracteres').customSanitizer(sanitizarTexto),
+  body('email').optional().trim().toLowerCase().isEmail().withMessage('Email inválido'),
+  body('telefono').optional().isLength({ max: 30 }).withMessage('El teléfono es demasiado largo'),
+  body('direccion').optional().isLength({ max: 255 }).withMessage('La dirección es demasiado larga').customSanitizer(sanitizarTexto),
 ];
 
 const pacienteUpdateValidation = [
-  body('nombre').optional().notEmpty().withMessage('El nombre no puede estar vacío'),
-  body('apellido').optional().notEmpty().withMessage('El apellido no puede estar vacío'),
-  body('cedula').optional().notEmpty().withMessage('La cédula no puede estar vacía'),
+  body('nombre').optional().isLength({ min: 2, max: 120 }).withMessage('El nombre debe tener entre 2 y 120 caracteres').customSanitizer(sanitizarTexto),
+  body('apellido').optional().isLength({ min: 2, max: 120 }).withMessage('El apellido debe tener entre 2 y 120 caracteres').customSanitizer(sanitizarTexto),
+  body('cedula').optional().isLength({ min: 5, max: 20 }).withMessage('La cédula debe tener entre 5 y 20 caracteres').customSanitizer(sanitizarTexto),
   body('email').optional().isEmail().withMessage('Email inválido'),
   body('sexo').optional().isIn(['M', 'F', 'O']).withMessage('Sexo inválido'),
+  body('direccion').optional().isLength({ max: 255 }).withMessage('La dirección es demasiado larga').customSanitizer(sanitizarTexto),
 ];
 
-// Rutas públicas (lectura)
-router.get('/', getAll);
-router.get('/:id', getById);
+// Rutas protegidas: los datos de pacientes son datos clínicos sensibles.
+// - Listar: admin, recepcion, medico
+// - Ver uno: además el propio paciente puede ver su ficha
+router.get('/', verifyToken, checkRole('admin', 'recepcion', 'medico'), getAll);
+router.get('/:id', verifyToken, checkRole('admin', 'recepcion', 'medico', 'paciente'), getById);
 
-// Rutas protegidas (escritura)
+// Escritura
 router.post('/', verifyToken, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
 router.put('/:id', verifyToken, checkRole('admin', 'recepcion'), pacienteUpdateValidation, validate, update);
 router.delete('/:id', verifyToken, checkRole('admin'), remove);

@@ -28,7 +28,7 @@ router.use(verifyToken);
 
 router.get('/', checkRole('admin', 'recepcion'), getAll);
 router.post('/', checkRole('admin', 'recepcion'), pagoValidation, validate, create);
-router.get('/paciente/:id', getByPaciente);
+router.get('/paciente/:id', checkRole('admin', 'recepcion', 'medico'), getByPaciente);
 router.patch('/:id/estado', checkRole('admin', 'recepcion'), pagoEstadoValidation, validate, updateEstado);
 
 module.exports = router;

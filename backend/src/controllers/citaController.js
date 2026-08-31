@@ -297,11 +297,20 @@ const create = async (req, res) => {
     const { paciente_id, medico_id, fecha, hora, motivo, observaciones } = req.body;
     const supabase = getSupabase();
 
+    // Un paciente autenticado solo puede crear citas para sí mismo.
+    let pacienteId = paciente_id;
+    if (req.user && req.user.rol === 'paciente') {
+      if (req.user.perfilTipo !== 'paciente' || !req.user.perfilId) {
+        return sendError(res, 'Perfil de paciente no encontrado. Contacte a recepción', 403);
+      }
+      pacienteId = req.user.perfilId;
+    }
+
     // Verificar que el paciente exista
     const { data: pacientes } = await supabase
       .from('pacientes')
       .select('id')
-      .eq('id', paciente_id)
+      .eq('id', pacienteId)
       .limit(1);
     if (!pacientes || pacientes.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
@@ -334,7 +343,7 @@ const create = async (req, res) => {
     const { data, error } = await supabase
       .from('citas')
       .insert({
-        paciente_id,
+        paciente_id: pacienteId,
         medico_id,
         fecha,
         hora,
@@ -376,6 +385,15 @@ const update = async (req, res) => {
       return sendError(res, 'Cita no encontrada', 404);
     }
     const cita = actuales[0];
+
+    // Un paciente solo puede reprogramar sus propias citas
+    if (
+      req.user &&
+      req.user.rol === 'paciente' &&
+      cita.paciente_id !== req.user.perfilId
+    ) {
+      return sendError(res, 'No tiene permiso para modificar esta cita', 403);
+    }
 
     const estadosBloqueados = [
       ESTADOS_CITA.COMPLETADA,
@@ -594,10 +612,20 @@ const remove = async (req, res) => {
 const getMisCitas = async (req, res) => {
   try {
     const supabase = getSupabase();
+
+    // El ID de paciente está en el perfil del token, no en req.user.id
+    // (req.user.id corresponde a usuarios.id).
+    const pacienteId =
+      req.user.perfilTipo === 'paciente' ? req.user.perfilId : null;
+
+    if (!pacienteId) {
+      return sendError(res, 'Solo el paciente puede consultar sus citas', 403);
+    }
+
     const { data, error } = await supabase
       .from('citas')
       .select(SELECT_CITA_RELACIONES)
-      .eq('paciente_id', req.user.id)
+      .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: true })
       .order('hora', { ascending: true });
 

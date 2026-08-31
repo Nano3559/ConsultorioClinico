@@ -27,15 +27,26 @@ const resolverEspecialidad = async (supabase, nombreEspecialidad) => {
 };
 
 /**
+ * Columnas seguras para lecturas públicas (sin email/cédula/telefono).
+ */
+const SELECT_MEDICO_PUBLICO =
+  'id, nombre, apellido, especialidad, especialidad_id, consulorio, tarifa_consulta, activo';
+
+/**
  * GET /api/medicos
- * Listar todos los médicos activos
+ * Listar todos los médicos activos.
+ * - Autenticado (staff): devuelve el registro completo.
+ * - Público / paciente: solo columnas esenciales de catálogo.
  */
 const getAll = async (req, res) => {
   try {
     const supabase = getSupabase();
+    const esStaff = req.user && req.user.rol !== 'paciente';
+    const columnas = esStaff ? '*' : SELECT_MEDICO_PUBLICO;
+
     const { data, error } = await supabase
       .from('medicos')
-      .select('*')
+      .select(columnas)
       .eq('activo', true)
       .order('id');
 
@@ -53,14 +64,17 @@ const getAll = async (req, res) => {
 
 /**
  * GET /api/medicos/:id
- * Obtener médico por ID
+ * Obtener médico por ID (misma lógica de campos según autenticación)
  */
 const getById = async (req, res) => {
   try {
     const supabase = getSupabase();
+    const esStaff = req.user && req.user.rol !== 'paciente';
+    const columnas = esStaff ? '*' : SELECT_MEDICO_PUBLICO;
+
     const { data, error } = await supabase
       .from('medicos')
-      .select('*')
+      .select(columnas)
       .eq('id', req.params.id)
       .limit(1);
 
