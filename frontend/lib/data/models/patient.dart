@@ -11,6 +11,7 @@ class Patient {
     this.antecedentes = '',
     this.alergias = '',
     this.observaciones = '',
+    this.uid,
   });
 
   final String id;
@@ -23,6 +24,9 @@ class Patient {
   final String antecedentes;
   final String alergias;
   final String observaciones;
+
+  /// Firebase UID del usuario que "es" este paciente (vínculo paciente <-> cuenta).
+  final String? uid;
 
   String get fullName => '$firstName $lastName';
 
@@ -42,6 +46,7 @@ class Patient {
       antecedentes: (json['antecedentes'] ?? '').toString(),
       alergias: (json['alergias'] ?? '').toString(),
       observaciones: (json['contacto_emergencia'] ?? '').toString(),
+      uid: json['uid']?.toString(),
     );
   }
 
@@ -69,6 +74,7 @@ class Patient {
     String? antecedentes,
     String? alergias,
     String? observaciones,
+    String? uid,
   }) {
     return Patient(
       id: id,
@@ -81,6 +87,7 @@ class Patient {
       antecedentes: antecedentes ?? this.antecedentes,
       alergias: alergias ?? this.alergias,
       observaciones: observaciones ?? this.observaciones,
+      uid: uid ?? this.uid,
     );
   }
 }

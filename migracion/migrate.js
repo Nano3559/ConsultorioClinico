@@ -129,18 +129,55 @@ async function ensureUser(email, password, displayName) {
 
   // Pacientes
   const mapPac = {};
+  const mapPacUid = {};   // id origen -> Firebase uid del paciente vinculado
+  const mapPacInfo = {};  // id origen -> datos para su documento `usuarios`
   for (const p of pacs) {
-    const ref = await db.collection('pacientes').add({
+    const email = (p.email && String(p.email).includes('@')) ? String(p.email).toLowerCase() : null;
+    let linkedUid = null;
+    if (email) {
+      try {
+        const existing = await auth.getUserByEmail(email);
+        linkedUid = existing.uid;
+      } catch (e) {
+        // Solo la cuenta demo recibe password conocido; el resto debe autoregistrarse.
+        if (e.code === 'auth/user-not-found' && email === 'pedro@gmail.com') {
+          linkedUid = await ensureUser(email, 'paciente123', `${p.nombre || ''} ${p.apellido || ''}`.trim());
+          console.log(`demo paciente creado: ${email} -> ${linkedUid}`);
+        }
+      }
+    }
+    const doc = {
       nombre: p.nombre || '',
       apellido: p.apellido || '',
       cedula: p.cedula || p.ci || '',
       telefono: p.telefono || '',
-      email: p.email || '',
+      email: email || '',
       fecha_nacimiento: ymd(p.fecha_nacimiento),
       alergias: p.alergias || '',
       contacto_emergencia: p.contacto_emergencia || '',
-    });
+    };
+    if (linkedUid) doc.uid = linkedUid;
+    const ref = await db.collection('pacientes').add(doc);
     mapPac[p.id] = ref.id;
+    if (linkedUid) {
+      mapPacUid[p.id] = linkedUid;
+      mapPacInfo[p.id] = { email: email || '', nombre: `${p.nombre || ''} ${p.apellido || ''}`.trim() };
+    }
+  }
+
+  // Usuarios de pacientes con cuenta Firebase (acceso a su ficha y citas).
+  for (const [srcId, linkedUid] of Object.entries(mapPacUid)) {
+    const info = mapPacInfo[srcId] || {};
+    await db.collection('usuarios').doc(linkedUid).set({
+      uid: linkedUid,
+      nombre: info.nombre,
+      email: info.email,
+      rol: 'paciente',
+      perfilTipo: 'paciente',
+      perfilId: mapPac[srcId],
+      activo: true,
+      creadoEn: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
   }
 
   // Horarios
@@ -164,14 +201,16 @@ async function ensureUser(email, password, displayName) {
     const mid = mapMed[c.medico_id];
     const pid = mapPac[c.paciente_id];
     if (!mid || !pid) continue;
-    const ref = await db.collection('citas').add({
+    const doc = {
       paciente_id: pid,
       medico_id: mid,
       fecha: ymd(c.fecha),
       hora: hhmm(c.hora),
       motivo: c.motivo || '',
       estado: c.estado || 'programada',
-    });
+    };
+    if (mapPacUid[c.paciente_id]) doc.paciente_uid = mapPacUid[c.paciente_id];
+    const ref = await db.collection('citas').add(doc);
     mapCit[c.id] = ref.id;
     mapCitMed[c.id] = mid;
   }
@@ -181,14 +220,16 @@ async function ensureUser(email, password, displayName) {
     const mid = mapMed[c.medico_id];
     const pid = mapPac[c.paciente_id];
     if (!mid || !pid) continue;
-    await db.collection('consultas').add({
+    const doc = {
       paciente_id: pid,
       medico_id: mid,
       fecha: ymd(c.fecha || c.creado_en),
       diagnostico: c.diagnostico || '',
       tratamiento: c.tratamiento || '',
       notas_clinicas: c.notas_clinicas || '',
-    });
+    };
+    if (mapPacUid[c.paciente_id]) doc.paciente_uid = mapPacUid[c.paciente_id];
+    await db.collection('consultas').add(doc);
   }
 
   // Pagos
@@ -198,7 +239,7 @@ async function ensureUser(email, password, displayName) {
     const cid = p.cita_id ? mapCit[p.cita_id] : null;
     const mid = p.cita_id ? mapCitMed[p.cita_id] : null;
     const monto = typeof p.monto === 'number' ? p.monto : parseFloat(p.monto) || 0;
-    await db.collection('pagos').add({
+    const doc = {
       paciente_id: pid,
       cita_id: cid || '',
       medico_id: mid || '',
@@ -206,7 +247,9 @@ async function ensureUser(email, password, displayName) {
       metodo_pago: p.metodo_pago || 'efectivo',
       estado: p.estado || 'pendiente',
       fecha_pago: ymd(p.fecha_pago || p.creado_en),
-    });
+    };
+    if (mapPacUid[p.paciente_id]) doc.paciente_uid = mapPacUid[p.paciente_id];
+    await db.collection('pagos').add(doc);
   }
 
   // Admin

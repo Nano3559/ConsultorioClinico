@@ -93,6 +93,23 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   bool get _isMedico => _role == UserRole.medico && _uid != null;
+  bool get _isPaciente => _role == UserRole.paciente && _uid != null;
+
+  /// Alcance (campo/valor) de las listas segun el rol:
+  /// medico -> solo lo suyo; paciente -> solo su ficha (uid) y sus recursos
+  /// (paciente_uid); admin/recepcion -> todo.
+  (String?, String?) _scope() {
+    if (_isMedico) return ('medico_id', _uid);
+    if (_isPaciente) return ('paciente_uid', _uid);
+    return (null, null);
+  }
+
+  String? _patientUidOf(String patientId) {
+    for (final p in _patients) {
+      if (p.id == patientId && p.uid != null) return p.uid;
+    }
+    return null;
+  }
 
   Future<void> _loadEspecialidades() async {
     final data = await _fs.getList('especialidades');
@@ -137,7 +154,12 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<void> _loadPacientes() async {
-    final data = await _fs.getList('pacientes');
+    final data = await _fs.getList(
+      'pacientes',
+      // El paciente solo ve su propia ficha (la que tiene su uid).
+      scopeField: _isPaciente ? 'uid' : null,
+      scopeValue: _isPaciente ? _uid : null,
+    );
     _patients
       ..clear()
       ..addAll(data.map(Patient.fromApi));
@@ -153,10 +175,11 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<void> _loadCitas() async {
+    final (sf, sv) = _scope();
     final data = await _fs.getList(
       'citas',
-      scopeField: _isMedico ? 'medico_id' : null,
-      scopeValue: _isMedico ? _uid : null,
+      scopeField: sf,
+      scopeValue: sv,
       orderBy: 'fecha',
     );
     _appointments
@@ -165,10 +188,11 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<void> _loadConsultas() async {
+    final (sf, sv) = _scope();
     final data = await _fs.getList(
       'consultas',
-      scopeField: _isMedico ? 'medico_id' : null,
-      scopeValue: _isMedico ? _uid : null,
+      scopeField: sf,
+      scopeValue: sv,
       orderBy: 'fecha',
     );
     _consults
@@ -177,10 +201,11 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<void> _loadPagos() async {
+    final (sf, sv) = _scope();
     final data = await _fs.getList(
       'pagos',
-      scopeField: _isMedico ? 'medico_id' : null,
-      scopeValue: _isMedico ? _uid : null,
+      scopeField: sf,
+      scopeValue: sv,
       orderBy: 'fecha_pago',
     );
     _payments
@@ -458,6 +483,10 @@ class ClinicProvider extends ChangeNotifier {
       'motivo': reason,
       'estado': AppointmentStatus.pendiente.toApi(),
     };
+    // Vincula la cita al paciente (si su ficha tiene uid o el propio paciente la agenda),
+    // para que le aparezca en "Mis citas".
+    final pacienteUid = _isPaciente ? _uid : _patientUidOf(patientId);
+    if (pacienteUid != null) body['paciente_uid'] = pacienteUid;
     try {
       final id = await _fs.add('citas', body);
       _appointments.add(Appointment.fromApi({...body, 'id': id}));
@@ -528,6 +557,8 @@ class ClinicProvider extends ChangeNotifier {
     try {
       final data = {...c.toApiJson()};
       if (_isMedico) data['medico_id'] = _uid;
+      final pu = _patientUidOf(c.patientId);
+      if (pu != null) data['paciente_uid'] = pu;
       final id = await _fs.add('consultas', data);
       _consults.add(ConsultRecord.fromApi({...data, 'id': id}));
       notifyListeners();
@@ -549,6 +580,8 @@ class ClinicProvider extends ChangeNotifier {
       'fecha_pago': _fmt(p.date),
       if (_isMedico) 'medico_id': _uid,
     };
+    final pu = _patientUidOf(p.patientId);
+    if (pu != null) body['paciente_uid'] = pu;
     try {
       final id = await _fs.add('pagos', body);
       _payments.add(Payment.fromApi({...body, 'id': id}));

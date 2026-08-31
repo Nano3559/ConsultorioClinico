@@ -7,64 +7,129 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Perfil del usuario autenticado (documento en la coleccion `usuarios`).
+    // Nunca se confia en un claim del JWT: el rol vive en Firestore.
+    function userDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
     function userRole() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+      var d = userDoc();
+      return d == null ? null : d.rol;
     }
 
-    function isStaff() {
-      return isSignedIn() && userRole() in ['admin', 'recepcion', 'medico'];
+    function isAdmin()     { return isSignedIn() && userRole() == 'admin'; }
+    function isRecepcion() { return isSignedIn() && userRole() == 'recepcion'; }
+    function isMedico()    { return isSignedIn() && userRole() == 'medico'; }
+    function isStaff()     { return isSignedIn() && userRole() in ['admin', 'recepcion', 'medico']; }
+    function isPaciente()  { return isSignedIn() && userRole() == 'paciente'; }
+
+    // El paciente es dueno de su ficha (campo `uid` dentro de pacientes/<id>).
+    function esPacientePropietario(pacienteDoc) {
+      return pacienteDoc.uid == request.auth.uid;
     }
 
-    function isAdmin() {
-      return isSignedIn() && userRole() == 'admin';
+    // La cita/consulta/pago pertenece al paciente logueado (campo `paciente_uid`).
+    function esRecursoPropio(doc) {
+      return doc.paciente_uid == request.auth.uid;
     }
 
-    // ---- Usuarios (cuentas) ----
+    // La cita que crea un paciente debe referenciar SU ficha y llevar su uid.
+    function citaDeSuPaciente(citaData) {
+      return citaData.paciente_uid == request.auth.uid
+        && get(/databases/$(database)/documents/pacientes/$(citaData.paciente_id)).data.uid == request.auth.uid;
+    }
+
+    // ---- Usuarios: cada cuenta gestiona su propio perfil. Solo el admin
+    //      puede leer/borrar cuentas ajenas o cambiar roles.
     match /usuarios/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+
+      // Autoregistro SOLO como paciente: el cliente no puede crear
+      // cuentas admin/medico/recepcion ni asociarse a otro perfil.
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.rol == 'paciente'
+        && request.resource.data.perfilTipo == 'paciente'
+        && request.resource.data.uid == uid
+        && request.resource.data.activo == true;
+
+      // Un usuario solo puede tocar su propia cuenta, sin escalar rol ni
+      // reasignarse otro perfil. El `perfilId` inicial solo puede fijarse
+      // una vez (una vez vinculado, el cambio lo hace el admin).
+      allow update: if isAdmin()
+        || (isSignedIn()
+            && request.auth.uid == uid
+            && request.resource.data.activo == true
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['rol', 'perfilTipo', 'uid'])
+            && (!('perfilId' in resource.data)
+                || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['perfilId'])));
+
+      allow delete: if isAdmin();
     }
 
     // ---- Medicos (directorio) ----
     match /medicos/{medicoId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == medicoId);
+      allow create: if isAdmin();
+      // El medico edita su propia ficha (es el mismo documento que su usuario).
+      allow update: if isAdmin() || (isMedico() && request.auth.uid == medicoId);
+      allow delete: if isAdmin();
     }
 
-    // ---- Pacientes (datos demograficos) ----
+    // ---- Pacientes (datos clinicos) ----
     match /pacientes/{pacienteId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
+      allow read: if isStaff() || (isSignedIn() && esPacientePropietario(resource.data));
+      allow create: if isStaff()
+        || (isSignedIn()
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.activo == true);
+      allow update: if isAdmin() || isRecepcion()
+        || (isSignedIn() && esPacientePropietario(resource.data));
+      allow delete: if isAdmin();
     }
 
-    // ---- Especialidades ----
+    // ---- Especialidades (catalogo) ----
     match /especialidades/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    // ---- Citas (acceso por medico) ----
+    // ---- Citas ----
     match /citas/{citaId} {
-      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
-      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+      allow create: if isAdmin() || isRecepcion()
+        || (isMedico() && request.resource.data.medico_id == request.auth.uid)
+        || (isPaciente() && citaDeSuPaciente(request.resource.data));
+      allow read: if isStaff() || (isSignedIn() && esRecursoPropio(resource.data));
+      allow update: if isAdmin() || isRecepcion()
+        || (isMedico() && resource.data.medico_id == request.auth.uid)
+        || (isSignedIn() && esRecursoPropio(resource.data));
+      allow delete: if isAdmin() || isRecepcion();
     }
 
     // ---- Consultas (historia clinica) ----
     match /consultas/{id} {
-      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
-      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+      allow create: if isAdmin() || (isMedico() && request.resource.data.medico_id == request.auth.uid);
+      allow read: if isStaff() || (isSignedIn() && esRecursoPropio(resource.data));
+      allow update: if isAdmin() || (isMedico() && resource.data.medico_id == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
     // ---- Pagos ----
     match /pagos/{id} {
-      allow create: if isAdmin() || (isStaff() && request.resource.data.medico_id == request.auth.uid);
-      allow read, update, delete: if isAdmin() || (isStaff() && resource.data.medico_id == request.auth.uid);
+      allow create: if isAdmin() || isRecepcion();
+      allow read: if isStaff() || (isSignedIn() && esRecursoPropio(resource.data));
+      allow update: if isAdmin() || isRecepcion();
+      allow delete: if isAdmin();
     }
 
     // ---- Horarios disponibles ----
     match /horarios/{id} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || (isSignedIn() && resource.data.medico_id == request.auth.uid);
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isMedico() && resource.data.medico_id == request.auth.uid);
+      allow delete: if isAdmin();
     }
   }
 }
