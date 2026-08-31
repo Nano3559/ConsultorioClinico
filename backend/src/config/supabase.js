@@ -53,6 +53,10 @@ function dbErrorMessage(error) {
   if (error.code === '42P01' || /does not exist/i.test(error.message || '')) {
     return 'La tabla no existe. Ejecuta la migración en Supabase (db/migrations)';
   }
+  // Excepciones RAISE EXCEPTION de los triggers (mensajes pensados para el usuario)
+  if (error.code === 'P0001' || /no se puede|no existe|no encontrar/i.test(error.message || '')) {
+    return error.message;
+  }
   return null;
 }
 

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../data/models/user.dart';
+import '../core/utils/app_validators.dart';
 
 /// Autenticación con Firebase Auth.
 ///
@@ -101,29 +102,50 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Registra un nuevo usuario (paciente o, si lo crea un admin, cualquier rol).
-  /// Crea la cuenta en Firebase Auth y el documento de perfil en `usuarios`.
+  /// Registra un NUEVO paciente por autoregistro.
+  ///
+  /// Por seguridad el cliente SOLO puede crear cuentas de tipo `paciente`:
+  /// los roles staff (admin/recepcion/medico) se crean desde el admin SDK
+  /// (migración) y no pueden autoelevarse desde el cliente. Al registrarse se
+  /// crea tambien su ficha en `pacientes` (con su `uid`) y se vincula
+  /// `perfilId`, para que pueda consultar y cancelar sus propias citas.
   Future<String?> register({
     required String email,
     required String password,
     required String nombre,
-    required UserRole rol,
-    String? perfilId,
+    UserRole rol = UserRole.paciente,
   }) async {
+    final r = AppValidators.email(email);
+    if (r != null) return r;
+    final p = AppValidators.password(password);
+    if (p != null) return p;
+    if (rol != UserRole.paciente) {
+      return 'No tienes permisos para crear cuentas con ese rol';
+    }
     try {
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
       final uid = cred.user!.uid;
+      // Ficha del paciente, vinculada a esta cuenta con su uid.
+      final pacienteRef = await _db.collection('pacientes').add({
+        'nombre': (nombre.trim().split(' ').isNotEmpty ? nombre.trim().split(' ').first : ''),
+        'apellido': (nombre.trim().split(' ').length > 1 ? nombre.trim().split(' ').skip(1).join(' ') : ''),
+        'cedula': '',
+        'telefono': '',
+        'email': email.trim(),
+        'uid': uid,
+        'activo': true,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
       await _db.collection('usuarios').doc(uid).set({
         'uid': uid,
         'nombre': nombre.trim(),
         'email': email.trim(),
-        'rol': _rolToString(rol),
-        'perfilTipo':
-            rol == UserRole.medico ? 'medico' : rol == UserRole.paciente ? 'paciente' : null,
-        'perfilId': perfilId,
+        'rol': 'paciente',
+        'perfilTipo': 'paciente',
+        'perfilId': pacienteRef.id,
         'activo': true,
         'creadoEn': FieldValue.serverTimestamp(),
       });
@@ -152,19 +174,6 @@ class AuthProvider extends ChangeNotifier {
     _perfilId = null;
   }
 
-  String _rolToString(UserRole rol) {
-    switch (rol) {
-      case UserRole.admin:
-        return 'admin';
-      case UserRole.medico:
-        return 'medico';
-      case UserRole.recepcion:
-        return 'recepcion';
-      case UserRole.paciente:
-        return 'paciente';
-    }
-  }
-
   String _authError(FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
@@ -176,7 +185,7 @@ class AuthProvider extends ChangeNotifier {
       case 'email-already-in-use':
         return 'El email ya está registrado';
       case 'weak-password':
-        return 'La contraseña es muy débil (mínimo 6 caracteres)';
+        return 'La contraseña es muy débil (mínimo 8 caracteres)';
       case 'too-many-requests':
         return 'Demasiados intentos. Intenta más tarde';
       default:

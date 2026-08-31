@@ -1,4 +1,4 @@
-const { body, param, validationResult } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
 const { sendError } = require('../utils/helpers');
 const { ESTADOS_CITA, DIAS_SEMANA } = require('../utils/constants');
 
@@ -19,6 +19,22 @@ const validate = (req, res, next) => {
 
   next();
 };
+
+// --- Sanitizadores reutilizables (mitigan XSS e inyección) ---
+// Se aplican como sanitizers de express-validator: limpian el valor sin fallar
+// la validación, y después el .notEmpty()/.isLength() verifica el resultado.
+
+const sanitizarTexto = (valor) => {
+  if (typeof valor !== 'string') return valor;
+  return valor.trim().replace(/<[^>]*>?/gm, ''); // elimina etiquetas HTML/scripts
+};
+
+const passwordStrongValidation = [
+  body('password')
+    .isLength({ min: 8 }).withMessage('La contraseña debe tener al menos 8 caracteres')
+    .matches(/[A-Za-z]/).withMessage('La contraseña debe incluir letras')
+    .matches(/[0-9]/).withMessage('La contraseña debe incluir al menos un número'),
+];
 
 // --- Validaciones reutilizables ---
 
@@ -51,13 +67,19 @@ const citaValidation = [
   body('medico_id').isInt().withMessage('El ID del médico es obligatorio'),
   body('fecha').isDate().withMessage('La fecha es obligatoria'),
   body('hora').matches(/^\d{2}:\d{2}$/).withMessage('La hora debe tener formato HH:MM'),
-  body('motivo').notEmpty().withMessage('El motivo es obligatorio'),
+  body('motivo')
+    .optional({ values: 'falsy' })
+    .isLength({ min: 2, max: 500 }).withMessage('El motivo debe tener entre 2 y 500 caracteres')
+    .customSanitizer(sanitizarTexto),
 ];
 
 const citaReprogramarValidation = [
   body('fecha').optional().isDate().withMessage('La fecha no es válida'),
   body('hora').optional().matches(/^\d{2}:\d{2}$/).withMessage('La hora debe tener formato HH:MM'),
-  body('motivo').optional().notEmpty().withMessage('El motivo no puede estar vacío'),
+  body('motivo')
+    .optional({ values: 'falsy' })
+    .isLength({ min: 2, max: 500 }).withMessage('El motivo debe tener entre 2 y 500 caracteres')
+    .customSanitizer(sanitizarTexto),
 ];
 
 const citaEstadoValidation = [
@@ -82,6 +104,8 @@ const horarioUpdateValidation = [
 
 module.exports = {
   validate,
+  passwordStrongValidation,
+  sanitizarTexto,
   idParamValidation,
   medicoIdParamValidation,
   pacienteIdParamValidation,
