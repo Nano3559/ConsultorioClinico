@@ -1,0 +1,13 @@
+{
+  "name": "consultorio-firebase-seed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Script de seed para crear las cuentas demo en Firebase Auth + Firestore.",
+  "type": "module",
+  "scripts": {
+    "seed": "node seed_firebase.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

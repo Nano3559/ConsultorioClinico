@@ -58,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
   void _quickLogin(String email, String password) {
     _email.text = email;
     _password.text = password;
+    _login();
   }
 
   @override
@@ -150,6 +151,13 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 24),
                         const Text('Acceso rápido de demostración', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Estas cuentas deben existir previamente en Firebase Auth. '
+                          'Si el acceso falla, registra tu cuenta o crea el usuario '
+                          'en Firebase.',
+                          style: TextStyle(fontSize: 12, color: AppColors.muted),
+                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
