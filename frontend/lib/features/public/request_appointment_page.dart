@@ -62,6 +62,19 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     context.read<ClinicProvider>().loadAvailability(_doctorId!, _date);
   }
 
+  /// Vuelve atrás: si hay sesión, al sistema; si es visitante, al inicio.
+  void _goBack() {
+    final auth = context.read<AuthProvider>();
+    context.go(auth.isLogged ? '/app' : '/');
+  }
+
+  /// Tras el éxito, si hay sesión el paciente vuelve al sistema (no al landing).
+  void _afterSuccess(BuildContext ctx) {
+    final auth = context.read<AuthProvider>();
+    Navigator.of(ctx).pop();
+    context.go(auth.isLogged ? '/app' : '/');
+  }
+
   @override
   void dispose() {
     _name.dispose();
@@ -86,7 +99,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
           title: const Text('Solicitar cita'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/'),
+            onPressed: _goBack,
           ),
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -111,7 +124,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         title: const Text('Solicitar cita'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: _goBack,
         ),
       ),
       body: SingleChildScrollView(
@@ -493,10 +506,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
             child: const Text('Entrar con mi cuenta'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              context.go('/');
-            },
+            onPressed: () => _afterSuccess(ctx),
             child: const Text('Volver al inicio'),
           ),
         ],

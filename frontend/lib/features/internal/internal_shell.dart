@@ -21,6 +21,11 @@ class InternalShell extends StatelessWidget {
       return const Scaffold(body: SizedBox.shrink());
     }
     final isWeb = kIsWeb || MediaQuery.sizeOf(context).width >= 840;
-    return isWeb ? const WebShell() : const MobileShell();
+    // En web el botón "atrás" del navegador no debe sacar al usuario del
+    // sistema y llevarlo al landing; se sale desde "Cerrar sesión".
+    return PopScope(
+      canPop: !isWeb,
+      child: isWeb ? const WebShell() : const MobileShell(),
+    );
   }
 }

@@ -213,17 +213,20 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Alta de médico desde el admin: crea Auth + perfiles y envía correo de
-  /// confirmación (restablecer contraseña de Firebase) para que fije su clave.
-  Future<String?> registerDoctor({
+  /// confirmación que apunta a la página de restablecer de la app (más bonita
+  /// que el mail genérico de Firebase). Devuelve (error, claveTemporal).
+  Future<(String?, String?)> registerDoctor({
     required String email,
     required String nombre,
     required Map<String, dynamic> medicoData,
   }) async {
+    var tempPassword = '';
     try {
       final secondary = await _secondaryAuth();
+      tempPassword = _tempPassword();
       final cred = await secondary.createUserWithEmailAndPassword(
         email: email.trim(),
-        password: _tempPassword(),
+        password: tempPassword,
       );
       final uid = cred.user!.uid;
       await _db.collection('medicos').doc(uid).set({
@@ -243,21 +246,20 @@ class AuthProvider extends ChangeNotifier {
         'activo': true,
         'creadoEn': FieldValue.serverTimestamp(),
       });
+      // El enlace del correo aterriza en NUESTRA pantalla (no en la de
+      // Firebase): igualmente se le permite fijar su contraseña.
       await secondary.sendPasswordResetEmail(
         email: email.trim(),
         actionCodeSettings: ActionCodeSettings(
           url: 'https://consultorioclinico-2026.web.app/reset',
-          handleCodeInApp: true,
-          iOSBundleId: 'com.example.consultorioClinico',
-          androidPackageName: 'com.example.consultorioClinico',
-          androidInstallApp: false,
+          handleCodeInApp: false,
         ),
       );
-      return null;
+      return (null, tempPassword);
     } on FirebaseAuthException catch (e) {
-      return _authError(e);
+      return (_authError(e), null);
     } catch (e) {
-      return 'Error inesperado: $e';
+      return ('Error inesperado: $e', null);
     }
   }
 
