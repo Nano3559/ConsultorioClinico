@@ -4,7 +4,7 @@ const { body } = require('express-validator');
 const { getAll, getById, create, update, remove } = require('../controllers/pacienteController');
 const { verifyToken } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
-const { validate } = require('../middleware/validation');
+const { validate, idParamValidation, pacienteIdParamValidation } = require('../middleware/validation');
 
 // Validaciones
 const pacienteValidation = [
@@ -13,6 +13,8 @@ const pacienteValidation = [
   body('cedula').notEmpty().withMessage('La cédula es obligatoria'),
   body('email').optional().isEmail().withMessage('Email inválido'),
   body('telefono').optional(),
+  body('sexo').optional().isIn(['M', 'F', 'O']).withMessage('Sexo inválido'),
+  body('tipo_sangre').optional().isIn(['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']).withMessage('Tipo de sangre inválido'),
 ];
 
 const pacienteUpdateValidation = [
@@ -25,7 +27,7 @@ const pacienteUpdateValidation = [
 
 // Rutas públicas (lectura)
 router.get('/', getAll);
-router.get('/:id', getById);
+router.get('/:id', idParamValidation, validate, getById);
 
 // Rutas protegidas (escritura)
 router.post('/', verifyToken, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);

@@ -12,7 +12,8 @@
     "db:migrate": "node db/migrate.js",
     "db:migrate:status": "node db/migrate.js --status",
     "db:init": "node db/index.js",
-    "db:check": "node db/index.js --check"
+    "db:check": "node db/index.js --check",
+    "test:api": "node test/apiTest.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

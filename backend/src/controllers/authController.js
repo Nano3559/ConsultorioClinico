@@ -265,11 +265,23 @@ function parseExpira(expira) {
 const getProfile = async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { data: rows, error: queryError } = await supabase
+    let select = 'id, nombre, email, rol, activo, creado_en, ultimo_acceso';
+    let { data: rows, error: queryError } = await supabase
       .from('usuarios')
-      .select('id, nombre, email, rol, activo, creado_en, ultimo_acceso')
+      .select(select)
       .eq('id', req.user.id)
       .limit(1);
+
+    // Si la columna ultimo_acceso no existe (migración 003 no aplicada),
+    // reintentar sin ella para no romper el perfil.
+    if (queryError && (queryError.code === '42703' || /ultimo_acceso/.test(queryError.message || ''))) {
+      select = 'id, nombre, email, rol, activo, creado_en';
+      ({ data: rows, error: queryError } = await supabase
+        .from('usuarios')
+        .select(select)
+        .eq('id', req.user.id)
+        .limit(1));
+    }
     if (queryError) throw queryError;
     const usuario = rows && rows[0];
 
