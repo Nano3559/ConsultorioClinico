@@ -61,35 +61,41 @@ class LandingNavbar extends StatelessWidget {
               ),
             ),
           ),
-          const Spacer(),
-          if (!isMobile)
-            Flexible(
+          if (!isMobile) ...[
+            const SizedBox(width: 12),
+            Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     for (final item in _menu)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: TextButton(
                           onPressed: () => onNavigate(item),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.muted),
-                          child: Text(item),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.muted,
+                            minimumSize: const Size(0, 40),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          child: Text(item, style: const TextStyle(fontSize: 14)),
                         ),
                       ),
-                    const SizedBox(width: 6),
-                    FilledButton(
-                      onPressed: onRequest,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      ),
-                      child: const Text('Solicitar cita'),
-                    ),
                   ],
                 ),
               ),
-            )
+            ),
+            const SizedBox(width: 10),
+            FilledButton(
+              onPressed: onRequest,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              ),
+              child: const Text('Solicitar cita'),
+            ),
+          ]
           else
             Builder(
               builder: (context) => IconButton(
