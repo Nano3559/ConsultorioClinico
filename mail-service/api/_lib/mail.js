@@ -1,13 +1,22 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-/// Envía un correo con Resend (templates HTML personalizados).
-export function sendMail({ to, subject, html }) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) throw new Error('Falta la variable de entorno RESEND_API_KEY');
-  const resend = new Resend(key);
-  const from =
-    process.env.FROM_EMAIL || 'ConsultorioClínico <noreply@resend.dev>';
-  return resend.emails.send({ from, to, subject, html });
+/// Envía un correo con nodemailer vía SMTP. Enviador por defecto: tu propia
+/// cuenta de Gmail (con Contraseña de aplicación). Se puede sobreescribir el
+/// remitente con FROM_EMAIL.
+export async function sendMail({ to, subject, html }) {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+  if (!user || !pass) {
+    throw new Error(
+      'Faltan GMAIL_USER o GMAIL_APP_PASSWORD (usa una "Contraseña de aplicación" de Google).'
+    );
+  }
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+  });
+  const from = process.env.FROM_EMAIL || `ConsultorioClínico <${user}>`;
+  return transporter.sendMail({ from, to, subject, html });
 }
 
 function shell({ title, body, link, buttonText, footerEmail }) {

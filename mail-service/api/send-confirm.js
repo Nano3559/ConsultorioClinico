@@ -13,8 +13,8 @@ export default async function handler(req, res) {
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'email requerido' });
   }
-  if (!process.env.RESEND_API_KEY) {
-    return res.status(500).json({ error: 'RESEND_API_KEY no configurada' });
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    return res.status(500).json({ error: 'GMAIL_USER / GMAIL_APP_PASSWORD no configuradas' });
   }
   try {
     const link = await adminAuth().generatePasswordResetLink(email.trim(), {
