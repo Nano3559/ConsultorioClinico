@@ -159,10 +159,16 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  void logout() async {
-    await _auth.signOut();
-    _clear();
-    notifyListeners();
+  Future<void> logout() async {
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      // Si falla la red o el cierre de sesión de Firebase, igualmente se
+      // limpia el estado local para no dejar una sesión "fantasma".
+    } finally {
+      _clear();
+      notifyListeners();
+    }
   }
 
   void _clear() {

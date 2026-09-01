@@ -59,11 +59,29 @@ con datos ficticios; al tener la API lista solo hay que:
 
 ## Cuentas de demostración
 
-| Rol        | Correo              |
-|------------|---------------------|
-| Admin      | admin@clinica.com   |
-| Médico     | maria@clinica.com   |
-| Recepción  | recepcion@clinica.com |
-| Paciente   | juan@clinica.com    |
+El login autentica contra **Firebase Auth** y el rol se lee de Firestore, por lo
+que las cuentas demo **deben existir en Firebase**. Mismas que aparecen como
+"acceso rápido" en `/login`:
 
-Cualquier contraseña con 4+ caracteres funciona en modo demo.
+| Rol        | Correo               | Contraseña    |
+|------------|----------------------|---------------|
+| Admin      | admin@consultorio.com | admin123      |
+| Médico     | carlos@consultorio.com | medico123    |
+| Recepción  | maria@consultorio.com | recepcion123  |
+| Paciente   | pedro@gmail.com      | paciente123   |
+
+### Sembrar las cuentas en Firebase (una sola vez)
+
+1. En Firebase Console → Project settings → **Service accounts** → "Generate new
+   private key" y guarda el JSON como `scripts/service-account.json` (este archivo
+   está en `.gitignore`, no debe subirse).
+2. Instala la dependencia y ejecuta el seed:
+
+```bash
+cd scripts
+npm install
+set GOOGLE_APPLICATION_CREDENTIALS=.\\service-account.json   # PowerShell
+node seed_firebase.mjs
+```
+
+El script crea cada usuario en Auth y su perfil de rol en Firestore (idempotente).

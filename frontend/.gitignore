@@ -49,3 +49,8 @@ app.*.map.json
 
 # Firebase
 .firebase/
+
+# Clave de servicio (NUNCA subir al repo)
+scripts/service-account.json
+scripts/node_modules/
+
