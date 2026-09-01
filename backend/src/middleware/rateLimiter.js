@@ -2,8 +2,19 @@
  * Rate limiter ligero en memoria para proteger endpoints sensibles
  * (login, registro) contra fuerza bruta.
  *
- * Nota para Vercel/serverless: al ser en memoria, el límite se aplica por
- * instancia. Aun así reduce notablemente el riesgo de ataques básicos.
+ * LIMITACIÓN CONOCIDA (serverless / Vercel):
+ * Al estar en memoria, el límite se aplica por instancia. En un entorno
+ * serverless cada invocación (o conjunto) puede ejecutarse en una instancia
+ * distinta, por lo que un atacante que distribuya sus intentos entre
+ * instancias podría eludir el límite.
+ *
+ * Es ACEPTABLE para controlar ataques básicos de fuerza bruta de un solo
+ * nodo. Para producción con escalado horizontal se recomienda reemplazarlo
+ * por un limitador distribuido que comparta el contador entre instancias:
+ *   - Tabla SQL (Supabase/Postgres): intentos_acceso ya guarda por
+ *     ip_address; se puede consultar el conteo reciente para bloquear.
+ *   - Servicio externo: Upstash Redis, Cloudflare Rate Limiting, etc.
+ *
  * La cabecera x-forwarded-for permite detectar la IP real detrás de proxies.
  */
 
