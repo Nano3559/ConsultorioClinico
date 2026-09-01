@@ -19,8 +19,8 @@ const consultaValidation = [
 router.use(verifyToken);
 
 router.get('/', checkRole('admin', 'medico', 'recepcion'), getAll);
-router.get('/paciente/:id', getByPaciente);
-router.get('/:id', getById);
+router.get('/paciente/:id', checkRole('admin', 'medico', 'recepcion'), getByPaciente);
+router.get('/:id', checkRole('admin', 'medico', 'recepcion'), getById);
 router.post('/', checkRole('admin', 'medico'), consultaValidation, validate, create);
 router.put('/:id', checkRole('admin', 'medico'), update);
 

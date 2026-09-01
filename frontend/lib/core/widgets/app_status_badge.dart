@@ -5,7 +5,7 @@ import '../constants/app_colors.dart';
 enum AppointmentStatus {
   pendiente('Pendiente', AppColors.warning, AppColors.warningBg),
   confirmada('Confirmada', AppColors.info, AppColors.infoBg),
-  atendida('Atendida', AppColors.success, AppColors.successBg),
+  atendida('Completada', AppColors.success, AppColors.successBg),
   cancelada('Cancelada', AppColors.danger, AppColors.dangerBg),
   noAsistio('No asistió', AppColors.purple, AppColors.purpleBg);
 
@@ -20,7 +20,7 @@ enum AppointmentStatus {
       case AppointmentStatus.pendiente:
         return 'programada';
       case AppointmentStatus.confirmada:
-        return 'en_curso';
+        return 'confirmada';
       case AppointmentStatus.atendida:
         return 'completada';
       case AppointmentStatus.cancelada:
@@ -35,6 +35,7 @@ enum AppointmentStatus {
     switch (value) {
       case 'programada':
         return AppointmentStatus.pendiente;
+      case 'confirmada':
       case 'en_curso':
         return AppointmentStatus.confirmada;
       case 'completada':

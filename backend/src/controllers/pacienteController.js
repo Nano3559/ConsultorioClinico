@@ -52,7 +52,7 @@ const getById = async (req, res) => {
  */
 const create = async (req, res) => {
   try {
-    const { nombre, apellido, cedula, telefono, email, fecha_nacimiento, sexo, direccion, tipo_sangre, alergias, contacto_emergencia } = req.body;
+    const { nombre, apellido, cedula, telefono, email, fecha_nacimiento, sexo, direccion, tipo_sangre, alergias, antecedentes, contacto_emergencia } = req.body;
     const supabase = getSupabase();
 
     const { data: existentes } = await supabase
@@ -77,6 +77,7 @@ const create = async (req, res) => {
         direccion,
         tipo_sangre,
         alergias: alergias || 'Ninguna',
+        antecedentes: antecedentes || '',
         contacto_emergencia,
       })
       .select('*')
@@ -102,7 +103,7 @@ const create = async (req, res) => {
 const update = async (req, res) => {
   try {
     const supabase = getSupabase();
-    const permitidos = ['nombre', 'apellido', 'cedula', 'telefono', 'email', 'fecha_nacimiento', 'sexo', 'direccion', 'tipo_sangre', 'alergias', 'contacto_emergencia'];
+    const permitidos = ['nombre', 'apellido', 'cedula', 'telefono', 'email', 'fecha_nacimiento', 'sexo', 'direccion', 'tipo_sangre', 'alergias', 'antecedentes', 'contacto_emergencia'];
     const cambios = {};
     for (const campo of permitidos) {
       if (req.body[campo] !== undefined) cambios[campo] = req.body[campo];
@@ -117,7 +118,12 @@ const update = async (req, res) => {
       .eq('id', req.params.id)
       .select('*');
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(res, 'Ya existe un paciente con esa cédula', 400);
+      }
+      throw error;
+    }
     if (!data || data.length === 0) {
       return sendError(res, 'Paciente no encontrado', 404);
     }

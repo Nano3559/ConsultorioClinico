@@ -55,3 +55,7 @@ functions/package-lock.json
 # Firma Android (nunca subir el keystore)
 android/app/upload-keystore.jks
 android/key.properties
+
+# Clave de servicio (NUNCA subir al repo)
+scripts/service-account.json
+scripts/node_modules/

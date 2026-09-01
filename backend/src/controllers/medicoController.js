@@ -1,38 +1,80 @@
+const crypto = require('crypto');
 const { getSupabase } = require('../config/supabase');
-const { sendSuccess, sendError, formatDate } = require('../utils/helpers');
+const { sendSuccess, sendError, formatDate, normalizarTexto, horaAMinutos } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
 
 /**
+ * Resuelve especialidad_id a partir del nombre (normalizado), buscando en la
+ * tabla catálogo especialidades. Devuelve { id, nombre } o { id: null, nombre }.
+ * Es la única fuente de verdad para evitar desnormalización (texto vs. FK).
+ */
+const resolverEspecialidad = async (supabase, nombreEspecialidad) => {
+  const nombre = (nombreEspecialidad || '').trim();
+  if (!nombre) return { id: null, nombre };
+
+  const { data: rows, error } = await supabase
+    .from('especialidades')
+    .select('id, nombre')
+    .eq('activo', true);
+  if (error) {
+    if (error.code === '42P01') return { id: null, nombre }; // tabla aún no existe
+    throw error;
+  }
+  const match = (rows || []).find(
+    (e) => normalizarTexto(e.nombre) === normalizarTexto(nombre)
+  );
+  return match ? { id: match.id, nombre: match.nombre } : { id: null, nombre };
+};
+
+/**
+ * Columnas seguras para lecturas públicas (sin email/cédula/telefono).
+ */
+const SELECT_MEDICO_PUBLICO =
+  'id, nombre, apellido, especialidad, especialidad_id, consulorio, tarifa_consulta, activo';
+
+/**
  * GET /api/medicos
- * Listar todos los médicos activos
+ * Listar todos los médicos activos.
+ * - Autenticado (staff): devuelve el registro completo.
+ * - Público / paciente: solo columnas esenciales de catálogo.
  */
 const getAll = async (req, res) => {
   try {
     const supabase = getSupabase();
+    const esStaff = req.user && req.user.rol !== 'paciente';
+    const columnas = esStaff ? '*' : SELECT_MEDICO_PUBLICO;
+
     const { data, error } = await supabase
       .from('medicos')
-      .select('*')
+      .select(columnas)
       .eq('activo', true)
       .order('id');
 
-    if (error) throw error;
+    if (error) {
+      console.error('medicos.getAll SUPABASE ERROR:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+    console.log('medicos.getAll OK, registros:', data ? data.length : 0);
     return sendSuccess(res, data);
   } catch (error) {
-    console.error('medicos.getAll:', error);
-    return sendError(res, 'Error al listar médicos', 500);
+    console.error('medicos.getAll ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al listar médicos: ${error.message || 'desconocido'}`, 500);
   }
 };
 
 /**
  * GET /api/medicos/:id
- * Obtener médico por ID
+ * Obtener médico por ID (misma lógica de campos según autenticación)
  */
 const getById = async (req, res) => {
   try {
     const supabase = getSupabase();
+    const esStaff = req.user && req.user.rol !== 'paciente';
+    const columnas = esStaff ? '*' : SELECT_MEDICO_PUBLICO;
+
     const { data, error } = await supabase
       .from('medicos')
-      .select('*')
+      .select(columnas)
       .eq('id', req.params.id)
       .limit(1);
 
@@ -42,8 +84,8 @@ const getById = async (req, res) => {
     }
     return sendSuccess(res, data[0]);
   } catch (error) {
-    console.error('medicos.getById:', error);
-    return sendError(res, 'Error al obtener médico', 500);
+    console.error('medicos.getById ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al obtener médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -53,13 +95,14 @@ const getById = async (req, res) => {
  */
   const create = async (req, res) => {
   try {
-    const { nombre, apellido, cedula, especialidad, telefono, email, consulorio, tarifa_consulta } = req.body;
+    const { nombre, apellido, cedula, especialidad, telefono, email, consulorio, tarifa_consulta, titulo, descripcion, anios_experiencia } = req.body;
     const supabase = getSupabase();
 
-    // La cédula es única; si el formulario no la envía, generamos un marcador.
+    // La cédula es única; si el formulario no la envía, generamos un marcador
+    // con sufijo aleatorio para evitar colisiones con el UNIQUE de la BD.
     const cedulaFinal = cedula && String(cedula).trim()
       ? String(cedula).trim()
-      : `M${Date.now()}`;
+      : `M${Date.now()}${crypto.randomBytes(4).toString('hex')}`;
 
     const { data: existentes } = await supabase
       .from('medicos')
@@ -70,17 +113,24 @@ const getById = async (req, res) => {
       return sendError(res, 'Ya existe un médico con esa cédula', 400);
     }
 
+    // Normalizar: resolver especialidad_id desde el catálogo por nombre.
+    const esp = await resolverEspecialidad(supabase, especialidad);
+
     const { data, error } = await supabase
       .from('medicos')
       .insert({
         nombre,
         apellido,
         cedula: cedulaFinal,
-        especialidad,
+        especialidad: esp.nombre,
+        especialidad_id: esp.id,
         telefono,
         email: email && String(email).trim() ? email : null,
         consulorio,
         tarifa_consulta: parseFloat(tarifa_consulta) || 0,
+        titulo: (titulo && String(titulo).trim()) ? String(titulo).trim() : 'Dr./Dra.',
+        descripcion: descripcion || '',
+        anios_experiencia: parseInt(anios_experiencia, 10) || 0,
       })
       .select('*')
       .single();
@@ -93,8 +143,8 @@ const getById = async (req, res) => {
     }
     return sendSuccess(res, data, 'Médico creado exitosamente', 201);
   } catch (error) {
-    console.error('medicos.create:', error);
-    return sendError(res, 'Error al crear médico', 500);
+    console.error('medicos.create ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al crear médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -105,7 +155,7 @@ const getById = async (req, res) => {
 const update = async (req, res) => {
   try {
     const supabase = getSupabase();
-    const permitidos = ['nombre', 'apellido', 'cedula', 'especialidad', 'telefono', 'email', 'consulorio'];
+    const permitidos = ['nombre', 'apellido', 'cedula', 'especialidad', 'telefono', 'email', 'consulorio', 'titulo', 'descripcion'];
     const cambios = {};
     for (const campo of permitidos) {
       if (req.body[campo] !== undefined) cambios[campo] = req.body[campo];
@@ -113,6 +163,17 @@ const update = async (req, res) => {
     if (req.body.tarifa_consulta !== undefined) {
       cambios.tarifa_consulta = parseFloat(req.body.tarifa_consulta);
     }
+    if (req.body.anios_experiencia !== undefined) {
+      cambios.anios_experiencia = parseInt(req.body.anios_experiencia, 10) || 0;
+    }
+
+    // Mantener especialidad_id en sincronía con el texto de especialidad.
+    if (cambios.especialidad !== undefined) {
+      const esp = await resolverEspecialidad(supabase, cambios.especialidad);
+      cambios.especialidad = esp.nombre;
+      cambios.especialidad_id = esp.id;
+    }
+
     if (Object.keys(cambios).length === 0) {
       return sendError(res, 'No hay campos para actualizar', 400);
     }
@@ -123,14 +184,19 @@ const update = async (req, res) => {
       .eq('id', req.params.id)
       .select('*');
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(res, 'Ya existe un médico con esa cédula', 400);
+      }
+      throw error;
+    }
     if (!data || data.length === 0) {
       return sendError(res, 'Médico no encontrado', 404);
     }
     return sendSuccess(res, data[0], 'Médico actualizado exitosamente');
   } catch (error) {
-    console.error('medicos.update:', error);
-    return sendError(res, 'Error al actualizar médico', 500);
+    console.error('medicos.update ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al actualizar médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -163,8 +229,8 @@ const toggleEstado = async (req, res) => {
     const estado = nuevoEstado ? 'activado' : 'desactivado';
     return sendSuccess(res, data, `Médico ${estado} exitosamente`);
   } catch (error) {
-    console.error('medicos.toggleEstado:', error);
-    return sendError(res, 'Error al cambiar estado del médico', 500);
+    console.error('medicos.toggleEstado ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al cambiar estado del médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 
@@ -208,6 +274,11 @@ const createHorario = async (req, res) => {
   try {
     const { dia_semana, hora_inicio, hora_fin } = req.body;
     const supabase = getSupabase();
+
+    // Validar que la hora de fin sea posterior a la de inicio.
+    if (horaAMinutos(hora_fin) <= horaAMinutos(hora_inicio)) {
+      return sendError(res, 'La hora de fin debe ser posterior a la de inicio', 400);
+    }
 
     const { data: medicos } = await supabase
       .from('medicos')
@@ -275,8 +346,8 @@ const remove = async (req, res) => {
 
     return sendSuccess(res, null, 'Médico eliminado exitosamente');
   } catch (error) {
-    console.error('medicos.remove:', error);
-    return sendError(res, 'Error al eliminar médico', 500);
+    console.error('medicos.remove ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al eliminar médico: ${error.message || 'desconocido'}`, 500);
   }
 };
 

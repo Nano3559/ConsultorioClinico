@@ -6,9 +6,10 @@ const ROLES = {
 };
 
 // Debe coincidir con el CHECK de la columna citas.estado en la BD:
-// ('programada', 'en_curso', 'completada', 'cancelada', 'no_show')
+// ('programada', 'confirmada', 'en_curso', 'completada', 'cancelada', 'no_show')
 const ESTADOS_CITA = {
   PROGRAMADA: 'programada',
+  CONFIRMADA: 'confirmada',
   EN_CURSO: 'en_curso',
   COMPLETADA: 'completada',
   CANCELADA: 'cancelada',
