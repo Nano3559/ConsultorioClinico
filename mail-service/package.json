@@ -1,0 +1,13 @@
+{
+  "name": "consultorio-mail-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "resend": "^4.7.0"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}

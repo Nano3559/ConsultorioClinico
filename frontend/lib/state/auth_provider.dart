@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/models/patient.dart';
 import '../data/models/user.dart';
@@ -212,6 +215,29 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// URL del servicio de correo (Vercel + Resend). Se define al compilar:
+  /// `--dart-define=MAIL_API_URL=https://tu-proyecto.vercel.app`
+  static const _mailApiUrl = String.fromEnvironment('MAIL_API_URL');
+
+  /// Envía el correo de confirmación personalizado desde el servicio propio.
+  /// Devuelve false si el servicio no está configurado o falla (la app usa
+  /// entonces el respaldo de Firebase).
+  Future<bool> _sendPersonalizedConfirm(String email, String nombre) async {
+    if (_mailApiUrl.isEmpty) return false;
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$_mailApiUrl/api/send-confirm'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email.trim(), 'nombre': nombre.trim()}),
+          )
+          .timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Alta de médico desde el admin: crea Auth + perfiles y envía correo de
   /// confirmación que apunta a la página de restablecer de la app (más bonita
   /// que el mail genérico de Firebase). Devuelve (error, claveTemporal).
@@ -246,15 +272,19 @@ class AuthProvider extends ChangeNotifier {
         'activo': true,
         'creadoEn': FieldValue.serverTimestamp(),
       });
-      // El enlace del correo aterriza en NUESTRA pantalla (no en la de
-      // Firebase): igualmente se le permite fijar su contraseña.
-      await secondary.sendPasswordResetEmail(
-        email: email.trim(),
-        actionCodeSettings: ActionCodeSettings(
-          url: 'https://consultorioclinico-2026.web.app/reset',
-          handleCodeInApp: false,
-        ),
-      );
+      // Correo personalizado (servicio propio con Resend); si no está
+      // configurado, respaldo con el de Firebase (igualmente apunta a NUESTRA
+      // pantalla /reset, no a la de Firebase).
+      final sent = await _sendPersonalizedConfirm(email.trim(), nombre.trim());
+      if (!sent) {
+        await secondary.sendPasswordResetEmail(
+          email: email.trim(),
+          actionCodeSettings: ActionCodeSettings(
+            url: 'https://consultorioclinico-2026.web.app/reset',
+            handleCodeInApp: false,
+          ),
+        );
+      }
       return (null, tempPassword);
     } on FirebaseAuthException catch (e) {
       return (_authError(e), null);
