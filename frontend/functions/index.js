@@ -34,9 +34,20 @@ const FROM_EMAIL =
 
 function transporter() {
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    tls: { minVersion: 'TLSv1.2' },
     auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
   });
+}
+
+function mailFn(handler) {
+  return functions.runWith({ timeoutSeconds: 240, memory: '256MB' }).https.onRequest(handler);
 }
 
 function shell({ title, body, link, buttonText, footerEmail }) {
@@ -89,23 +100,8 @@ function cors(res) {
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
 }
 
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', (c) => (data += c));
-    req.on('end', () => {
-      try {
-        resolve(data ? JSON.parse(data) : {});
-      } catch (e) {
-        reject(e);
-      }
-    });
-    req.on('error', reject);
-  });
-}
-
 /** Envía un correo de confirmación (alta de médico / cuenta). */
-exports.sendConfirm = functions.https.onRequest(async (req, res) => {
+exports.sendConfirm = mailFn(async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Usa POST' });
@@ -115,29 +111,33 @@ exports.sendConfirm = functions.https.onRequest(async (req, res) => {
       .json({ error: 'Configura gmail.user y gmail.apppassword (función)' });
   }
   try {
-    const body = await readBody(req);
+    const body = req.body || {};
+    if (body.ping) return res.json({ pong: true });
     const email = String(body.email || '').trim();
     const nombre = String(body.nombre || 'Colega').trim();
     if (!email) return res.status(400).json({ error: 'email requerido' });
+    console.log('[sendConfirm] generando enlace para', email);
     const link = await admin.auth().generatePasswordResetLink(email, {
       url: RESET_URL,
       handleCodeInApp: false,
     });
+    console.log('[sendConfirm] enlace generado, enviando correo...');
     await transporter().sendMail({
       from: FROM_EMAIL,
       to: email,
       subject: `Confirma tu cuenta en ConsultorioClínico · ${nombre}`,
       html: confirmHtml({ nombre, email, link }),
     });
+    console.log('[sendConfirm] correo enviado OK');
     return res.json({ ok: true });
   } catch (e) {
-    console.error('sendConfirm error:', e && e.message);
+    console.error('sendConfirm error:', (e && e.message) || e);
     return res.status(500).json({ error: String((e && e.message) || e) });
   }
 });
 
 /** Envía un correo de "restablecer contraseña". */
-exports.sendReset = functions.https.onRequest(async (req, res) => {
+exports.sendReset = mailFn(async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Usa POST' });
@@ -147,22 +147,25 @@ exports.sendReset = functions.https.onRequest(async (req, res) => {
       .json({ error: 'Configura gmail.user y gmail.apppassword (función)' });
   }
   try {
-    const body = await readBody(req);
+    const body = req.body || {};
     const email = String(body.email || '').trim();
     if (!email) return res.status(400).json({ error: 'email requerido' });
+    console.log('[sendReset] generando enlace para', email);
     const link = await admin.auth().generatePasswordResetLink(email, {
       url: RESET_URL,
       handleCodeInApp: false,
     });
+    console.log('[sendReset] enlace generado, enviando correo...');
     await transporter().sendMail({
       from: FROM_EMAIL,
       to: email,
       subject: 'Restablece tu contraseña · ConsultorioClínico',
       html: resetHtml({ email, link }),
     });
+    console.log('[sendReset] correo enviado OK');
     return res.json({ ok: true });
   } catch (e) {
-    console.error('sendReset error:', e && e.message);
+    console.error('sendReset error:', (e && e.message) || e);
     return res.status(500).json({ error: String((e && e.message) || e) });
   }
 });

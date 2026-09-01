@@ -215,8 +215,8 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// URL del servicio de correo (Vercel + Resend). Se define al compilar:
-  /// `--dart-define=MAIL_API_URL=https://tu-proyecto.vercel.app`
+  /// URL del servicio de correo (Cloud Functions). Se define al compilar:
+  /// `--dart-define=MAIL_API_URL=https://us-central1-consultorioclinico-2026.cloudfunctions.net`
   static const _mailApiUrl = String.fromEnvironment('MAIL_API_URL');
 
   /// Envía el correo de confirmación personalizado desde el servicio propio.
@@ -227,7 +227,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final res = await http
           .post(
-            Uri.parse('$_mailApiUrl/api/send-confirm'),
+            Uri.parse('$_mailApiUrl/sendConfirm'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'email': email.trim(), 'nombre': nombre.trim()}),
           )
