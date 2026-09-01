@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/ambient_background.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../data/models/user.dart';
 import '../../../state/auth_provider.dart';
@@ -47,20 +48,44 @@ class _MobileShellState extends State<MobileShell> {
         ),
         title: Text(
           current.label,
-          style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark),
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
-        backgroundColor: AppColors.surface,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: AppColors.gradientPrimary,
+            ),
+          ),
+        ),
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Center(child: AppAvatar(name: user.name, radius: 16)),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                ),
+                child: AppAvatar(name: user.name, radius: 16),
+              ),
+            ),
           ),
         ],
       ),
       drawer: _ModuleDrawer(modules: modules, selectedIndex: _index, user: user, onSelect: _select),
-      body: IndexedStack(
-        index: _index,
-        children: [for (final m in modules) m.builder(context)],
+      body: AmbientBackground(
+        child: FadeSlide(
+          child: IndexedStack(
+            index: _index,
+            children: [for (final m in modules) m.builder(context)],
+          ),
+        ),
       ),
     );
   }

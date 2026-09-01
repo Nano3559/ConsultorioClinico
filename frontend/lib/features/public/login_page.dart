@@ -4,15 +4,16 @@ import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_validators.dart';
+import '../../core/widgets/ambient_background.dart';
 import '../../data/models/user.dart';
 import '../../state/auth_provider.dart';
 import '../../state/clinic_provider.dart';
 
 /// Cuentas sembradas en la base de datos para pruebas por rol (acceso personal).
 const _demoAccounts = [
-  (UserRole.admin, 'admin@consultorio.com', 'admin123'),
-  (UserRole.medico, 'carlos@consultorio.com', 'medico123'),
-  (UserRole.recepcion, 'maria@consultorio.com', 'recepcion123'),
+  (UserRole.admin, 'admin@consultorio.com', 'Admin1234'),
+  (UserRole.medico, 'qbrayanm05@gmail.com', 'Medico1234'),
+  (UserRole.recepcion, 'recepcion@consultorio.com', 'Recepcion1234'),
 ];
 
 /// Pantalla de acceso (personal por email/clave, o paciente por CI + nacimiento).
@@ -97,95 +98,126 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     final width = MediaQuery.of(context).size.width;
     final isWide = width > 900;
     return Scaffold(
-      body: Row(
-        children: [
-          if (isWide)
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primaryDark, AppColors.primaryLight],
+      body: AmbientBackground(
+        child: Row(
+          children: [
+            if (isWide)
+              Expanded(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.primaryDark, AppColors.primaryLight],
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.local_hospital, size: 80, color: Colors.white.withValues(alpha: 0.9)),
-                      const SizedBox(height: 8),
-                      Text(
-                        'ConsultorioClínico',
-                        style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Sistema de gestión médica y clínica',
-                        style: const TextStyle(color: Color(0xFFD1FAE5), fontSize: 16),
-                      ),
-                    ],
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_hospital, size: 84, color: Colors.white.withValues(alpha: 0.95)),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'ConsultorioClínico',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            shadows: [Shadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4))],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Sistema de gestión médica y clínica',
+                          style: const TextStyle(color: Color(0xFFD1FAE5), fontSize: 16),
+                        ),
+                        const SizedBox(height: 24),
+                        Container(
+                          width: 220,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [Colors.white, Colors.white.withValues(alpha: 0.0)]),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(28),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: SizedBox(
-                          width: 96,
-                          height: 96,
-                          child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json'),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(28),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: FadeSlide(
+                      child: Container(
+                        padding: const EdgeInsets.all(26),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.94),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: Colors.white),
+                          boxShadow: [
+                            BoxShadow(color: AppColors.shadowSoft, blurRadius: 42, offset: const Offset(0, 14)),
+                            BoxShadow(color: AppColors.primary.withValues(alpha: 0.12), blurRadius: 2, offset: const Offset(0, 2)),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('Bienvenido', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.dark)),
-                      const SizedBox(height: 6),
-                      const Text('Ingresa con tu cuenta para continuar.', style: TextStyle(color: AppColors.muted)),
-                      const SizedBox(height: 16),
-                      TabBar(
-                        controller: _tab,
-                        labelColor: AppColors.primaryDark,
-                        tabs: const [
-                          Tab(text: 'Personal'),
-                          Tab(text: 'Paciente'),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 250,
-                        child: TabBarView(
-                          controller: _tab,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _personalForm(),
-                            _patientForm(),
+                            Center(
+                              child: SizedBox(
+                                width: 96,
+                                height: 96,
+                                child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json'),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text('Bienvenido', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.dark)),
+                            const SizedBox(height: 6),
+                            const Text('Ingresa con tu cuenta para continuar.', style: TextStyle(color: AppColors.muted)),
+                            const SizedBox(height: 16),
+                            TabBar(
+                              controller: _tab,
+                              labelColor: AppColors.primaryDark,
+                              dividerColor: AppColors.border,
+                              tabs: const [
+                                Tab(text: 'Personal'),
+                                Tab(text: 'Paciente'),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              height: 250,
+                              child: TabBarView(
+                                controller: _tab,
+                                children: [
+                                  _personalForm(),
+                                  _patientForm(),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: TextButton(
+                                  onPressed: () => context.go('/'),
+                                  child: const Text('← Volver al inicio'),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: TextButton(
-                            onPressed: () => context.go('/'),
-                            child: const Text('← Volver al inicio'),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

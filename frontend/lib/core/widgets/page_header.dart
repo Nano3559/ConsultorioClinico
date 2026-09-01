@@ -30,10 +30,21 @@ class PageHeader extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(isMobile ? 10 : 12),
           decoration: BoxDecoration(
-            color: AppColors.primaryBg,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: AppColors.gradientPrimary,
+            ),
             borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Icon(icon, color: AppColors.primary, size: isMobile ? 22 : 26),
+          child: Icon(icon, color: Colors.white, size: isMobile ? 22 : 26),
         ),
         const SizedBox(width: 14),
         Expanded(
