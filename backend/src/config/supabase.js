@@ -50,7 +50,7 @@ function dbErrorMessage(error) {
   if (error.code === '23503' || /violates foreign key/i.test(error.message || '')) {
     return 'El registro referencia a otro inexistente';
   }
-  if (error.code === '42P01' || /does not exist/i.test(error.message || '')) {
+  if (error.code === '42P01' || error.code === 'PGRST205' || /does not exist/i.test(error.message || '')) {
     return 'La tabla no existe. Ejecuta la migración en Supabase (db/migrations)';
   }
   return null;

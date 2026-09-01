@@ -17,7 +17,7 @@ const resolverEspecialidad = async (supabase, nombreEspecialidad) => {
     .select('id, nombre')
     .eq('activo', true);
   if (error) {
-    if (error.code === '42P01') return { id: null, nombre }; // tabla aún no existe
+    if (error.code === '42P01' || error.code === 'PGRST205') return { id: null, nombre }; // tabla aún no existe
     throw error;
   }
   const match = (rows || []).find(
@@ -102,25 +102,50 @@ const getById = async (req, res) => {
     // Normalizar: resolver especialidad_id desde el catálogo por nombre.
     const esp = await resolverEspecialidad(supabase, especialidad);
 
+    const nuevoMedico = {
+      nombre,
+      apellido,
+      cedula: cedulaFinal,
+      especialidad: esp.nombre,
+      telefono,
+      email: email && String(email).trim() ? email : null,
+      consulorio,
+      tarifa_consulta: parseFloat(tarifa_consulta) || 0,
+    };
+    // especialidad_id es una FK agregada por la migración 004. Si la columna
+    // aún no existe en la BD (migración pendiente), la insertamos sin ella.
+    if (esp.id) nuevoMedico.especialidad_id = esp.id;
+
     const { data, error } = await supabase
       .from('medicos')
-      .insert({
-        nombre,
-        apellido,
-        cedula: cedulaFinal,
-        especialidad: esp.nombre,
-        especialidad_id: esp.id,
-        telefono,
-        email: email && String(email).trim() ? email : null,
-        consulorio,
-        tarifa_consulta: parseFloat(tarifa_consulta) || 0,
-      })
+      .insert(nuevoMedico)
       .select('*')
       .single();
 
     if (error) {
       if (error.code === '23505') {
         return sendError(res, 'Ya existe un médico con esa cédula', 400);
+      }
+      // Columna especialidad_id inexistente (migración 004 no aplicada):
+      // reintentar sin ese campo para conservar la funcionalidad.
+      if (
+        error.code === 'PGRST204' ||
+        (error.code === 'PGRST205' && /especialidad_id|specialidades/i.test(error.message || '')) ||
+        /especialidad_id/.test(error.message || '')
+      ) {
+        delete nuevoMedico.especialidad_id;
+        const retry = await supabase
+          .from('medicos')
+          .insert(nuevoMedico)
+          .select('*')
+          .single();
+        if (retry.error) {
+          if (retry.error.code === '23505') {
+            return sendError(res, 'Ya existe un médico con esa cédula', 400);
+          }
+          throw retry.error;
+        }
+        return sendSuccess(res, retry.data, 'Médico creado exitosamente', 201);
       }
       throw error;
     }
@@ -148,21 +173,37 @@ const update = async (req, res) => {
     }
 
     // Mantener especialidad_id en sincronía con el texto de especialidad.
+    // especialidad_id es FK de la migración 004; se omite si la columna no existe.
     if (cambios.especialidad !== undefined) {
       const esp = await resolverEspecialidad(supabase, cambios.especialidad);
       cambios.especialidad = esp.nombre;
-      cambios.especialidad_id = esp.id;
+      if (esp.id) cambios.especialidad_id = esp.id;
     }
 
     if (Object.keys(cambios).length === 0) {
       return sendError(res, 'No hay campos para actualizar', 400);
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('medicos')
       .update(cambios)
       .eq('id', req.params.id)
       .select('*');
+
+    if (
+      (error && error.code === 'PGRST204') ||
+      (error && /especialidad_id/.test(error.message || ''))
+    ) {
+      delete cambios.especialidad_id;
+      const retry = await supabase
+        .from('medicos')
+        .update(cambios)
+        .eq('id', req.params.id)
+        .select('*');
+      if (retry.error) throw retry.error;
+      data = retry.data;
+      error = null;
+    }
 
     if (error) {
       if (error.code === '23505') {
