@@ -24,8 +24,40 @@ class SectionHeader extends StatelessWidget {
     return Column(
       children: [
         if (label != null) ...[
-          Text(label!, style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+            decoration: BoxDecoration(
+              gradient: light
+                  ? LinearGradient(colors: [
+                      Colors.white.withValues(alpha: 0.18),
+                      Colors.white.withValues(alpha: 0.06),
+                    ])
+                  : const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: AppColors.gradientPrimary,
+                    ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                if (!light)
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+              ],
+            ),
+            child: Text(
+              label!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
         ],
         Text(
           title,

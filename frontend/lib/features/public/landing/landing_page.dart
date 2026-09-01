@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/ambient_background.dart';
 import 'landing_navbar.dart';
 import 'landing_footer.dart';
 import 'sections/hero_section.dart';
@@ -67,24 +68,27 @@ class _LandingPageState extends State<LandingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        child: Column(
-          children: [
-            LandingNavbar(
-              onNavigate: _goTo,
-              onRequest: () => _scrollTo(_heroKey),
-            ),
-            HeroSection(key: _heroKey),
-            SpecialtiesSection(key: _specialtiesKey),
-            DoctorsSection(key: _doctorsKey),
-            ServicesSection(key: _servicesKey),
-            HoursSection(key: _hoursKey),
-            AboutSection(key: _aboutKey),
-            TestimonialsSection(),
-            ContactSection(key: _contactKey),
-            LandingFooter(),
-          ],
+      body: AmbientBackground(
+        blobs: false,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: Column(
+            children: [
+              LandingNavbar(
+                onNavigate: _goTo,
+                onRequest: () => _scrollTo(_heroKey),
+              ),
+              HeroSection(key: _heroKey),
+              SpecialtiesSection(key: _specialtiesKey),
+              DoctorsSection(key: _doctorsKey),
+              ServicesSection(key: _servicesKey),
+              HoursSection(key: _hoursKey),
+              AboutSection(key: _aboutKey),
+              TestimonialsSection(),
+              ContactSection(key: _contactKey),
+              LandingFooter(),
+            ],
+          ),
         ),
       ),
     );

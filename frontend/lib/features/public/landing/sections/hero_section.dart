@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/app_formatters.dart';
+import '../../../../core/widgets/ambient_background.dart';
 import '../../../../core/widgets/app_status_badge.dart';
 import '../../../../data/models/appointment.dart';
 import '../../../../data/models/user.dart';
@@ -28,22 +29,61 @@ class HeroSection extends StatelessWidget {
           colors: [AppColors.primaryDark, AppColors.primaryLight],
         ),
       ),
-      child: isMobile
-          ? const Column(
+      child: Stack(
+        children: [
+          Positioned(
+            top: -90,
+            right: -70,
+            child: Container(
+              width: 340,
+              height: 340,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.16),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -140,
+            left: -90,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.primaryLight.withValues(alpha: 0.28),
+                    AppColors.primaryLight.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (isMobile)
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HeroText(),
+                FadeSlide(child: _HeroText()),
                 SizedBox(height: 32),
-                _HeroCard(),
+                FadeSlide(child: _HeroCard()),
               ],
             )
-          : const Row(
+          else
+            const Row(
               children: [
-                Expanded(child: _HeroText()),
+                Expanded(child: FadeSlide(child: _HeroText())),
                 SizedBox(width: 48),
-                Expanded(child: _HeroCard()),
+                Expanded(child: FadeSlide(child: _HeroCard())),
               ],
             ),
+        ],
+      ),
     );
   }
 }
@@ -249,13 +289,19 @@ class _CardBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withValues(alpha: 0.97),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 36,
+            offset: const Offset(0, 16),
+          ),
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.20),
+            blurRadius: 64,
+            offset: const Offset(0, 26),
           ),
         ],
       ),

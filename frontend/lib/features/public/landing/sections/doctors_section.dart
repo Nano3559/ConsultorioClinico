@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/app_avatar.dart';
+import '../../../../core/widgets/hover_card.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../../data/models/doctor.dart';
 import '../../../../state/clinic_provider.dart';
@@ -60,19 +61,29 @@ class _DoctorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final clinic = context.read<ClinicProvider>();
     final specialty = clinic.specialtyById(doctor.specialtyId);
-    return Container(
+    return HoverCard(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+      accent: specialty.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              AppAvatar(name: doctor.name, radius: 28, backgroundColor: specialty.color),
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [specialty.color, specialty.color.withValues(alpha: 0.35)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: specialty.color.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: AppAvatar(name: doctor.name, radius: 26, backgroundColor: specialty.color),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

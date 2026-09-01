@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/widgets/hover_card.dart';
 import '../../../../core/widgets/section_header.dart';
 
 /// Sección de contacto con datos del consultorio y formulario.
@@ -64,13 +65,7 @@ class _ContactInfo extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
+        HoverCard(
           child: Column(
             children: [
               for (final (icon, label, value) in _items)
@@ -147,11 +142,18 @@ class _SocialIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppColors.gradientPrimary,
+        ),
         shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5)),
+        ],
       ),
-      child: Icon(icon, color: AppColors.primary, size: 22),
+      child: Icon(icon, color: Colors.white, size: 22),
     );
   }
 }
@@ -192,13 +194,7 @@ class _ContactFormState extends State<_ContactForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+    return HoverCard(
       child: Form(
         key: _formKey,
         child: Column(

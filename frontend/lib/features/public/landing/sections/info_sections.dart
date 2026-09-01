@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/hover_card.dart';
 import '../../../../core/widgets/section_header.dart';
 
 const _services = [
@@ -63,24 +64,12 @@ class _ServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return HoverCard(
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 26),
-          ),
+          GradientIconChip(icon: icon, color: AppColors.primary, size: 26),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -118,7 +107,13 @@ class HoursSection extends StatelessWidget {
     final isMobile = width < 1000;
     return Container(
       width: double.infinity,
-      color: AppColors.dark,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F172A), Color(0xFF134E4A)],
+        ),
+      ),
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 48, vertical: 80),
       child: Column(
         children: [
@@ -134,7 +129,20 @@ class HoursSection extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 40,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: AppColors.primaryLight.withValues(alpha: 0.10),
+                  blurRadius: 60,
+                  offset: const Offset(0, 20),
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -195,10 +203,34 @@ class AboutSection extends StatelessWidget {
               child: Container(
                 height: 360,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryBg,
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primaryBg, AppColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 40, offset: const Offset(0, 16)),
+                    BoxShadow(color: AppColors.shadowSoft, blurRadius: 16, offset: const Offset(0, 4)),
+                  ],
                 ),
-                child: const Icon(Icons.medical_services, color: AppColors.primary, size: 120),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: AppColors.gradientPrimary,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 24, offset: const Offset(0, 8)),
+                      ],
+                    ),
+                    child: const Icon(Icons.medical_services, color: Colors.white, size: 72),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 48),
@@ -290,13 +322,7 @@ class _TestimonialCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+    return HoverCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
