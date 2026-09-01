@@ -436,12 +436,16 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
-    if (auth.isLogged) {
+    if (staff) {
+      // Personal interno: ya está dentro del sistema.
       clinic.setAuthToken(auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
       clinic.loadAll();
       if (!mounted) return;
       context.go('/app');
     } else {
+      // Visitante: NO se reutiliza una sesión previa (ej. recepcionista
+      // persisted en el navegador). El paciente entra con SU cuenta
+      // (CI + fecha de nacimiento) o regresa al inicio.
       _showSuccess(Patient(
         id: patientId,
         firstName: _name.text.trim(),
@@ -470,6 +474,25 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           FilledButton(
+            onPressed: () async {
+              final auth = context.read<AuthProvider>();
+              final clinic = context.read<ClinicProvider>();
+              final err = await auth.loginPatient(patient.ci, patient.birthDate);
+              if (!context.mounted) return;
+              if (err != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+                return;
+              }
+              clinic.setAuthToken(
+                  auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+              clinic.loadAll();
+              Navigator.of(ctx).pop();
+              context.go('/app');
+            },
+            child: const Text('Entrar con mi cuenta'),
+          ),
+          TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               context.go('/');
