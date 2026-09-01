@@ -51,3 +51,7 @@ app.*.map.json
 .firebase/
 functions/node_modules/
 functions/package-lock.json
+
+# Firma Android (nunca subir el keystore)
+android/app/upload-keystore.jks
+android/key.properties
