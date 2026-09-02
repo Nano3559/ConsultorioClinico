@@ -23,6 +23,8 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
   final _ci = TextEditingController();
   final _email = TextEditingController();
   final _telefono = TextEditingController();
+  final _descripcion = TextEditingController();
+  final _anios = TextEditingController();
   String? _especialidadId;
   bool _sending = false;
 
@@ -33,6 +35,8 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
     _ci.dispose();
     _email.dispose();
     _telefono.dispose();
+    _descripcion.dispose();
+    _anios.dispose();
     super.dispose();
   }
 
@@ -52,6 +56,8 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
       'cedula': _ci.text.trim(),
       'especialidad_id': _especialidadId,
       'telefono': _telefono.text.trim(),
+      'descripcion': _descripcion.text.trim(),
+      'anios_experiencia': int.tryParse(_anios.text.trim()) ?? 0,
     };
     final (error, tempPassword) = await auth.registerDoctor(
       email: _email.text.trim(),
@@ -238,6 +244,33 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
                   decoration: const InputDecoration(labelText: 'Correo electrónico', prefixIcon: Icon(Icons.mail_outline)),
                   keyboardType: TextInputType.emailAddress,
                   validator: AppValidators.email,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _descripcion,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción del perfil',
+                    hintText: 'Breve perfil profesional (especialidad, trayectoria…)',
+                    alignLabelWithHint: true,
+                    prefixIcon: Icon(Icons.description_outlined),
+                  ),
+                  maxLines: 3,
+                  minLines: 2,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _anios,
+                  decoration: const InputDecoration(
+                    labelText: 'Años de experiencia',
+                    prefixIcon: Icon(Icons.work_history_outlined),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final n = int.tryParse(v.trim());
+                    if (n == null || n < 0 || n > 60) return 'Valor inválido';
+                    return null;
+                  },
                 ),
               ],
             ),
