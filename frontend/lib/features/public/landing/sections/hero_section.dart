@@ -190,7 +190,7 @@ class _HeroText extends StatelessWidget {
               ],
             ),
             child: Image.network(
-              'https://picsum.photos/seed/consultorioclinico/760/300',
+              'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&h=340&fit=crop&q=80',
               width: double.infinity,
               height: isMobile ? 170 : 240,
               fit: BoxFit.cover,
