@@ -201,75 +201,273 @@ class _DoctorCard extends StatelessWidget {
     final specialty = clinic.specialtyById(doctor.specialtyId);
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [specialty.color, specialty.color.withValues(alpha: 0.35)],
-                      ),
-                    ),
-                    child: _DoctorPhoto(doctor: doctor, specialty: specialty, size: 66),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(doctor.displayName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
-                        Text(specialty.name, style: TextStyle(color: specialty.color, fontWeight: FontWeight.w600)),
-                      ],
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(24, 34, 24, 18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [specialty.color, Color.lerp(specialty.color, Colors.black, 0.28)!],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Text(doctor.description, style: const TextStyle(color: AppColors.muted, height: 1.5)),
-              const SizedBox(height: 16),
-              Text('${doctor.yearsExperience} años de experiencia', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark)),
-              const SizedBox(height: 16),
-              const Text('Horarios de atención', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-              const SizedBox(height: 8),
-              for (final e in doctor.schedule.byDay.entries)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(width: 70, child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600))),
-                      Text('${e.value.first} - ${e.value.last}', style: const TextStyle(color: AppColors.muted)),
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.22),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 18, offset: const Offset(0, 6)),
+                              ],
+                            ),
+                            child: _DoctorPhoto(doctor: doctor, specialty: specialty, size: 72),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  doctor.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    shadows: [Shadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 3))],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.22),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    specialty.name,
+                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    context.push('/solicitar-cita?medico=${doctor.id}');
-                  },
-                  child: const Text('Solicitar cita con este médico'),
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _statRow(clinic, specialty),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Sobre el médico',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.dark),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        doctor.description.isEmpty
+                            ? 'Médico del equipo del consultorio, dedicado a la atención y cuidado de sus pacientes.'
+                            : doctor.description,
+                        style: const TextStyle(color: AppColors.muted, height: 1.6),
+                      ),
+                      if (doctor.phone.isNotEmpty || doctor.email.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Contacto',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.dark),
+                        ),
+                        const SizedBox(height: 10),
+                        if (doctor.phone.isNotEmpty)
+                          _infoRow(Icons.phone_outlined, 'Teléfono', doctor.phone),
+                        if (doctor.email.isNotEmpty)
+                          _infoRow(Icons.mail_outline, 'Correo', doctor.email),
+                      ],
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          const Icon(Icons.schedule_outlined, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Horarios de atención',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.dark),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final e in doctor.schedule.byDay.entries)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Text(
+                                '${e.key}  ${e.value.first}-${e.value.last}',
+                                style: const TextStyle(fontSize: 12.5, color: AppColors.dark, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          context.push('/solicitar-cita?medico=${doctor.id}');
+                        },
+                        icon: const Icon(Icons.event_available),
+                        label: const Text('Solicitar cita con este médico'),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Cerrar'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _statRow(ClinicProvider clinic, Specialty specialty) {
+    return Row(
+      children: [
+        Expanded(
+          child: _statCard(
+            Icons.work_history_outlined,
+            '${doctor.yearsExperience}',
+            'años de\n experiencia',
+            AppColors.info,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _statCard(
+            Icons.stars_outlined,
+            specialty.name,
+            'especialidad',
+            specialty.color,
+            small: true,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _statCard(
+            Icons.verified_outlined,
+            'Activo',
+            'en consulta',
+            AppColors.success,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statCard(IconData icon, String value, String label, Color color, {bool small = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: small ? 11 : 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10.5, color: AppColors.muted, height: 1.2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

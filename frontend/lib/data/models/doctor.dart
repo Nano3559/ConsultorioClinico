@@ -23,6 +23,8 @@ class Doctor {
     this.active = true,
     this.title = 'Dr./Dra.',
     this.photoUrl = '',
+    this.phone = '',
+    this.email = '',
   });
 
   final String id;
@@ -36,6 +38,8 @@ class Doctor {
 
   /// URL de la fotografía del médico (vacía => avatar con iniciales).
   final String photoUrl;
+  final String phone;
+  final String email;
 
   String get displayName => '$title $name';
 
@@ -59,6 +63,8 @@ class Doctor {
       active: json['activo'] ?? true,
       title: titulo.isEmpty ? 'Dr./Dra.' : titulo,
       photoUrl: (json['foto_url'] ?? '').toString(),
+      phone: (json['telefono'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
     );
   }
 
@@ -96,6 +102,8 @@ class Doctor {
     bool? active,
     String? title,
     String? photoUrl,
+    String? phone,
+    String? email,
   }) {
     return Doctor(
       id: id,
@@ -107,6 +115,8 @@ class Doctor {
       active: active ?? this.active,
       title: title ?? this.title,
       photoUrl: photoUrl ?? this.photoUrl,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
     );
   }
 }
