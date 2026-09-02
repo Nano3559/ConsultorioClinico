@@ -6,6 +6,7 @@ import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/hover_card.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../../data/models/doctor.dart';
+import '../../../../data/models/specialty.dart';
 import '../../../../state/clinic_provider.dart';
 
 /// Sección de médicos del consultorio.
@@ -52,6 +53,31 @@ class DoctorsSection extends StatelessWidget {
   }
 }
 
+/// Fotografía del médico: si hay foto_url la muestra; si no, avatar con iniciales.
+class _DoctorPhoto extends StatelessWidget {
+  const _DoctorPhoto({required this.doctor, required this.specialty, this.size = 58});
+
+  final Doctor doctor;
+  final Specialty specialty;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = AppAvatar(name: doctor.name, radius: size / 2, backgroundColor: specialty.color);
+    if (doctor.photoUrl.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size / 2),
+      child: Image.network(
+        doctor.photoUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      ),
+    );
+  }
+}
+
 class _DoctorCard extends StatelessWidget {
   const _DoctorCard({required this.doctor});
 
@@ -82,7 +108,7 @@ class _DoctorCard extends StatelessWidget {
                     BoxShadow(color: specialty.color.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4)),
                   ],
                 ),
-                child: AppAvatar(name: doctor.name, radius: 26, backgroundColor: specialty.color),
+                child: _DoctorPhoto(doctor: doctor, specialty: specialty),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -189,7 +215,18 @@ class _DoctorCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  AppAvatar(name: doctor.name, radius: 30, backgroundColor: specialty.color),
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [specialty.color, specialty.color.withValues(alpha: 0.35)],
+                      ),
+                    ),
+                    child: _DoctorPhoto(doctor: doctor, specialty: specialty, size: 66),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/widgets/google_map.dart';
 import '../../../../core/widgets/hover_card.dart';
 import '../../../../core/widgets/section_header.dart';
 
@@ -98,24 +99,10 @@ class _ContactInfo extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Container(
-          height: 180,
-          decoration: BoxDecoration(
-            color: AppColors.primaryBg,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.map_outlined, color: AppColors.primary, size: 48),
-                SizedBox(height: 8),
-                Text('Av. Principal #123, Ciudad', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600)),
-                SizedBox(height: 4),
-                Text('Ver en el mapa', style: TextStyle(color: AppColors.primary, fontSize: 13)),
-              ],
-            ),
-          ),
+        GoogleMapBox(
+          query: AppInfo.address,
+          height: 200,
+          addressText: AppInfo.address,
         ),
         const SizedBox(height: 16),
         const Row(

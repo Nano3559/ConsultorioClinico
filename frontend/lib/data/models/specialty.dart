@@ -8,6 +8,7 @@ class Specialty {
     required this.description,
     required this.icon,
     this.color = const Color(0xFF0D9488),
+    this.photoUrl = '',
   });
 
   final String id;
@@ -15,6 +16,9 @@ class Specialty {
   final String description;
   final IconData icon;
   final Color color;
+
+  /// URL de la imagen de la especialidad (vacía => solo ícono).
+  final String photoUrl;
 
   /// Construye una Specialty desde la fila de Supabase (sin icono/color).
   factory Specialty.fromApi(Map<String, dynamic> json) {
@@ -24,6 +28,7 @@ class Specialty {
       description: (json['descripcion'] ?? '').toString(),
       icon: iconForName(json['nombre']?.toString() ?? ''),
       color: const Color(0xFF0D9488),
+      photoUrl: (json['foto_url'] ?? '').toString(),
     );
   }
 

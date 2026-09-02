@@ -178,6 +178,39 @@ class _HeroText extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 28),
+        // Imagen principal del consultorio (con respaldo si no carga).
+        ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 30, offset: const Offset(0, 12)),
+              ],
+            ),
+            child: Image.network(
+              'https://picsum.photos/seed/consultorioclinico/760/300',
+              width: double.infinity,
+              height: isMobile ? 170 : 240,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                height: isMobile ? 170 : 240,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primaryLight, AppColors.primaryDark],
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: const Center(
+                  child: Icon(Icons.local_hospital, color: Colors.white, size: 72),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
