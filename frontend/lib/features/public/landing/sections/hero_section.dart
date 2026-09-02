@@ -13,7 +13,10 @@ import '../../../../state/clinic_provider.dart';
 
 /// Sección hero: portada con mensaje principal y tarjeta de próxima cita.
 class HeroSection extends StatelessWidget {
-  const HeroSection({super.key});
+  const HeroSection({super.key, this.onViewDoctors});
+
+  /// Será invocado cuando se pulse "Ver médicos" (scroll a la sección).
+  final VoidCallback? onViewDoctors;
 
   @override
   Widget build(BuildContext context) {
@@ -66,20 +69,57 @@ class HeroSection extends StatelessWidget {
             ),
           ),
           if (isMobile)
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FadeSlide(child: _HeroText()),
-                SizedBox(height: 32),
-                FadeSlide(child: _HeroCard()),
+                const FadeSlide(child: _HeroText()),
+                const SizedBox(height: 32),
+                FadeSlide(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FilledButton(
+                        onPressed: onViewDoctors,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primaryDark,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                        ),
+                        child: const Text('Ver médicos'),
+                      ),
+                      const SizedBox(height: 16),
+                      const _HeroCard(),
+                    ],
+                  ),
+                ),
               ],
             )
           else
-            const Row(
+            Row(
               children: [
-                Expanded(child: FadeSlide(child: _HeroText())),
-                SizedBox(width: 48),
-                Expanded(child: FadeSlide(child: _HeroCard())),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FadeSlide(child: _HeroText()),
+                      const SizedBox(height: 12),
+                      FadeSlide(
+                        child: OutlinedButton.icon(
+                          onPressed: onViewDoctors,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                          ),
+                          icon: const Icon(Icons.people_outline),
+                          label: const Text('Ver médicos'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 48),
+                const Expanded(child: FadeSlide(child: _HeroCard())),
               ],
             ),
         ],

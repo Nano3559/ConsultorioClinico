@@ -78,7 +78,10 @@ class _LandingPageState extends State<LandingPage> {
                 onNavigate: _goTo,
                 onRequest: () => _scrollTo(_heroKey),
               ),
-              HeroSection(key: _heroKey),
+              HeroSection(
+              key: _heroKey,
+              onViewDoctors: () => _scrollTo(_doctorsKey),
+            ),
               SpecialtiesSection(key: _specialtiesKey),
               DoctorsSection(key: _doctorsKey),
               ServicesSection(key: _servicesKey),
