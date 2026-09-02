@@ -151,7 +151,7 @@ class _SpecialtyCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${entry.key} ${entry.value.first}-${entry.value.last}',
+                      '${entry.key} ${doctor!.schedule.slotRanges(entry.key).join(' · ')}',
                       style: const TextStyle(fontSize: 12, color: AppColors.muted),
                     ),
                   ),

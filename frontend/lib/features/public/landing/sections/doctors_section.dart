@@ -167,7 +167,7 @@ class _DoctorCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '${e.key} ${e.value.first}-${e.value.last}',
+                    '${e.key}  ${doctor.schedule.slotRanges(e.key).join(' · ')}',
                     style: const TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
                 ),
@@ -342,7 +342,7 @@ class _DoctorCard extends StatelessWidget {
                                 border: Border.all(color: AppColors.border),
                               ),
                               child: Text(
-                                '${e.key}  ${e.value.first}-${e.value.last}',
+                                '${e.key}  ${doctor.schedule.slotRanges(e.key).join(' · ')}',
                                 style: const TextStyle(fontSize: 12.5, color: AppColors.dark, fontWeight: FontWeight.w600),
                               ),
                             ),

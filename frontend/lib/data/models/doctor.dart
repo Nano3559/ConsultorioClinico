@@ -6,6 +6,40 @@ class DoctorSchedule {
 
   List<String> forDay(String day) => byDay[day] ?? const [];
 
+  /// Convierte los turnos de 30 min de un día en franjas continuas
+  /// ("08:00-12:00", "14:00-18:00") para mostrar bien los horarios.
+  List<String> slotRanges(String day) {
+    final slots = (byDay[day] ?? const []).toList()..sort();
+    final out = <String>[];
+    String start = '', prev = '';
+    for (final t in slots) {
+      if (start.isEmpty) {
+        start = t;
+        prev = t;
+        continue;
+      }
+      if (_next30(prev) == t) {
+        prev = t;
+      } else {
+        out.add('$start-$prev');
+        start = t;
+        prev = t;
+      }
+    }
+    if (start.isNotEmpty) out.add('$start-$prev');
+    return out;
+  }
+
+  static String _next30(String t) {
+    final p = t.split(':');
+    final h = int.tryParse(p[0]) ?? 0;
+    final m = int.tryParse(p[1]) ?? 0;
+    final total = h * 60 + m + 30;
+    final nh = (total ~/ 60) % 24;
+    final nm = total % 60;
+    return '${nh.toString().padLeft(2, '0')}:${nm.toString().padLeft(2, '0')}';
+  }
+
   DoctorSchedule copyWith({Map<String, List<String>>? byDay}) {
     return DoctorSchedule(byDay ?? this.byDay);
   }
