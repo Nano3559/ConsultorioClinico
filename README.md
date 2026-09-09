@@ -148,19 +148,18 @@ Ramas locales y remotas del repositorio `https://github.com/Nano3559/Consultorio
 | Rama | Descripción |
 |---|---|
 | **`main`** | Versiones estables y desplegadas en producción |
-| **`Jhilian`** | Rama de trabajo principal local (Jhilian — frontend/Flutter) |
 
 ### Ramas remotas
 | Rama | Descripción |
 |---|---|
 | **`origin/main`** | Rama principal en GitHub (`HEAD` apunta aquí) |
-| **`origin/Jhilian`** | Trabajo de Jhilian (frontend/Flutter) |
+| **`origin/Jhilian`** | Trabajo de Jhilian (Backend/Database) |
 | **`origin/Camila`** | Trabajo de Camila (backend/API) |
-| **`origin/brayan`** | Trabajo de Brayan (migraciones Firebase/correo) |
-| **`origin/backend-tests-camila`** | Rama de Camila para la suite de tests del backend |
+| **`origin/brayan`** | Trabajo de Brayan (Frontend) |
 
 > **Flujo de trabajo:** se trabaja en ramas por integrante y se integra a `main`
-> mediante *pull requests* (merge). Ejemplo: `Merge pull request #22 from Nano3559/Jhilian`.
+> mediante *pull requests* (merge). Ejemplo: `Merge pull request #22 from Nano3559/Camila`.
+> y junto a ello el resto de integrantes pasa a revisar antes de aprobar.
 
 ---
 
