@@ -1,40 +1,68 @@
-# --- Flutter / Dart ---
-frontend/.dart_tool/
-frontend/.flutter-plugins
-frontend/.flutter-plugins-dependencies
-frontend/build/
-frontend/.pub-cache/
-frontend/.pub/
-frontend/*.iml
-frontend/.idea/
-frontend/.vscode/
-frontend/android/.gradle/
-frontend/android/local.properties
+# =====================================================================
+# ConsultorioClínico — .gitignore
+# Regla de oro: NUNCA subir secretos (.env, llaves de servicio, keystores).
+# =====================================================================
+
+# --- Entorno y secretos (NUNCA subir) --------------------------------
+.env
+.env.*
+!**/.env.example
+service-account.json
+**/service-account.json
+firebase-migrator-key.json
+**/firebase-migrator-key.json
+*.jks
 frontend/android/key.properties
+*.pem
+*.key
+secrets/
+
+# --- Flutter / Dart ---------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+*.iml
 frontend/ios/Pods/
 frontend/ios/.symlinks/
 frontend/ios/Flutter/ephemeral/
 
-# --- Node.js ---
-backend/node_modules/
-backend/dist/
-backend/build/
-backend/coverage/
-backend/.env
-backend/.env.*
-backend/npm-debug.log*
-backend/yarn-error.log*
-backend/package-lock.json
+# --- Android ----------------------------------------------------------
+frontend/android/.gradle/
+frontend/android/local.properties
+*.keystore
+!gradle/wrapper/gradle-wrapper.jar
 
-# --- General ---
-*.log
-.DS_Store
-Thumbs.db
-.env
+# --- Node.js ----------------------------------------------------------
+node_modules/
+dist/
+coverage/
+npm-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# --- IDE / editores ---------------------------------------------------
+.idea/
+.vscode/
+*.swp
+
+# --- Firebase ---------------------------------------------------------
+.firebase/
+firebase-debug.log*
+ui-debug.log*
+
+# --- Vercel -----------------------------------------------------------
 .vercel
 
-# --- Firebase migration secrets / node ---
-firebase-migrator-key.json
-migracion/node_modules/
-migracion/package-lock.json
+# --- Sistema operativo ------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
 
+# --- Logs y temporales ------------------------------------------------
+*.log
+tmp/
+temp/

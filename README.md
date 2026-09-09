@@ -18,8 +18,12 @@ Sistema integral de control médico y clínico. Plataforma **full-stack** que ge
 10. [Cuentas de demostración](#-cuentas-de-demostración)
 11. [Endpoints de la API](#-endpoints-de-la-api)
 12. [Tests](#-tests)
-13. [Agente de desarrollo (OpenCode + Zen)](#-agente-de-desarrollo-opencode--zen)
+13. [Agentes de desarrollo (OpenCode: GLM 5.3 · DeepSeek v4 Pro · GPT 5.6 Luna)](#-agentes-de-desarrollo-opencode-glm-53--deepseek-v4-pro--gpt-56-luna)
 14. [Notas de seguridad](#-notas-de-seguridad)
+
+> 🖥️ **¿PC nuevo?** Sigue la guía paso a paso completa (instalar Git, Node,
+> Flutter, clonar, configurar y correr):
+> **[`docs/INSTALACION.md`](docs/INSTALACION.md)**
 
 ---
 
@@ -78,7 +82,11 @@ Sistema integral de control médico y clínico. Plataforma **full-stack** que ge
 ### Agente de desarrollo (IA)
 - **OpenCode** (`opencode`) — CLI/agente de desarrollo asistido por IA.
 - **OpenCode Zen** (`opencode/*`) — gateway de modelos del equipo de OpenCode.
-- **Modelo Big Pickle** (`opencode/big-pickle`) — modelo *stealth* de Zen, **gratuito** durante el período de prueba.
+- **Agentes del proyecto**: `glm-architect` (**GLM 5.3** · `opencode/glm-5.3`),
+  `deepseek-coder` (**DeepSeek v4 Pro** · `opencode/deepseek-v4-pro`) y
+  `gpt-luna-reviewer` (**GPT 5.6 Luna** · `opencode/gpt-5.6-luna`).
+- **Skills del repo**: flutter-app, express-backend, git-workflow, deploy,
+  email-service (en `.opencode/skills/`). Detalle en `docs/AGENTES.md`.
 
 ---
 
@@ -155,7 +163,9 @@ Ramas locales y remotas del repositorio `https://github.com/Nano3559/Consultorio
 | **`origin/main`** | Rama principal en GitHub (`HEAD` apunta aquí) |
 | **`origin/Jhilian`** | Trabajo de Jhilian (Backend/Database) |
 | **`origin/Camila`** | Trabajo de Camila (backend/API) |
+| **`origin/backend-tests-camila`** | Suite de tests del backend (Camila) |
 | **`origin/brayan`** | Trabajo de Brayan (Frontend) |
+| **`origin/docs/readme`** | Documentación |
 
 > **Flujo de trabajo:** se trabaja en ramas por integrante y se integra a `main`
 > mediante *pull requests* (merge). Ejemplo: `Merge pull request #22 from Nano3559/Camila`.
@@ -165,16 +175,21 @@ Ramas locales y remotas del repositorio `https://github.com/Nano3559/Consultorio
 
 ## ✅ Requisitos previos
 
-| Herramienta | Versión mínima |
-|---|---|
-| **Flutter** | 3.47+ (Dart 3.13+) |
-| **Node.js** | 22.x |
-| **npm** | 10+ |
-| **Android SDK** | para build de APK |
-| **Firebase CLI** (`firebase-tools`) | v13+ (para deploy de hosting/functions) |
-| **Vercel CLI** (`vercel`) | solo si despliegas Vercel manualmente |
-| **Cuenta de Supabase** | proyecto PostgreSQL |
-| **Cuenta de Firebase** | proyecto + Firebase Auth + Firestore |
+> Instrucciones para **instalar cada herramienta desde cero** (Windows,
+> macOS, Linux) y dejar el proyecto corriendo paso a paso:
+> **[`docs/INSTALACION.md`](docs/INSTALACION.md)**.
+
+| Herramienta | Versión mínima | Instalador / guía |
+|---|---|---|
+| **Git** | 2.40+ | https://git-scm.com/downloads |
+| **Flutter** | 3.47+ (Dart 3.13+) | https://docs.flutter.dev/get-started/install |
+| **Node.js** | 22.x (LTS) | https://nodejs.org |
+| **npm** | 10+ | (incluido con Node) |
+| **Android Studio** | para build de APK y licencias SDK | https://developer.android.com/studio |
+| **Firebase CLI** (`firebase-tools`) | v13+ (para deploy de hosting/functions) | `npm i -g firebase-tools` |
+| **Vercel CLI** (`vercel`) | solo si despliegas Vercel manualmente | `npm i -g vercel` |
+| **Cuenta de Supabase** | proyecto PostgreSQL | https://supabase.com |
+| **Cuenta de Firebase** | proyecto + Firebase Auth + Firestore | https://console.firebase.google.com |
 
 ---
 
@@ -461,82 +476,84 @@ flutter test
 
 ---
 
-## 🤖 Agente de desarrollo (OpenCode + Zen)
+## 🤖 Agentes de desarrollo (OpenCode: GLM 5.3 · DeepSeek v4 Pro · GPT 5.6 Luna)
 
-Este proyecto se desarrolla con el asistente de codificación **OpenCode**, usando
-el proveedor de modelos **OpenCode Zen** con el modelo **Big Pickle**
-(`opencode/big-pickle`, actualmente **gratuito**).
+Este proyecto se desarrolla con el asistente de codificación **OpenCode**.
+La configuración vive en el repositorio: `opencode.json` (modelo y permisos),
+`.opencode/agent/` (6 agentes) y `.opencode/skills/` (skills del proyecto).
+Hay **dos puertas de enlace**: los agentes principales corren en **OpenCode
+GO** y hay **respaldos gratuitos** con modelos free de **OpenCode Zen**.
 
-**OpenCode Zen** es un gateway de modelos probados y verificados por el equipo de
-OpenCode para trabajar como agentes de codificación. Funciona como cualquier otro
-proveedor: ofrecer tu propia clave de API, o usar una de las **claves de terceros**
-(OpenAI/Anthropic) con los modelos de Zen.
+### Los 6 agentes del proyecto
 
-### Modelo utilizado
-| Campo | Valor |
+| Agente | Modelo (ID) | Gateway | Rol |
+|---|---|---|---|
+| **`glm-architect`** | `opencode-go/glm-5.3` | GO | Planifica y diseña: arquitectura, tareas, cambios de esquema |
+| **`deepseek-coder`** | `opencode-go/deepseek-v4-pro` | GO | Implementa: features, refactors, bugs y tests |
+| **`gpt-luna-reviewer`** | `opencode-go/gpt-5.6-luna` | GO | Revisa: code review, seguridad, QA (**solo lectura**) |
+| **`free-planner`** | `opencode/glm-5-free` | Zen (free) | Respaldo de glm-architect |
+| **`free-coder`** | `opencode/deepseek-v4-flash-free` | Zen (free) | Respaldo de deepseek-coder |
+| **`free-reviewer`** | `opencode/kimi-k2.5-free` | Zen (free) | Respaldo del reviewer (**solo lectura**) |
+
+Todos son `mode: primary` (se alternan con **Tab** o `/agents`). Los modelos
+free de Zen **rotan con frecuencia**: si uno desaparece, elige otro con
+sufijo `-free` en `/models` y edita la línea `model:` del agente
+(`.opencode/agent/free-*.md`). Detalle completo en `docs/AGENTES.md`.
+
+Flujo recomendado: **glm-architect planifica → deepseek-coder implementa →
+gpt-luna-reviewer revisa → PR** según `docs/GIT_CONVENTION.md` (sin cuota de
+GO: mismo flujo con los `free-*`, costo 0).
+
+También se reconfiguraron los agentes base: `build` y `plan` usan
+`opencode-go/glm-5.3`, y el subagente `general` usa
+`opencode-go/deepseek-v4-pro`. El `small_model` interno es
+`opencode-go/glm-5.3-flash`.
+
+> Alternativa sin GO/Zen: proveedores directos con tu propia API key
+> (`zhipuai/glm-5.3`, `deepseek/deepseek-v4-pro`, `openai/gpt-5.6-luna`).
+
+### Skills del proyecto (`.opencode/skills/`)
+
+| Skill | Se activa cuando la tarea toca... |
 |---|---|
-| Proveedor | `opencode` (OpenCode Zen) |
-| Modelo | `opencode/big-pickle` (Big Pickle) |
-| Endpoint | `https://opencode.ai/zen/v1/chat/completions` |
-| Precio | **Gratis** (período limitado, "stealth model") |
+| `flutter-app` | `frontend/`: Dart, Provider, GoRouter, Firebase, build web/APK |
+| `express-backend` | `backend/`: rutas, controladores, JWT, Supabase, migraciones, tests |
+| `git-workflow` | Commits, ramas y PRs (Conventional Commits en español) |
+| `deploy` | Despliegues: Vercel, Firebase Hosting/Functions, APK |
+| `email-service` | `mail-service/`, Cloud Functions, Gmail SMTP |
 
-### Archivos de configuración
+### Puesta en marcha
+1. Abrir OpenCode en la raíz del repo.
+2. Agentes principales: autenticar tu instalación de **OpenCode GO**.
+   Respaldo gratuito: `/connect` → *OpenCode Zen* → API key de
+   https://opencode.ai/auth (una sola vez).
+3. `/models` lista los modelos; **Tab** (o `/agents`) alterna entre los seis
+   agentes. `AGENTS.md` se carga como regla base en cada sesión.
+4. Los permisos están en `opencode.json`: edición permitida, pero
+   `git commit`/`git push` piden confirmación y `rm` está denegado.
 
-La configuración de OpenCode se almacena en los siguientes lugares (precedencia de
-proyecto sobre global):
+> ⚠️ Tras editar `opencode.json`, agentes o skills, **reinicia OpenCode** para
+> aplicar los cambios (la configuración no se recarga en caliente).
 
-| Ubicación | Ámbito |
-|---|---|
-| `opencode.json` / `opencode.jsonc` | Configuración global del usuario (`~/.config/opencode/`) |
-| `.opencode/` | Configuración por proyecto (repositorio) |
-
-Configuración global actual (`~/.config/opencode/opencode.jsonc`):
+### Configuración (resumen)
 
 ```jsonc
-{
-  "$schema": "https://opencode.ai/config.json"
-}
-```
-
-### Configurar el modelo
-
-1. **Conectar la cuenta de Zen** — en la TUI ejecuta `/connect`, elige
-   *OpenCode Zen* y pega tu API key (se obtiene en https://opencode.ai/auth).
-2. **Seleccionar el modelo** — ejecuta `/models` y elige `opencode/big-pickle`
-   (o el que prefieras de la lista). También puedes fijarlo en el config:
-
-```jsonc
+// opencode.json (raíz del repo)
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "opencode/big-pickle",
+  "model": "opencode-go/glm-5.3",
+  "small_model": "opencode-go/glm-5.3-flash",
+  "instructions": ["AGENTS.md"],
   "agent": {
-    "build": {
-      "model": "opencode/big-pickle"
-    },
-    "plan": {
-      "model": "opencode/big-pickle"
-    }
+    "build":   { "model": "opencode-go/glm-5.3" },
+    "plan":    { "model": "opencode-go/glm-5.3" },
+    "general": { "model": "opencode-go/deepseek-v4-pro" }
   }
 }
 ```
 
-> El *model id* usa el formato `opencode/<model-id>`. Para listar los modelos
-> disponibles: `opencode models`.
-
-### Agentes incorporados en OpenCode
-
-| Agente | Modo | Uso |
-|---|---|---|
-| **build** | `primary` | Agente por defecto, con todas las herramientas habilitadas |
-| **plan** | `primary` | Análisis/planificación sin modificar código (edición y bash en `ask`) |
-| **general** | `subagent` | Tareas de investigación y ejecución multipaso |
-| **explore** | `subagent` | Exploración de código en solo lectura |
-| **scout** | `subagent` | Investigación de deps/documentación externa, solo lectura |
-| **compaction / title / summary** | `primary` | Agentes internos ocultos (compactación, títulos, resúmenes) |
-
-> Permisos configurables por agente: `"ask"` (pide aprobación), `"allow"`
-> (permite) o `"deny"` (bloquea). Ver https://opencode.ai/docs/agents para el
-> detalle de `permission`, `model`, `mode`, `temperature`, `steps`, `prompt`, etc.
+Los agentes completos están en `.opencode/agent/*.md` y su documentación
+detallada en **`docs/AGENTES.md`**.
 
 ---
 
@@ -567,6 +584,12 @@ Configuración global actual (`~/.config/opencode/opencode.jsonc`):
 
 ## 📝 Documentación adicional
 
+- `CONTRIBUTING.md` — guía rápida de contribución (flujo git del equipo).
+- `AGENTS.md` — reglas que debe cumplir cualquier agente de IA en el repo.
+- `docs/INSTALACION.md` — **guía de instalación desde cero en un PC nuevo** (Git, Node, Flutter, clonar, configurar y correr).
+- `docs/GIT_CONVENTION.md` — convenciones de Git (ramas, commits, PRs, tags).
+- `docs/STACK.md` — stack tecnológico en detalle y decisiones técnicas.
+- `docs/AGENTES.md` — agentes (GLM 5.3, DeepSeek v4 Pro, GPT 5.6 Luna) y skills de OpenCode.
 - `docs/` — enunciado del ejercicio, `REVISION_BASE_DE_DATOS.md` y prompts de progreso.
 - `mail-service/README.md` — guía del servicio de correo.
 - `frontend/README.md` — guía específica del frontend.

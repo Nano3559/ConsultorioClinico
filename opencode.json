@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode-go/glm-5.3",
+  "small_model": "opencode-go/glm-5.3-flash",
+  "instructions": ["AGENTS.md"],
+  "agent": {
+    "build": {
+      "model": "opencode-go/glm-5.3"
+    },
+    "plan": {
+      "model": "opencode-go/glm-5.3"
+    },
+    "general": {
+      "model": "opencode-go/deepseek-v4-pro"
+    }
+  },
+  "permission": {
+    "edit": "allow",
+    "bash": {
+      "*": "allow",
+      "git push*": "ask",
+      "git commit*": "ask",
+      "rm *": "deny"
+    }
+  }
+}
