@@ -32,3 +32,6 @@ backend/package-lock.json
 Thumbs.db
 .env
 .vercel
+
+# --- Secretos / credenciales ---
+credenciales.txt
