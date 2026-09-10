@@ -6,6 +6,11 @@ const normalizar = (texto) =>
   texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 const TABLA_FALTA = '42P01';
+// Supabase/PostgREST devuelve PGRST205 cuando la tabla no existe en cache.
+const TABLA_FALTA_PGRST = 'PGRST205';
+
+const esTablaFalta = (error) =>
+  error && (error.code === TABLA_FALTA || error.code === TABLA_FALTA_PGRST);
 
 const mensajeMigracion =
   'La tabla especialidades no existe. Ejecuta db/migrations/002_especialidades.sql en el SQL Editor de Supabase.';
@@ -44,7 +49,7 @@ const getEspecialidades = async (req, res) => {
       .order('id');
 
     if (error) {
-      if (error.code === TABLA_FALTA) {
+      if (esTablaFalta(error)) {
         const derivadas = await derivarDeMedicos(supabase);
         return sendSuccess(res, derivadas);
       }
@@ -87,7 +92,7 @@ const getEspecialidadesByMedico = async (req, res) => {
       .eq('activo', true)
       .order('id');
 
-    if (error && error.code !== TABLA_FALTA) throw error;
+    if (error && !esTablaFalta(error)) throw error;
     const lista = error ? await derivarDeMedicos(supabase) : data;
     const resultado = lista.filter(
       (e) => normalizar(e.nombre) === normalizar(medico.especialidad)
@@ -122,7 +127,7 @@ const getEspecialidadById = async (req, res) => {
       .limit(1);
 
     if (error) {
-      if (error.code === TABLA_FALTA) {
+      if (esTablaFalta(error)) {
         const derivadas = await derivarDeMedicos(supabase);
         const encontrada = derivadas.find((e) => e.id === id);
         if (!encontrada) return sendError(res, 'Especialidad no encontrada', 404);
@@ -153,7 +158,7 @@ const createEspecialidad = async (req, res) => {
       .from('especialidades')
       .select('id, nombre');
     if (dupError) {
-      if (dupError.code === TABLA_FALTA) return sendError(res, mensajeMigracion, 503);
+      if (esTablaFalta(dupError)) return sendError(res, mensajeMigracion, 503);
       throw dupError;
     }
     const existeNombre = (existentes || []).find(
@@ -197,7 +202,7 @@ const updateEspecialidad = async (req, res) => {
         .select('id, nombre')
         .neq('id', id);
       if (dupError) {
-        if (dupError.code === TABLA_FALTA) return sendError(res, mensajeMigracion, 503);
+        if (esTablaFalta(dupError)) return sendError(res, mensajeMigracion, 503);
         throw dupError;
       }
       const duplicada = (existentes || []).find(
@@ -252,7 +257,7 @@ const deleteEspecialidad = async (req, res) => {
       .eq('id', id)
       .limit(1);
     if (findError) {
-      if (findError.code === TABLA_FALTA) return sendError(res, mensajeMigracion, 503);
+      if (esTablaFalta(findError)) return sendError(res, mensajeMigracion, 503);
       throw findError;
     }
     if (!rows || rows.length === 0) {

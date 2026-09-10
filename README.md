@@ -163,7 +163,6 @@ Ramas locales y remotas del repositorio `https://github.com/Nano3559/Consultorio
 | **`origin/main`** | Rama principal en GitHub (`HEAD` apunta aquí) |
 | **`origin/Jhilian`** | Trabajo de Jhilian (Backend/Database) |
 | **`origin/Camila`** | Trabajo de Camila (backend/API) |
-| **`origin/backend-tests-camila`** | Suite de tests del backend (Camila) |
 | **`origin/brayan`** | Trabajo de Brayan (Frontend) |
 | **`origin/docs/readme`** | Documentación |
 
@@ -590,7 +589,11 @@ detallada en **`docs/AGENTES.md`**.
 - `docs/GIT_CONVENTION.md` — convenciones de Git (ramas, commits, PRs, tags).
 - `docs/STACK.md` — stack tecnológico en detalle y decisiones técnicas.
 - `docs/AGENTES.md` — agentes (GLM 5.3, DeepSeek v4 Pro, GPT 5.6 Luna) y skills de OpenCode.
-- `docs/` — enunciado del ejercicio, `REVISION_BASE_DE_DATOS.md` y prompts de progreso.
+- `docs/API.md` — Documentación de endpoints de la API.
+- `docs/DEPLOY.md` — Guía de despliegue en Vercel.
+- `docs/TEAM.md` — Equipo y roles de trabajo.
+- `docs/SPRINT.md` — Plan de trabajo (Trello).
+- `docs/REVISION_BASE_DE_DATOS.md` — Revisión técnica de la base de datos.
 - `mail-service/README.md` — guía del servicio de correo.
 - `frontend/README.md` — guía específica del frontend.
 
