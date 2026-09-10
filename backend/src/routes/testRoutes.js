@@ -1,22 +1,13 @@
 const express = require('express');
 const router = express.Router();
+const { verifyToken } = require('../middleware/auth');
+const { checkRole } = require('../middleware/roles');
 
-router.get('/env', (req, res) => {
-  const envInfo = {
-    SUPABASE_URL: process.env.SUPABASE_URL ? '✅ Configurada' : '❌ NO configurada',
-    SUPABASE_URL_VALUE: process.env.SUPABASE_URL || 'vacío',
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? '✅ Configurada' : '❌ NO configurada',
-    SUPABASE_ANON_KEY_PREFIX: process.env.SUPABASE_ANON_KEY
-      ? process.env.SUPABASE_ANON_KEY.substring(0, 30) + '...'
-      : 'N/A',
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
-      ? '✅ Configurada'
-      : '❌ NO configurada',
-    JWT_SECRET: process.env.JWT_SECRET ? '✅ Configurada' : '❌ NO configurada',
-    NODE_ENV: process.env.NODE_ENV || 'no definido',
-  };
-  res.json({ success: true, data: envInfo });
-});
+// Estas rutas solo se montan en desarrollo (ver app.js) y además exigen
+// un token de administrador para no exponer detalles de configuración.
+
+router.use(verifyToken);
+router.use(checkRole('admin'));
 
 router.get('/db', async (req, res) => {
   try {

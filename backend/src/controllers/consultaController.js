@@ -87,7 +87,7 @@ const getById = async (req, res) => {
  */
 const create = async (req, res) => {
   try {
-    const { cita_id, paciente_id, medico_id, diagnostico, tratamiento, notas_clinicas, signos_vitales } = req.body;
+    const { cita_id, paciente_id, medico_id, motivo, diagnostico, tratamiento, notas_clinicas, signos_vitales, proximo_control } = req.body;
     const supabase = getSupabase();
 
     // Verificar que el paciente exista
@@ -128,10 +128,12 @@ const create = async (req, res) => {
         cita_id: cita_id ? parseInt(cita_id) : null,
         paciente_id,
         medico_id,
+        motivo: motivo || '',
         diagnostico,
         tratamiento,
         notas_clinicas: notas_clinicas || '',
         signos_vitales: signos_vitales || null,
+        proximo_control: proximo_control || null,
       })
       .select('*')
       .single();
@@ -152,10 +154,12 @@ const update = async (req, res) => {
   try {
     const supabase = getSupabase();
     const cambios = {};
+    if (req.body.motivo !== undefined) cambios.motivo = req.body.motivo;
     if (req.body.diagnostico !== undefined) cambios.diagnostico = req.body.diagnostico;
     if (req.body.tratamiento !== undefined) cambios.tratamiento = req.body.tratamiento;
     if (req.body.notas_clinicas !== undefined) cambios.notas_clinicas = req.body.notas_clinicas;
     if (req.body.signos_vitales !== undefined) cambios.signos_vitales = req.body.signos_vitales;
+    if (req.body.proximo_control !== undefined) cambios.proximo_control = req.body.proximo_control || null;
 
     if (Object.keys(cambios).length === 0) {
       return sendError(res, 'No hay campos para actualizar', 400);

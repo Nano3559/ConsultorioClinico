@@ -33,4 +33,30 @@ class AppColors {
     Color(0xFFDC2626),
     Color(0xFF0891B2),
   ];
+
+  // ---- Gradientes (estilo 3D / profundidad) -----------------------------
+  /// Gradiente de marca (teal → azul) para botones, chips y acentos.
+  static const List<Color> gradientPrimary = [
+    Color(0xFF14B8A6),
+    Color(0xFF0D9488),
+    Color(0xFF0F766E),
+  ];
+
+  /// Gradiente de fondo suave (blanco → teal muy tenue).
+  static const List<Color> gradientBackground = [
+    Color(0xFFFFFFFF),
+    Color(0xFFF0FDFA),
+    Color(0xFFE0F2FE),
+  ];
+
+  /// Gradiente profundo para la barra lateral (oscuro premium).
+  static const List<Color> gradientSidebar = [
+    Color(0xFF0F766E),
+    Color(0xFF134E4A),
+    Color(0xFF0B3B37),
+  ];
+
+  /// Sombras suaves para elevar tarjetas (multi-capa "3D").
+  static const Color shadowSoft = Color(0x1A0F172A);
+  static const Color shadowStrong = Color(0x330F172A);
 }

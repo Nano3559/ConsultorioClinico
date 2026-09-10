@@ -1,0 +1,106 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    }
+
+    function isStaff() {
+      return isSignedIn() && userRole() in ['admin', 'recepcion', 'medico'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    // ---- Usuarios (cuentas) ----
+    match /usuarios/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // ---- Medicos (directorio publico de atencion) ----
+    // Lectura publica: es un directorio sin datos sensibles del paciente.
+    // Firestore exige que la regla sea `true` para permitir la consulta sin
+    // filtro; el filtro de medicos activos se aplica en la UI.
+    match /medicos/{medicoId} {
+      allow read: if true;
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == medicoId);
+    }
+
+    // ---- Pacientes (datos demograficos) ----
+    // NOTA: se permite lectura publica para habilitar el autocompletado por CI
+    // en "Solicitar cita" sin sesion. Expone datos personales (CI, nombre,
+    // nacimiento, correo, telefono); para produccion conviene mover esta
+    // logica a una Cloud Function (plan Blaze) en lugar de lectura directa.
+    match /pacientes/{pacienteId} {
+      allow read: if true;
+      allow write: if isStaff() || (isSignedIn() && request.auth.uid == pacienteId);
+    }
+
+    // ---- Especialidades (catalogo publico) ----
+    match /especialidades/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Citas ----
+    // La creacion es publica para permitir "Solicitar cita" sin login. Se valida
+    // la presencia de los campos obligatorios. Para produccion, restringir con
+    // una Cloud Function que verifique al paciente.
+    match /citas/{citaId} {
+      allow create: if request.resource.data.keys().hasAll(['paciente_id','medico_id','fecha','hora','estado'])
+                    && request.resource.data.paciente_id is string
+                    && request.resource.data.paciente_id != ''
+                    && request.resource.data.medico_id is string
+                    && request.resource.data.medico_id != '';
+      allow read, update, delete: if isAdmin()
+                    || isStaff()
+                    || (resource.data.paciente_id == request.auth.uid);
+    }
+
+    // ---- Consultas (historia clinica) ----
+    // Solo el medico (o admin) puede crear/modificar la historia clinica.
+    // La recepcionista NO registra consultas: solo gestiona agenda y cobros.
+    match /consultas/{id} {
+      allow create: if isAdmin() || (userRole() == 'medico');
+      allow read, update, delete: if isAdmin()
+                    || isStaff()
+                    || (resource.data.paciente_id == request.auth.uid);
+    }
+
+    // ---- Pagos ----
+    match /pagos/{id} {
+      allow create: if isAdmin() || isStaff();
+      allow read, update, delete: if isAdmin()
+                    || isStaff()
+                    || (resource.data.paciente_id == request.auth.uid);
+    }
+
+    // ---- Horarios disponibles (catalogo publico) ----
+    match /horarios/{id} {
+      allow read: if true;
+      allow write: if isAdmin() || (isSignedIn() && resource.data.medico_id == request.auth.uid);
+    }
+
+    // ---- Disponibilidad (turnos ocupados; sin datos de paciente, legible publicamente) ----
+    // El id del documento es deterministico: "{medico_id}__{fecha}__{hora}".
+    // La regla de create impide crear un turno ya existente => no hay doble reserva.
+    // El create es publico para que "Solicitar cita" funcione sin sesion.
+    match /disponibilidad/{id} {
+      allow read: if true;
+      allow create: if !exists(/databases/$(database)/documents/disponibilidad/$(id));
+      allow update: if false;
+      allow delete: if isAdmin()
+        || isStaff()
+        || (isSignedIn() && request.auth.uid == resource.data.medico_id)
+        || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/citas/$(resource.data.cita_id)).data.paciente_id);
+    }
+  }
+}

@@ -7,6 +7,8 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_status_badge.dart';
 import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/responsive_row.dart';
+import '../../../data/models/user.dart';
+import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
 import 'appointment_actions.dart';
 
@@ -29,6 +31,7 @@ class _AgendaPageState extends State<AgendaPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
+    final isMedico = context.watch<AuthProvider>().currentUser?.role == UserRole.medico;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     final list = clinic.appointmentsOfDay(_date).where((a) {
       if (_doctorFilter != null && a.doctorId != _doctorFilter) return false;
@@ -96,7 +99,8 @@ class _AgendaPageState extends State<AgendaPage> {
         SizedBox(height: isMobile ? 6 : 8),
         ResponsiveRow(
           children: [
-            DropdownButtonFormField<String?>(
+            if (!isMedico)
+              DropdownButtonFormField<String?>(
               initialValue: _doctorFilter,
               isDense: true,
               isExpanded: true,

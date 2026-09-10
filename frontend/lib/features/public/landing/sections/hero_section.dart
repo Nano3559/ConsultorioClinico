@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/app_formatters.dart';
+import '../../../../core/widgets/ambient_background.dart';
+import '../../../../core/widgets/app_status_badge.dart';
+import '../../../../data/models/appointment.dart';
+import '../../../../data/models/user.dart';
+import '../../../../state/auth_provider.dart';
+import '../../../../state/clinic_provider.dart';
 
 /// Sección hero: portada con mensaje principal y tarjeta de próxima cita.
 class HeroSection extends StatelessWidget {
-  const HeroSection({super.key});
+  const HeroSection({super.key, this.onViewDoctors});
+
+  /// Será invocado cuando se pulse "Ver médicos" (scroll a la sección).
+  final VoidCallback? onViewDoctors;
 
   @override
   Widget build(BuildContext context) {
@@ -21,22 +32,98 @@ class HeroSection extends StatelessWidget {
           colors: [AppColors.primaryDark, AppColors.primaryLight],
         ),
       ),
-      child: isMobile
-          ? const Column(
+      child: Stack(
+        children: [
+          Positioned(
+            top: -90,
+            right: -70,
+            child: Container(
+              width: 340,
+              height: 340,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.16),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -140,
+            left: -90,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.primaryLight.withValues(alpha: 0.28),
+                    AppColors.primaryLight.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (isMobile)
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HeroText(),
-                SizedBox(height: 32),
-                _HeroCard(),
+                const FadeSlide(child: _HeroText()),
+                const SizedBox(height: 32),
+                FadeSlide(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FilledButton(
+                        onPressed: onViewDoctors,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primaryDark,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                        ),
+                        child: const Text('Ver médicos'),
+                      ),
+                      const SizedBox(height: 16),
+                      const _HeroCard(),
+                    ],
+                  ),
+                ),
               ],
             )
-          : const Row(
+          else
+            Row(
               children: [
-                Expanded(child: _HeroText()),
-                SizedBox(width: 48),
-                Expanded(child: _HeroCard()),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FadeSlide(child: _HeroText()),
+                      const SizedBox(height: 12),
+                      FadeSlide(
+                        child: OutlinedButton.icon(
+                          onPressed: onViewDoctors,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                          ),
+                          icon: const Icon(Icons.people_outline),
+                          label: const Text('Ver médicos'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 48),
+                const Expanded(child: FadeSlide(child: _HeroCard())),
               ],
             ),
+        ],
+      ),
     );
   }
 }
@@ -91,107 +178,231 @@ class _HeroText extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 28),
+        // Imagen principal del consultorio (con respaldo si no carga).
+        ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 30, offset: const Offset(0, 12)),
+              ],
+            ),
+            child: Image.network(
+              'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&h=340&fit=crop&q=80',
+              width: double.infinity,
+              height: isMobile ? 170 : 240,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                height: isMobile ? 170 : 240,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primaryLight, AppColors.primaryDark],
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: const Center(
+                  child: Icon(Icons.local_hospital, color: Colors.white, size: 72),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
+/// Tarjeta de "Próxima cita": muestra la cita real del usuario logueado
+/// (paciente -> su cita; médico -> su agenda; admin/recepción -> la próxima
+/// del consultorio). Si no hay sesión o no hay citas, muestra un CTA.
 class _HeroCard extends StatelessWidget {
   const _HeroCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final auth = context.watch<AuthProvider>();
+    final clinic = context.watch<ClinicProvider>();
+    final isMedico = auth.currentUser?.role == UserRole.medico;
+
+    Appointment? next;
+    if (auth.isLogged && clinic.appointments.isNotEmpty) {
+      final startOfToday = () {
+        final t = DateTime.now();
+        return DateTime(t.year, t.month, t.day);
+      }();
+      final upcoming = clinic.appointments.where((a) {
+        if (a.status == AppointmentStatus.cancelada || a.status == AppointmentStatus.noAsistio) {
+          return false;
+        }
+        return !a.date.isBefore(startOfToday);
+      }).toList()
+        ..sort((a, b) {
+          final d = a.date.compareTo(b.date);
+          if (d != 0) return d;
+          return a.time.compareTo(b.time);
+        });
+      if (upcoming.isNotEmpty) next = upcoming.first;
+    }
+
+    if (next == null) {
+      return _CardBox(
         children: [
-          const Row(
-            children: [
-              Icon(Icons.event_available, color: AppColors.primary, size: 28),
-              SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  'Próxima cita',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Spacer(),
-              _Badge(text: 'Confirmada'),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Row(
-            children: [
-              CircleAvatar(radius: 24, backgroundColor: AppColors.primary, child: Icon(Icons.person, color: Colors.white)),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Dra. Ana Gómez', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark), overflow: TextOverflow.ellipsis),
-                    Text('Medicina general', style: TextStyle(color: AppColors.muted, fontSize: 13), overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_month, color: AppColors.primary, size: 22),
-                const SizedBox(width: 10),
-                const Expanded(child: Text('Hoy · 10:30 AM', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark))),
-                const Icon(Icons.videocam, color: AppColors.primary, size: 22),
-              ],
-            ),
+          const _TitleRow(),
+          const SizedBox(height: 16),
+          Text(
+            auth.isLogged
+                ? 'No tienes citas próximas. Agenda una nueva cuando quieras.'
+                : 'Tu próxima cita te espera. Agenda en segundos y recibe confirmación al instante.',
+            style: const TextStyle(color: AppColors.muted, height: 1.5),
           ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
               onPressed: () => context.push('/solicitar-cita'),
-              child: const Text('Agendar cita'),
+              child: Text(auth.isLogged ? 'Agendar cita' : 'Solicitar cita'),
             ),
           ),
+          if (!auth.isLogged)
+            TextButton(
+              onPressed: () => context.push('/login'),
+              child: const Text('Ingresar al sistema'),
+            ),
         ],
+      );
+    }
+
+    final doctor = clinic.doctorById(next!.doctorId);
+    final specialty = clinic.specialtyById(doctor.specialtyId);
+    final mainLine = isMedico ? clinic.patientName(next!.patientId) : doctor.displayName;
+    final subLine = isMedico ? 'Paciente' : '${specialty.name} · ${doctor.displayName}';
+
+    return _CardBox(
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.event_available, color: AppColors.primary, size: 28),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Próxima cita',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Spacer(),
+            AppStatusBadge(status: next!.status),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            const CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primary,
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(mainLine, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark), overflow: TextOverflow.ellipsis),
+                  Text(subLine, style: const TextStyle(color: AppColors.muted, fontSize: 13), overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_month, color: AppColors.primary, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${AppFormatters.shortDate(next!.date)} · ${next!.time}',
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark),
+                ),
+              ),
+              Icon(isMedico ? Icons.person : Icons.videocam, color: AppColors.primary, size: 22),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: () => context.push('/app'),
+            child: const Text('Ver mis citas'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CardBox extends StatelessWidget {
+  const _CardBox({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.97),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 36,
+            offset: const Offset(0, 16),
+          ),
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.20),
+            blurRadius: 64,
+            offset: const Offset(0, 26),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
       ),
     );
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text});
-
-  final String text;
+class _TitleRow extends StatelessWidget {
+  const _TitleRow();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFD1FAE5),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(text, style: const TextStyle(color: AppColors.primaryDark, fontSize: 12)),
+    return const Row(
+      children: [
+        Icon(Icons.event_available, color: AppColors.primary, size: 28),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Próxima cita',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

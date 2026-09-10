@@ -39,9 +39,9 @@ class Patient {
           : (birth is DateTime ? birth : DateTime.tryParse(birth.toString()) ?? DateTime(1900)),
       phone: (json['telefono'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
-      antecedentes: '',
+      antecedentes: (json['antecedentes'] ?? '').toString(),
       alergias: (json['alergias'] ?? '').toString(),
-      observaciones: (json['contacto_emergencia'] ?? '').toString(),
+      observaciones: (json['observaciones'] ?? json['contacto_emergencia'] ?? '').toString(),
     );
   }
 
@@ -54,8 +54,9 @@ class Patient {
         'email': email,
         'fecha_nacimiento':
             '${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+        'antecedentes': antecedentes,
         'alergias': alergias,
-        'contacto_emergencia': observaciones,
+        'observaciones': observaciones,
       };
 
   Patient copyWith({

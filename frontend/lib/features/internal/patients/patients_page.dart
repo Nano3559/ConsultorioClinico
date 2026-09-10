@@ -5,7 +5,7 @@ import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_table.dart';
-import '../../../core/widgets/responsive_row.dart';
+import '../../../core/widgets/page_header.dart';
 import '../../../data/models/patient.dart';
 import '../../../state/clinic_provider.dart';
 import 'patient_form_page.dart';
@@ -33,19 +33,16 @@ class _PatientsPageState extends State<PatientsPage> {
     final clinic = context.watch<ClinicProvider>();
     final patients = clinic.searchPatients(_search.text);
     final isWide = MediaQuery.sizeOf(context).width >= 840;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       children: [
-        ResponsiveRow(
-          children: [
-            TextField(
-              controller: _search,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Buscar paciente',
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
+        PageHeader(
+          title: 'Pacientes',
+          subtitle: 'Directorio de personas atendidas en el consultorio.',
+          icon: Icons.group_outlined,
+          count: clinic.patients.length,
+          actions: [
             FilledButton.icon(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const PatientFormPage()),
@@ -54,6 +51,15 @@ class _PatientsPageState extends State<PatientsPage> {
               label: const Text('Registrar'),
             ),
           ],
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _search,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Buscar paciente',
+            prefixIcon: Icon(Icons.search),
+          ),
         ),
         const SizedBox(height: 12),
         if (patients.isEmpty)

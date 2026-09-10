@@ -3,9 +3,40 @@ const config = require('../config/config');
 const { sendError } = require('../utils/helpers');
 
 /**
- * Middleware para verificar token JWT
+ * Verifica contra la tabla sesiones que el token (jti) de la sesión siga
+ * activa y no haya expirado. Mejor esfuerzo: si la tabla no existe o hay un
+ * error de red, se permite el acceso y se loguea la incidencia.
  */
-const verifyToken = (req, res, next) => {
+const sesionActiva = async (tokenId) => {
+  try {
+    const { getSupabase } = require('../config/supabase');
+    const supabase = getSupabase();
+
+    const { data, error } = await supabase
+      .from('sesiones')
+      .select('id')
+      .eq('token_id', tokenId)
+      .eq('activa', true)
+      .limit(1);
+
+    if (error) {
+      console.error('[auth] No se pudo validar la sesión:', error.message);
+      return null;
+    }
+
+    return data && data.length > 0;
+  } catch (err) {
+    console.error('[auth] Error validando sesión:', err.message);
+    return null;
+  }
+};
+
+/**
+ * Middleware para verificar token JWT.
+ * Si el token incluye jti (emitido por /login), comprueba además que la
+ * sesión siga activa en la BD, de modo que un logout la revoque de inmediato.
+ */
+const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -14,15 +45,30 @@ const verifyToken = (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, config.jwtSecret);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, config.jwtSecret);
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return sendError(res, 'Token expirado', 401);
+      }
+      return sendError(res, 'Token inválido', 401);
+    }
+
+    // Tokens de tipo prueba o legacy sin jti no se validan contra sesiones
+    if (decoded.jti) {
+      const activa = await sesionActiva(decoded.jti);
+      if (activa === false) {
+        return sendError(res, 'Sesión cerrada. Inicie sesión nuevamente', 401);
+      }
+      // activa === null (indeterminado): se continúa para no romper el servicio
+    }
 
     req.user = decoded;
-    next();
+    return next();
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return sendError(res, 'Token expirado', 401);
-    }
-    return sendError(res, 'Token inválido', 401);
+    console.error('[auth] verifyToken:', error.message);
+    return sendError(res, 'Error interno de autenticación', 500);
   }
 };
 

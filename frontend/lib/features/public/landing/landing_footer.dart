@@ -12,7 +12,13 @@ class LandingFooter extends StatelessWidget {
     final isMobile = width < 1000;
     return Container(
       width: double.infinity,
-      color: AppColors.dark,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F172A), Color(0xFF0B3B37)],
+        ),
+      ),
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 48, vertical: 48),
       child: Column(
         children: [

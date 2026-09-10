@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/hover_card.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../../data/models/specialty.dart';
 import '../../../../data/models/doctor.dart';
@@ -67,39 +68,55 @@ class _SpecialtyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+    return HoverCard(
+      accent: specialty.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (specialty.photoUrl.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.network(
+                specialty.photoUrl,
+                width: double.infinity,
+                height: 128,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 128,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [specialty.color.withValues(alpha: 0.75), specialty.color],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(specialty.icon, color: Colors.white, size: 40),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: specialty.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(specialty.icon, color: specialty.color, size: 28),
-              ),
+              GradientIconChip(icon: specialty.icon, color: specialty.color),
               const Spacer(),
               if (doctor != null)
                 Flexible(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryBg,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: AppColors.gradientPrimary,
+                      ),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       doctor!.displayName,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.primaryDark, fontSize: 12, fontWeight: FontWeight.w700),
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -134,7 +151,7 @@ class _SpecialtyCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${entry.key} ${entry.value.first}-${entry.value.last}',
+                      '${entry.key} ${doctor!.schedule.slotRanges(entry.key).join(' · ')}',
                       style: const TextStyle(fontSize: 12, color: AppColors.muted),
                     ),
                   ),

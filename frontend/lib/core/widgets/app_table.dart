@@ -14,25 +14,39 @@ class AppTable extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowSoft,
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Table(
-        border: const TableBorder(horizontalInside: BorderSide(color: AppColors.border)),
+        border: const TableBorder(
+          horizontalInside: BorderSide(color: AppColors.border, width: 0.8),
+        ),
         columnWidths: {
           for (var i = 0; i < headers.length; i++) i: const FlexColumnWidth(1),
         },
         children: [
           TableRow(
-            decoration: const BoxDecoration(color: AppColors.background),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFF0FDFA), Color(0xFFE0F2FE)],
+              ),
+            ),
             children: [
               for (final h in headers)
                 Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
                     h,
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark, fontSize: 13),
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark, fontSize: 13),
                   ),
                 ),
             ],

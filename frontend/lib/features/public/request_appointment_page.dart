@@ -5,6 +5,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_formatters.dart';
 import '../../core/utils/app_validators.dart';
 import '../../data/models/patient.dart';
+import '../../data/models/user.dart';
+import '../../state/auth_provider.dart';
 import '../../state/clinic_provider.dart';
 
 /// Formulario público para solicitar una cita (Ejercicio 3).
@@ -34,12 +36,43 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   String? _doctorId;
   String? _time;
   bool _submitting = false;
+  String? _availKey;
 
   @override
   void initState() {
     super.initState();
+    final auth = context.read<AuthProvider>();
+    final clinic = context.read<ClinicProvider>();
+    final isMedico = auth.currentUser?.role == UserRole.medico;
     _specialtyId = widget.specialtyId;
-    _doctorId = widget.doctorId;
+    // Un médico solo puede agendar citas para sí mismo (se ignora el param ?medico=).
+    _doctorId = isMedico ? auth.currentUser?.doctorId : widget.doctorId;
+    // Catálogo público (especialidades, médicos, horarios) sin sesión.
+    clinic.loadPublicCatalog();
+    if (_doctorId != null) {
+      Future.microtask(() => clinic.loadAvailability(_doctorId!, _date));
+    }
+  }
+
+  void _loadAvail() {
+    if (_doctorId == null) return;
+    final key = '$_doctorId|${_date.year}-${_date.month}-${_date.day}';
+    if (key == _availKey) return;
+    _availKey = key;
+    context.read<ClinicProvider>().loadAvailability(_doctorId!, _date);
+  }
+
+  /// Vuelve atrás: si hay sesión, al sistema; si es visitante, al inicio.
+  void _goBack() {
+    final auth = context.read<AuthProvider>();
+    context.go(auth.isLogged ? '/app' : '/');
+  }
+
+  /// Tras el éxito, si hay sesión el paciente vuelve al sistema (no al landing).
+  void _afterSuccess(BuildContext ctx) {
+    final auth = context.read<AuthProvider>();
+    Navigator.of(ctx).pop();
+    context.go(auth.isLogged ? '/app' : '/');
   }
 
   @override
@@ -57,13 +90,30 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
-    final doctors = clinic.doctors
-        .where((d) =>
-            d.active &&
-            (_specialtyId == null || d.specialtyId == _specialtyId))
-        .toList();
+    final auth = context.watch<AuthProvider>();
+    final isMedico = auth.currentUser?.role == UserRole.medico;
+
+    if (clinic.specialties.isEmpty && clinic.isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Solicitar cita'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _goBack,
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    final doctors = isMedico
+        ? clinic.doctors.where((d) => d.id == _doctorId).toList()
+        : clinic.doctors
+            .where((d) =>
+                d.active &&
+                (_specialtyId == null || d.specialtyId == _specialtyId))
+            .toList();
     // Mantener el médico seleccionado coherente con la especialidad.
-    if (_doctorId != null && !doctors.any((d) => d.id == _doctorId)) {
+    if (!isMedico && _doctorId != null && !doctors.any((d) => d.id == _doctorId)) {
       _doctorId = null;
     }
     final slots = _doctorId == null ? const <String>[] : clinic.availableSlots(_doctorId!, _date);
@@ -74,7 +124,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         title: const Text('Solicitar cita'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: _goBack,
         ),
       ),
       body: SingleChildScrollView(
@@ -99,7 +149,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(flex: 1, child: _field(_ci, 'CI', AppValidators.ci)),
+                      Expanded(flex: 1, child: _field(_ci, 'CI', AppValidators.ci, onChanged: _onCiChanged)),
                       const SizedBox(width: 12),
                       Expanded(flex: 2, child: _field(_phone, 'Teléfono', AppValidators.phone)),
                     ],
@@ -116,30 +166,46 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   const Text('Datos de la cita', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    initialValue: _specialtyId,
+                    value: clinic.specialties.any((s) => s.id == _specialtyId)
+                        ? _specialtyId
+                        : null,
                     decoration: const InputDecoration(labelText: 'Especialidad'),
                     items: [
                       for (final s in clinic.specialties)
                         DropdownMenuItem(value: s.id, child: Text(s.name)),
                     ],
-                    onChanged: (v) => setState(() {
-                      _specialtyId = v;
-                      _doctorId = null;
-                      _time = null;
-                    }),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      final matches = clinic.doctors
+                          .where((d) => d.active && d.specialtyId == v)
+                          .toList();
+                      final firstId = matches.isNotEmpty ? matches.first.id : null;
+                      setState(() {
+                        _specialtyId = v;
+                        _doctorId = firstId;
+                        _time = null;
+                      });
+                      _loadAvail();
+                    },
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    initialValue: _doctorId,
-                    decoration: const InputDecoration(labelText: 'Médico'),
+                    value: doctors.any((d) => d.id == _doctorId) ? _doctorId : null,
+                    decoration: InputDecoration(
+                      labelText: 'Médico',
+                      helperText: isMedico ? 'Solo puedes agendar citas para ti.' : null,
+                    ),
                     items: [
                       for (final d in doctors)
                         DropdownMenuItem(value: d.id, child: Text(d.displayName)),
                     ],
-                    onChanged: (v) => setState(() {
-                      _doctorId = v;
-                      _time = null;
-                    }),
+                    onChanged: isMedico
+                        ? null
+                        : (v) => setState(() {
+                              _doctorId = v;
+                              _time = null;
+                              _loadAvail();
+                            }),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -155,9 +221,25 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   if (_doctorId != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        'Horario: ${AppFormatters.day(_date)}, ${_date.day}/${_date.month} · ${_doctorName(clinic)}',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Horario: ${AppFormatters.day(_date)}, ${_date.day}/${_date.month} · ${_doctorName(clinic)}',
+                            style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                          ),
+                          const SizedBox(height: 4),
+                          if (slots.isEmpty)
+                            const Text(
+                              'No hay turnos disponibles ese día (el médico no atiende o están todos ocupados).',
+                              style: TextStyle(color: AppColors.danger, fontSize: 13),
+                            )
+                          else
+                            Text(
+                              'Turnos disponibles: ${slots.join(', ')}',
+                              style: const TextStyle(color: AppColors.success, fontSize: 13),
+                            ),
+                        ],
                       ),
                     ),
                   const SizedBox(height: 24),
@@ -186,13 +268,38 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   Widget _field(
     TextEditingController c,
     String label,
-    String? Function(String?) validator,
-  ) {
+    String? Function(String?) validator, {
+    void Function(String)? onChanged,
+  }) {
     return TextFormField(
       controller: c,
       decoration: InputDecoration(labelText: label),
       validator: validator,
+      onChanged: onChanged,
     );
+  }
+
+  /// Si el CI ya existe, autocompleta los datos del paciente.
+  void _onCiChanged(String value) {
+    final ci = value.trim().toLowerCase();
+    if (ci.isEmpty) return;
+    final list = context.read<ClinicProvider>().patients;
+    Patient? found;
+    for (final p in list) {
+      if (p.ci.trim().toLowerCase() == ci) {
+        found = p;
+        break;
+      }
+    }
+    if (found != null) {
+      _name.text = found.firstName;
+      _lastName.text = found.lastName;
+      _phone.text = found.phone;
+      _email.text = found.email;
+      _birthDate = found.birthDate;
+      _birth.text = AppFormatters.shortDate(found.birthDate);
+      setState(() {});
+    }
   }
 
   Widget _birthField() {
@@ -236,6 +343,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
             _date = picked;
             _time = null;
           });
+          _loadAvail();
         }
       },
       validator: (_) => _date.isBefore(DateTime.now()) ? 'Fecha no válida' : null,
@@ -270,23 +378,32 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       return;
     }
     final clinic = context.read<ClinicProvider>();
+    final auth = context.read<AuthProvider>();
+    final staff = auth.isLogged &&
+        (auth.role == UserRole.recepcion ||
+            auth.role == UserRole.admin ||
+            auth.role == UserRole.medico);
     setState(() => _submitting = true);
 
     // Pequeña pausa simulando la verificación en el servidor.
     await Future<void>.delayed(const Duration(milliseconds: 600));
 
-    // Buscar o registrar al paciente por CI.
+    // Buscar paciente existente por CI (catálogo público, sin sesión).
     Patient? existing;
     for (final p in clinic.patients) {
-      if (p.ci == _ci.text.trim()) {
+      if (p.ci.trim().toLowerCase() == _ci.text.trim().toLowerCase()) {
         existing = p;
         break;
       }
     }
-    var patient = existing;
-    if (patient == null) {
-      patient = Patient(
-        id: 'p${DateTime.now().millisecondsSinceEpoch}',
+
+    String patientId;
+    if (existing != null) {
+      // Paciente ya registrado: se agenda usando su id, sin requerir login.
+      patientId = existing.id;
+    } else {
+      final nuevo = Patient(
+        id: '',
         firstName: _name.text.trim(),
         lastName: _lastName.text.trim(),
         ci: _ci.text.trim(),
@@ -294,12 +411,32 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         phone: _phone.text.trim(),
         email: _email.text.trim(),
       );
-      final created = await clinic.addPatient(patient);
-      if (created != null) patient = created;
+      final (uid, err) = await auth.registerPatient(nuevo, autoSignIn: !staff);
+      if (!mounted) return;
+      if (err != null) {
+        // Visitante recurrente sin sesión: el correo ya existe, iniciamos sesión.
+        if (err.toLowerCase().contains('registrado') && !staff) {
+          final le = await auth.loginPatient(_ci.text.trim(), _birthDate!);
+          if (le == null && auth.uid != null) {
+            patientId = auth.uid!;
+          } else {
+            setState(() => _submitting = false);
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(le ?? err)));
+            return;
+          }
+        } else {
+          setState(() => _submitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+          return;
+        }
+      } else {
+        patientId = uid!;
+      }
     }
 
     final error = await clinic.bookAppointment(
-      patientId: patient.id,
+      patientId: patientId,
       doctorId: _doctorId!,
       date: _date,
       time: _time!,
@@ -312,7 +449,26 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
-    _showSuccess(patient);
+    if (staff) {
+      // Personal interno: ya está dentro del sistema.
+      clinic.setAuthToken(auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+      clinic.loadAll();
+      if (!mounted) return;
+      context.go('/app');
+    } else {
+      // Visitante: NO se reutiliza una sesión previa (ej. recepcionista
+      // persisted en el navegador). El paciente entra con SU cuenta
+      // (CI + fecha de nacimiento) o regresa al inicio.
+      _showSuccess(Patient(
+        id: patientId,
+        firstName: _name.text.trim(),
+        lastName: _lastName.text.trim(),
+        ci: _ci.text.trim(),
+        birthDate: _birthDate!,
+        phone: _phone.text.trim(),
+        email: _email.text.trim(),
+      ));
+    }
   }
 
   void _showSuccess(Patient patient) {
@@ -331,10 +487,26 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
+              final auth = context.read<AuthProvider>();
+              final clinic = context.read<ClinicProvider>();
+              final err = await auth.loginPatient(patient.ci, patient.birthDate);
+              if (!context.mounted) return;
+              if (err != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+                return;
+              }
+              clinic.setAuthToken(
+                  auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+              clinic.loadAll();
               Navigator.of(ctx).pop();
-              context.go('/');
+              context.go('/app');
             },
+            child: const Text('Entrar con mi cuenta'),
+          ),
+          TextButton(
+            onPressed: () => _afterSuccess(ctx),
             child: const Text('Volver al inicio'),
           ),
         ],

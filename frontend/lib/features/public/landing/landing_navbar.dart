@@ -24,11 +24,31 @@ class LandingNavbar extends StatelessWidget {
     final width = MediaQuery.of(context).size.width;
     final isMobile = width < 1000;
     return Container(
-      color: Colors.white,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+        boxShadow: [
+          BoxShadow(color: AppColors.shadowSoft, blurRadius: 14, offset: Offset(0, 4)),
+        ],
+      ),
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 48, vertical: 12),
       child: Row(
         children: [
-          const Icon(Icons.local_hospital, color: AppColors.primary, size: 32),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: AppColors.gradientPrimary,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4)),
+              ],
+            ),
+            child: const Icon(Icons.local_hospital, color: Colors.white, size: 24),
+          ),
           const SizedBox(width: 10),
           Flexible(
             child: Text(
@@ -36,40 +56,46 @@ class LandingNavbar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 color: AppColors.dark,
               ),
             ),
           ),
-          const Spacer(),
-          if (!isMobile)
-            Flexible(
+          if (!isMobile) ...[
+            const SizedBox(width: 12),
+            Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     for (final item in _menu)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: TextButton(
                           onPressed: () => onNavigate(item),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.muted),
-                          child: Text(item),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.muted,
+                            minimumSize: const Size(0, 40),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          child: Text(item, style: const TextStyle(fontSize: 14)),
                         ),
                       ),
-                    const SizedBox(width: 6),
-                    FilledButton(
-                      onPressed: onRequest,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      ),
-                      child: const Text('Solicitar cita'),
-                    ),
                   ],
                 ),
               ),
-            )
+            ),
+            const SizedBox(width: 10),
+            FilledButton(
+              onPressed: onRequest,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              ),
+              child: const Text('Solicitar cita'),
+            ),
+          ]
           else
             Builder(
               builder: (context) => IconButton(

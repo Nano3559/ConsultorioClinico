@@ -4,10 +4,14 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+import 'firebase_options.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/public/landing/landing_page.dart';
 import 'features/public/login_page.dart';
+import 'features/public/reset_password_page.dart';
 import 'features/public/request_appointment_page.dart';
 import 'features/internal/internal_shell.dart';
 import 'state/auth_provider.dart';
@@ -17,6 +21,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es';
   await initializeDateFormatting('es');
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(
     MultiProvider(
       providers: [
@@ -118,6 +123,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginPage(),
+    ),
+    GoRoute(
+      path: '/reset',
+      builder: (context, state) => ResetPasswordPage(oobCode: state.uri.queryParameters['oobCode']),
     ),
     GoRoute(
       path: '/solicitar-cita',

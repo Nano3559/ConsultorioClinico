@@ -92,6 +92,26 @@ const registrarSesion = async (supabase, usuarioId, tokenId, req, expiraEn) => {
 };
 
 /**
+ * Registra un intento de acceso (éxito o fallo) en intentos_acceso.
+ * Mejor esfuerzo: nunca debe romper el flujo de login.
+ */
+const registrarIntentoAcceso = async (supabase, { email, usuarioId = null, req, exitoso }) => {
+  try {
+    await supabase.from('intentos_acceso').insert({
+      usuario_id: usuarioId,
+      email: String(email || '').slice(0, 160),
+      ip_address: (req.ip || '').slice(0, 60),
+      user_agent: (req.headers['user-agent'] || '').slice(0, 250),
+      exitoso,
+    });
+  } catch (intentoErr) {
+    if (intentoErr.code !== '42P01') {
+      console.error('No se pudo registrar el intento de acceso:', intentoErr.message);
+    }
+  }
+};
+
+/**
  * POST /api/auth/register
  * Registrar nuevo usuario.
  * - Público solo permite crear PACIENTES.
@@ -191,17 +211,22 @@ const login = async (req, res) => {
     const usuario = rows && rows[0];
 
     if (!usuario) {
+      await registrarIntentoAcceso(supabase, { email, req, exitoso: false });
       return sendError(res, 'Credenciales inválidas', 401);
     }
 
     const isMatch = await bcrypt.compare(password, usuario.password);
     if (!isMatch) {
+      await registrarIntentoAcceso(supabase, { email, usuarioId: usuario.id, req, exitoso: false });
       return sendError(res, 'Credenciales inválidas', 401);
     }
 
     if (!usuario.activo) {
+      await registrarIntentoAcceso(supabase, { email, usuarioId: usuario.id, req, exitoso: false });
       return sendError(res, 'Cuenta desactivada. Contacte al administrador', 403);
     }
+
+    await registrarIntentoAcceso(supabase, { email, usuarioId: usuario.id, req, exitoso: true });
 
     const perfil = await obtenerPerfil(supabase, usuario.id, usuario.rol);
 

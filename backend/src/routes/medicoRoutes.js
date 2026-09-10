@@ -3,7 +3,7 @@ const router = express.Router();
 const { body } = require('express-validator');
 const { getAll, getById, create, update, toggleEstado, remove, getHorarios, createHorario } = require('../controllers/medicoController');
 const { getEspecialidadesByMedico } = require('../controllers/especialidadController');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, optionalAuth } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
 const {
   validate,
@@ -20,9 +20,9 @@ const medicoValidation = [
   body('email').optional().isEmail().withMessage('Email inválido'),
 ];
 
-// Rutas públicas
-router.get('/', getAll);
-router.get('/:id', idParamValidation, validate, getById);
+// Rutas públicas (lectura); optionalAuth permite exponer más campos al staff
+router.get('/', optionalAuth, getAll);
+router.get('/:id', optionalAuth, idParamValidation, validate, getById);
 router.get('/:id/horarios', verifyToken, idParamValidation, validate, getHorarios);
 router.post('/:id/horarios', verifyToken, checkRole('admin'), idParamValidation, validate, createHorario);
 router.get('/:medicoId/especialidades', medicoIdParamValidation, validate, getEspecialidadesByMedico);
