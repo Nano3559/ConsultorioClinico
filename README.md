@@ -1,6 +1,6 @@
 # 🏥 ConsultorioClínico
 
-Sistema integral de control médico y clínico. Plataforma **full-stack** que gestiona consultorios médicos: agenda de citas, historias clínicas, pagos, médicos, pacientes, especialidades, reportes y panel administrativo — disponible como **web** y **móvil (Android)**.
+Sistema integral de control médico y clínico con **IA (Visión por Computadora)**. Plataforma **full-stack** que gestiona consultorios médicos: agenda de citas, historias clínicas, pagos, médicos, pacientes, especialidades, reportes, panel administrativo y **kiosco de auto-check-in con reconocimiento facial** (OpenCV + LBPH) — disponible como **web** y **móvil (Android)**.
 
 ---
 
@@ -60,6 +60,15 @@ Sistema integral de control médico y clínico. Plataforma **full-stack** que ge
 ### Bases de datos
 - **Supabase (PostgreSQL)** — base de datos principal del backend (migraciones SQL, RLS).
 - **Firebase Firestore** — base de datos principal del frontend (autenticación, reglas RBAC, datos en tiempo real).
+
+### Visión por Computadora (Kiosco de auto-check-in)
+| Tecnología | Uso |
+|---|---|
+| **Python** `3.10+` | Microservicio `backend/vision/` |
+| **OpenCV** (`opencv-contrib-python`) | Detección con **Haar Cascade** + reconocimiento con **LBPH** |
+| **FastAPI** | API del microservicio de visión |
+| **NumPy** | Procesamiento de imágenes y descriptores faciales |
+| **pgvector** (Supabase) | Columna `pacientes.rostro_embedding` de tipo `vector(128)` |
 
 ### Autenticación
 - **Firebase Auth** — autenticación de usuarios en el frontend.
@@ -131,7 +140,13 @@ ConsultorioClinico/
 │   │   ├── migrate.js           # aplica migraciones SQL
 │   │   ├── seed.js              # siembra usuarios por roles
 │   │   ├── seed_ficticio.js     # siembra datos demo vía API
-│   │   └── migrations/          # 11 migraciones SQL/PostgreSQL
+│   │   └── migrations/          # 12 migraciones SQL/PostgreSQL
+│   ├── vision/                  # Módulo de visión por computadora (Python)
+│   │   ├── face_service.py      # detección (Haar) y reconocimiento (LBPH)
+│   │   ├── capture_faces.py     # registro de rostros (cámara web)
+│   │   ├── train_model.py       # entrenamiento del modelo LBPH
+│   │   ├── main.py              # FastAPI (verificar/registrar rostro)
+│   │   └── requirements.txt
 │   └── test/                    # suite QA de autenticación
 ├── mail-service/         # Servicio de correo propio (Vercel + Gmail SMTP)
 │   └── api/
@@ -182,6 +197,7 @@ Ramas locales y remotas del repositorio `https://github.com/Nano3559/Consultorio
 |---|---|---|
 | **Git** | 2.40+ | https://git-scm.com/downloads |
 | **Flutter** | 3.47+ (Dart 3.13+) | https://docs.flutter.dev/get-started/install |
+| **Python** | 3.10+ (solo para el kiosco de visión) | https://www.python.org/downloads/ |
 | **Node.js** | 22.x (LTS) | https://nodejs.org |
 | **npm** | 10+ | (incluido con Node) |
 | **Android Studio** | para build de APK y licencias SDK | https://developer.android.com/studio |
@@ -220,6 +236,12 @@ Edita `backend/.env` con tus credenciales:
 | `SUPABASE_ANON_KEY` | Clave anónima de Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clave `service_role` (**solo backend, nunca el frontend**) |
 | `SUPABASE_DB_URL` | Conexión directa a Postgres (solo para `npm run db:migrate`) |
+| `VISION_ENABLED` | Activa/desactiva el kiosco de reconocimiento facial (`true`/`false`) |
+| `VISION_PYTHON_SERVICE_URL` | URL del microservicio Python (`http://localhost:8000`) |
+| `VISION_FACE_MODEL` | Algoritmo de reconocimiento (`lbph`) |
+| `VISION_CONFIDENCE_THRESHOLD` | Umbral LBPH (80): coincidencia = confianza ≤ umbral |
+| `VISION_CAPTURE_COUNT` | Fotos a capturar por paciente (20) |
+| `VISION_CASCADE_PATH` | Clasificador Haar (`haarcascade_frontalface_default.xml`) |
 
 ### 3. Configuración Firebase del frontend
 Las credenciales de Firebase web y Android están en `frontend/lib/firebase_options.dart`
@@ -297,7 +319,7 @@ npm run vercel-build
 ## 🗄️ Bases de datos
 
 ### Supabase (PostgreSQL) — backend
-Base de datos principal de la API. Esquema gestionado mediante **11 migraciones SQL**
+Base de datos principal de la API. Esquema gestionado mediante **12 migraciones SQL**
 en `backend/db/migrations/`:
 
 - Tablas: `usuarios`, `pacientes`, `medicos`, `horarios`, `citas`, `consultas`,
@@ -306,12 +328,14 @@ en `backend/db/migrations/`:
 - Roles (`enum`): `admin`, `medico`, `recepcion`, `paciente`.
 - Estados de cita: `programada`, `confirmada`, `en_curso`, `completada`, `cancelada`, `no_show`.
 - Estados de pago: `pendiente`, `pagado`, `cancelado`. Métodos: `efectivo`, `tarjeta`, `transferencia`, `otro`.
+- Columnas del kiosco (migración `011`): `pacientes.rostro_embedding` (vector(128)),
+  `citas.confirmada_por_kiosco` (boolean) y `citas.hora_checkin` (timestamp).
 - Protecciones a nivel de BD: índice único antidescuento (`uq_citas_medico_fecha_hora`),
   triggers de integridad, revocación de sesión vía `sesiones.token_id` y auditoría de login.
 
 ```bash
 cd backend
-npm run db:migrate        # aplica las 11 migraciones
+npm run db:migrate        # aplica las 12 migraciones
 npm run db:seed           # usuarios demo por roles
 ```
 
@@ -328,6 +352,51 @@ cd frontend
 firebase deploy --only firestore:rules --project consultorioclinico-2026
 firebase deploy --only firestore:indexes --project consultorioclinico-2026
 ```
+
+---
+
+## 🧭 Kiosco de auto-check-in con reconocimiento facial
+
+El paciente llega al consultorio, se coloca frente a la tablet, el sistema lo
+reconoce por su rostro y confirma automáticamente su cita (OpenCV + LBPH).
+
+### Flujo
+1. La tablet con la app Flutter muestra: *"Bienvenido, por favor mire a la cámara"*.
+2. La cámara frontal captura la imagen (base64).
+3. El backend Node recibe la imagen y se la envía al microservicio **Python + OpenCV**.
+4. **Haar Cascade** detecta el rostro; **LBPH** lo compara con la base de pacientes (`backend/vision/dataset/`).
+5. Si hay coincidencia (confianza ≤ `VISION_CONFIDENCE_THRESHOLD`), busca su cita
+   del día en Supabase y la marca como **`confirmada`** (`confirmada_por_kiosco = true`,
+   `hora_checkin` = ahora).
+6. Muestra: *"Cita confirmada, pase a sala de espera"*.
+7. Si no lo reconoce: *"Por favor, pase a recepción"*.
+
+### Módulo de visión (Python + FastAPI)
+```bash
+cd backend/vision
+python -m venv .venv
+# Windows (PowerShell):
+.venv\Scripts\activate
+# Linux / macOS:
+# source .venv/bin/activate
+
+pip install -r requirements.txt
+python main.py          # API del microservicio en http://localhost:8000
+```
+
+### Registro y entrenamiento de rostros
+```bash
+cd backend/vision
+# 1) Capturar ~20 muestras del paciente desde la webcam (VISION_CAPTURE_COUNT):
+python capture_faces.py --paciente-id 42
+
+# 2) Entrenar el modelo LBPH (dataset/ -> models/lbph.yml.gz):
+python train_model.py
+```
+También se puede registrar el rostro por API: `POST /api/vision/registrar-rostro/:pacienteId` (imagen en base64), que guarda la muestra, reentrena el modelo y almacena el descriptor en `pacientes.rostro_embedding`.
+
+> ⚠️ **Privacidad:** `backend/vision/dataset/` y `backend/vision/models/` contienen
+> datos biométricos y están ignorados por `.gitignore`. Nunca se suben al repositorio.
 
 ---
 
@@ -452,6 +521,9 @@ La API autenticada requiere cabecera `Authorization: Bearer <JWT>`.
 | GET/POST/PATCH | `/api/pagos...` | admin, recepcion | Pagos |
 | GET | `/api/reportes/citas` / `/api/reportes/ingresos` | admin, recepcion | Reportes |
 | GET | `/api/dashboard` | `verifyToken` | Resumen del dashboard |
+| POST | `/api/kiosco/verificar-rostro` | `optionalAuth` + rate limit | Verifica el rostro (visión) y devuelve paciente + cita del día |
+| POST | `/api/kiosco/confirmar-cita` | admin, recepcion | Confirma la cita como check-in por kiosco |
+| POST | `/api/vision/registrar-rostro/:pacienteId` | admin, recepcion | Registra el rostro y reentrena el modelo LBPH |
 | GET | `/api/test/db` | **solo dev** + admin | Diagnóstico de BD |
 
 ---
