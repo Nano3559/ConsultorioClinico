@@ -10,6 +10,7 @@ import 'firebase_options.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/public/landing/landing_page.dart';
+import 'features/public/kiosk/kiosk_page.dart';
 import 'features/public/login_page.dart';
 import 'features/public/reset_password_page.dart';
 import 'features/public/request_appointment_page.dart';
@@ -134,6 +135,11 @@ final _router = GoRouter(
         specialtyId: state.uri.queryParameters['especialidad'],
         doctorId: state.uri.queryParameters['medico'],
       ),
+    ),
+    GoRoute(
+      // Kiosco de auto-check-in: pantalla de la tablet en la recepción.
+      path: '/kiosco',
+      builder: (context, state) => const KioskPage(),
     ),
     GoRoute(
       path: '/app',
