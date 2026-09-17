@@ -165,25 +165,34 @@ ConsultorioClinico/
 
 ## 🌿 Ramas
 
-Ramas locales y remotas del repositorio `https://github.com/Nano3559/ConsultorioClinico.git`:
+Ramas locales y remotas del repositorio `https://github.com/Nano3559/ConsultorioClinico.git`
+(convenciones completas en `docs/GIT_CONVENTION.md` y la skill `git-workflow`):
 
 ### Ramas principales
 | Rama | Descripción |
 |---|---|
-| **`main`** | Versiones estables y desplegadas en producción |
+| **`main`** | Versiones estables y desplegadas en producción. Protegida: solo recibe código vía **Pull Request** con revisión de otro integrante |
 
-### Ramas remotas
-| Rama | Descripción |
+### Ramas por integrante
+| Rama | Responsable | Ámbito |
+|---|---|---|
+| **`Jhilian`** | Jhilian | Backend/Database: Supabase, migraciones SQL, lógica de negocio, entrenamiento/modelo LBPH |
+| **`Camila`** | Camila | Backend/API: rutas, controladores, auth/roles, microservicio de visión (FastAPI) |
+| **`brayan`** | Brayan | Frontend: Flutter (web + Android), Firebase, kiosco de la tablet |
+
+### Ramas cortas de trabajo (opcional)
+| Rama | Uso |
 |---|---|
-| **`origin/main`** | Rama principal en GitHub (`HEAD` apunta aquí) |
-| **`origin/Jhilian`** | Trabajo de Jhilian (Backend/Database) |
-| **`origin/Camila`** | Trabajo de Camila (backend/API) |
-| **`origin/brayan`** | Trabajo de Brayan (Frontend) |
-| **`origin/docs/readme`** | Documentación |
+| `feat/<descripcion>` | Nueva funcionalidad, ej. `feat/kiosco-verificar-rostro` |
+| `fix/<descripcion>` | Corrección de bug, ej. `fix/kiosco-umbral-lbph` |
+| `docs/<descripcion>` | Documentación, ej. `docs/readme` |
 
-> **Flujo de trabajo:** se trabaja en ramas por integrante y se integra a `main`
-> mediante *pull requests* (merge). Ejemplo: `Merge pull request #22 from Nano3559/Camila`.
-> y junto a ello el resto de integrantes pasa a revisar antes de aprobar.
+> **Flujo de trabajo:** cada integrante trabaja en su rama personal (o en una
+> rama corta `feat|fix|docs/...` creada desde `main` actualizada) y la integra
+> a `main` mediante *pull requests* (merge commit, como en la historia del repo:
+> `Merge pull request #30 from Nano3559/Jhilian`). Otro integrante revisa antes
+> de aprobar. La rama `origin/docs/readme` ya se fusionó a `main`; hoy las ramas
+> remotas activas son `main`, `Jhilian`, `Camila` y `brayan`.
 
 ---
 
@@ -319,8 +328,8 @@ npm run vercel-build
 ## 🗄️ Bases de datos
 
 ### Supabase (PostgreSQL) — backend
-Base de datos principal de la API. Esquema gestionado mediante **12 migraciones SQL**
-en `backend/db/migrations/`:
+Base de datos principal de la API. Esquema gestionado mediante **migraciones SQL**
+en `backend/db/migrations/` (11 aplicadas: `001`…`010`):
 
 - Tablas: `usuarios`, `pacientes`, `medicos`, `horarios`, `citas`, `consultas`,
   `pagos`, `especialidades`, `sesiones`, `notificaciones`, `intentos_acceso`.
@@ -328,8 +337,9 @@ en `backend/db/migrations/`:
 - Roles (`enum`): `admin`, `medico`, `recepcion`, `paciente`.
 - Estados de cita: `programada`, `confirmada`, `en_curso`, `completada`, `cancelada`, `no_show`.
 - Estados de pago: `pendiente`, `pagado`, `cancelado`. Métodos: `efectivo`, `tarjeta`, `transferencia`, `otro`.
-- Columnas del kiosco (migración `011`): `pacientes.rostro_embedding` (vector(128)),
-  `citas.confirmada_por_kiosco` (boolean) y `citas.hora_checkin` (timestamp).
+- Columnas del kiosco (migración **`011`**, pendiente de crear — ver tabla 10 del plan):
+  `pacientes.rostro_embedding` (vector(128)), `citas.confirmada_por_kiosco` (boolean)
+  y `citas.hora_checkin` (timestamp).
 - Protecciones a nivel de BD: índice único antidescuento (`uq_citas_medico_fecha_hora`),
   triggers de integridad, revocación de sesión vía `sesiones.token_id` y auditoría de login.
 
@@ -359,6 +369,22 @@ firebase deploy --only firestore:indexes --project consultorioclinico-2026
 
 El paciente llega al consultorio, se coloca frente a la tablet, el sistema lo
 reconoce por su rostro y confirma automáticamente su cita (OpenCV + LBPH).
+
+### Estado actual de la implementación (16/09/2026)
+
+| Componente | Estado | Dónde vive |
+|---|---|---|
+| Pantalla kiosco + cámara web/Android (KIO-03, KIO-06) | ✅ Implementado | `frontend/lib/features/public/kiosk/` (`kiosk_page.dart`, `kiosk_camera_service.dart`) |
+| Estudio del plugin de cámara | ✅ Documentado | `docs/KIOSCO_CAMERA.md` |
+| Migración 011 (pgvector + `rostro_embedding` + check-in) | ⏳ Pendiente | `backend/db/migrations/011_kiosco_facial.sql` |
+| Módulo de visión Python/FastAPI (`backend/vision/`) | ⏳ Pendiente | `backend/vision/{main.py, face_service.py, capture_faces.py, train_model.py}` |
+| Endpoints del kiosco (`verificar-rostro`, `confirmar-cita`) | ⏳ Pendiente | `backend/src/routes/kioscoRoutes.js` + `kioscoController.js` |
+| Endpoint `registrar-rostro/:pacienteId` | ⏳ Pendiente | `backend/src/routes/` (visión) |
+| Variables de entorno `VISION_*` | ⏳ Pendiente | `backend/.env.example` + `backend/src/config/config.js` |
+| Integración kiosco → cita confirmada (KIO-09, KIO-15) | ⏳ Pendiente | `frontend/lib/features/public/kiosk/kiosk_page.dart` (hook `onPhotoCaptured`) |
+
+> El detalle tarea por tarea (qué hacer y dónde va cada archivo) está en la
+> **Tabla 10 — Mapa de implementación** del `PLAN_TRABAJOENTRELLO.md`.
 
 ### Flujo
 1. La tablet con la app Flutter muestra: *"Bienvenido, por favor mire a la cámara"*.
