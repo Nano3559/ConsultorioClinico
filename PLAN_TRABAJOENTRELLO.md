@@ -261,6 +261,103 @@ Flutter Web → Internet → Node.js API → Supabase
 
 ---
 
+## 🤖 TABLA 9: SPRINT 6 — KIOSCO DE AUTO-CHECK-IN CON RECONOCIMIENTO FACIAL (15 AL 30 DE SEPTIEMBRE)
+
+> **Nueva fase definida el 15/09/2026 a partir del README actualizado:** integra
+> **Visión por Computadora** al proyecto (OpenCV + LBPH + FastAPI + pgvector).
+> Fuente: sección "Kiosco de auto-check-in con reconocimiento facial" del `README.md`.
+
+**Objetivo:** el paciente llega al consultorio, se coloca frente a la tablet, el
+sistema lo reconoce por su rostro y confirma automáticamente su cita.
+
+### Flujo del kiosco (definido en el README)
+
+```
+Tablet Flutter  →  Cámara captura foto (base64)  →  Backend Node  →  Microservicio Python (OpenCV)
+      →  Haar detecta rostro + LBPH compara (VISION_CONFIDENCE_THRESHOLD = 80)
+      →  Busca cita del día en Supabase  →  Cita → confirmada (confirmada_por_kiosco = true, hora_checkin)
+      →  "Cita confirmada, pase a sala de espera"  |  Si no reconoce → "Pase a recepción"
+```
+
+### Backlog KIO (nuevas tarjetas del kiosco)
+
+| ID | Tarea | Responsable | Fecha prevista | Etiqueta |
+|----|-------|-------------|----------------|----------|
+| KIO-01 | Diseño de la migración 011 (pgvector + rostro/check-in) | Jhilian | 15/09 | Database |
+| KIO-02 | Módulo de visión Python + FastAPI (`backend/vision/`) | Camila | 15/09 | Backend |
+| KIO-03 | Pantalla kiosco Flutter + estudio del plugin de cámara | Brayan | 15/09 | Frontend |
+| KIO-04 | Aplicar migración 011 (extensión `vector`, columnas, RLS) | Jhilian | 16/09 | Database |
+| KIO-05 | `face_service.py`: detección Haar + reconocimiento LBPH | Camila | 16/09 | Backend |
+| KIO-06 | Captura de webcam en base64 con vista previa | Brayan | 16/09 | Frontend |
+| KIO-07 | Guardar/consultar `rostro_embedding` vector(128) | Jhilian | 17/09 | Database |
+| KIO-08 | API `POST /api/kiosco/verificar-rostro` | Camila | 17/09 | Backend |
+| KIO-09 | Enviar imagen al kiosco y mostrar resultado | Brayan | 17/09 | Frontend |
+| KIO-10 | Registro del descriptor facial del paciente | Jhilian | 18/09 | Database |
+| KIO-11 | API `POST /api/kiosco/confirmar-cita` (`hora_checkin`) | Camila | 18/09 | Backend |
+| KIO-12 | Pantallas de éxito/fallo del kiosco | Brayan | 18/09 | Frontend |
+| KIO-13 | Scripts `capture_faces.py` + `train_model.py` | Jhilian | 21/09 | Database |
+| KIO-14 | Proxy Node → microservicio Python + errores | Camila | 21/09 | Backend |
+| KIO-15 | Kiosco integrado al flujo de citas del día | Brayan | 21/09 | Frontend |
+| KIO-16 | Variables de entorno `VISION_*` + umbral | Jhilian | 22/09 | Database |
+| KIO-17 | Tests de la API kiosco + rate limit | Camila | 22/09 | Backend |
+| KIO-18 | Diseño visual del kiosco (modo tablet) | Brayan | 22/09 | Frontend |
+| KIO-19 | Auditoría de intentos de verificación | Jhilian | 23/09 | Database |
+| KIO-20 | Roles (admin/recepcion) + límite por IP en kiosco | Camila | 23/09 | Backend |
+| KIO-21 | Fallback "Pasar a recepción" | Brayan | 23/09 | Frontend |
+| KIO-22 | Índice HNSW de pgvector + revisión RLS | Jhilian | 24/09 | Database |
+| KIO-23 | Despliegue del microservicio de visión (Vercel) | Camila | 24/09 | Backend |
+| KIO-24 | Pruebas kiosco web + Android (tablet) | Brayan | 24/09 | Frontend |
+| KIO-25 | Documentación de la migración 011 + rollback | Jhilian | 25/09 | Database |
+| KIO-26 | Documentación endpoints kiosco (docs/API.md) | Camila | 25/09 | Backend |
+| KIO-27 | Pruebas con cámara real de cada integrante | Brayan | 25/09 | Frontend |
+| KIO-28 | Optimización de consultas pgvector | Jhilian | 28/09 | Database |
+| KIO-29 | Ajuste de umbral LBPH + corrección de bugs | Camila | 28/09 | Backend |
+| KIO-30 | Corrección de bugs de la pantalla kiosco | Brayan | 28/09 | Frontend |
+| KIO-31 | QA end-to-end: registro → verificación → confirmación | Jhilian | 29/09 | Database |
+| KIO-32 | QA completo API + deploy Vercel | Camila | 29/09 | Backend |
+| KIO-33 | QA flujo kiosco + demo en tablet | Brayan | 29/09 | Frontend |
+| INT-K | Integración total del kiosco | Todos | 30/09 | Final |
+| DEP-K | Deploy final (API Node + visión) | Camila | 30/09 | Deploy |
+| DB-K | Deploy final Supabase / RLS | Jhilian | 30/09 | Deploy |
+| FE-K | Build final web + APK del kiosco | Brayan | 30/09 | Deploy |
+
+### Plan diario (15/09 → 30/09)
+
+| Fecha | Brayan (Frontend) | Camila (Backend/API) | Jhilian (BD + Visión) |
+|-------|-------------------|----------------------|------------------------|
+| **15/09** | KIO-03 Pantalla "Bienvenido, mire a la cámara" + estudio del plugin de cámara web/Android | KIO-02 Crear `backend/vision/` (main.py FastAPI, requirements.txt, correr en :8000) | KIO-01 Diseñar la migración 011 (pgvector + `rostro_embedding` + columnas de cita) |
+| **16/09** | KIO-06 Captura webcam en base64 con vista previa | KIO-05 `face_service.py`: Haar Cascade + reconocedor LBPH | KIO-04 Aplicar migración 011: extensión `vector`, columnas y RLS |
+| **17/09** | KIO-09 Enviar la imagen a `/api/kiosco/verificar-rostro` y mostrar el resultado | KIO-08 API `POST /api/kiosco/verificar-rostro` (imagen → visión → paciente + cita del día) | KIO-07 Guardar/consultar `rostro_embedding` (vector 128) al registrar el paciente |
+| **18/09** | KIO-12 Pantallas de éxito "Cita confirmada" y fallo "Pase a recepción" | KIO-11 API `POST /api/kiosco/confirmar-cita` (`confirmada_por_kiosco`, `hora_checkin`) | KIO-10 Endpoint `POST /api/vision/registrar-rostro/:pacienteId` (guarda muestra + reentrena) |
+| **21/09** | KIO-15 Integrar el kiosco con el flujo de citas del día | KIO-14 Proxy Node → microservicio Python + manejo de errores | KIO-13 Scripts `capture_faces.py` + `train_model.py` (dataset → `models/lbph.yml.gz`) |
+| **22/09** | KIO-18 Diseño visual del kiosco (modo tablet, branding del consultorio) | KIO-17 Tests de la API kiosco (supertest + mock de visión) y rate limit | KIO-16 Variables de entorno `VISION_*` (`VISION_ENABLED`, umbral `VISION_CONFIDENCE_THRESHOLD`) |
+| **23/09** | KIO-21 Fallback: si no reconoce → "Pasar a recepción" con datos manuales | KIO-20 Restringir por rol (admin/recepcion) y límite por IP en kiosco | KIO-19 Auditoría de intentos de verificación (tabla `intentos_acceso`) |
+| **24/09** | KIO-24 Pruebas del kiosco en web (Chrome) y Android (tablet física) | KIO-23 Despliegue del microservicio de visión (Vercel) separado del backend Node | KIO-22 Revisión de RLS + índice **HNSW** de pgvector |
+| **25/09** | KIO-27 Pruebas con cámara real (rostro de cada integrante) y reporte de bugs | KIO-26 Documentar endpoints kiosco en `docs/API.md` y README | KIO-25 Documentar la migración 011 y su rollback |
+| **28/09** | KIO-30 Corrección de bugs de la pantalla kiosco y tiempos de captura | KIO-29 Corrección de bugs del módulo de visión + ajuste de umbral LBPH | KIO-28 Optimización de consultas pgvector y corrección de bugs de BD |
+| **29/09** | KIO-33 QA completo del flujo kiosco y preparar demo en tablet | KIO-32 QA completo de la API + deploy en Vercel | KIO-31 QA end-to-end: registro de rostro → verificación → cita confirmada |
+| **30/09** | FE-K Build final web + APK + entrega | DEP-K Deploy final (API Node + visión) | DB-K Deploy final (Supabase/RLS) |
+
+### Regla de subida diaria
+
+> Cada integrante sube **su tarea asignada del día** antes de las 23:59:
+> 1. Commit con **Conventional Commits** en español (skill `git-workflow`), ej. `feat(kiosco): API verificar-rostro`.
+> 2. Push a su rama (`brayan`, `Camila`, `Jhilian`).
+> 3. Abrir **PR a `main`** y otro integrante la revisa antes del merge.
+> 4. Marcar la tarjeta en Trello (🔨 DOING → 👀 REVIEW → 🧪 TESTING → ✅ DONE).
+
+> ⚠️ **Privacidad:** `backend/vision/dataset/` y `backend/vision/models/` contienen
+> datos biométricos; están en `.gitignore` y **nunca** se suben al repositorio.
+
+### Hito del kiosco (30/09)
+
+```
+Paciente llega → Tablet "mire a la cámara" → Foto base64 → Haar + LBPH reconoce
+   → Cita del día encontrada → confirmada por kiosco → "Pase a sala de espera"
+```
+
+---
+
 ## 🔄 FLUJO KANBAN — Cómo se mueve cada tarjeta
 
 ```
