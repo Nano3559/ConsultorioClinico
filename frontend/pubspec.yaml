@@ -45,6 +45,8 @@ dependencies:
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.0
   cloud_firestore: ^5.4.0
+  camera: ^0.12.1
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:
