@@ -471,9 +471,9 @@ Las cuentas deben estar sembradas en Firebase (aparecen como "acceso rápido" en
 
 | Rol | Correo | Contraseña |
 |---|---|---|
-| Admin | `admin@consultorio.com` | `admin123` |
-| Médico | `carlos@consultorio.com` | `medico123` |
-| Recepción | `maria@consultorio.com` | `recepcion123` |
+| Admin | `admin@consultorio.com` | `Admin1234` |
+| Médico | `carlos@consultorio.com` | `Medico1234` |
+| Recepción | `maria@consultorio.com` | `Recepcion1234` |
 | Paciente | `pedro@gmail.com` | `paciente123` |
 
 ### Sembrar cuentas en Firebase (una sola vez)
