@@ -18,6 +18,15 @@
 --   3) `citas.confirmada_por_kiosco` (boolean): true cuando el kiosco reconoce
 --      al paciente y confirma su cita del día.
 --   4) `citas.hora_checkin` (TIMESTAMPTZ): fecha/hora del check-in (NOW()).
+--   5) Constraint de integridad `chk_citas_checkin_consistente`: `hora_checkin`
+--      solo puede tener valor si `confirmada_por_kiosco = TRUE` (el check-in no
+--      puede quedar registrado sin una confirmación previa del kiosco).
+--   6) Índice `idx_citas_kiosco_diarias` sobre `(fecha, paciente_id, estado)`:
+--      acelera la búsqueda de la "cita del día" del paciente (KIO-08/15), que es
+--      la consulta más frecuente del kiosco.
+--   NOTA: el índice HNSW de pgvector sobre `rostro_embedding` NO va en esta
+--   migración; se añadirá en la migración 012 (tarea KIO-22) una vez que el
+--   reconocedor LBPH esté en producción y haya registros que indexar.
 --
 -- Rollback: ver nota al final del archivo.
 -- ============================================================================
@@ -85,9 +94,36 @@ COMMENT ON COLUMN citas.hora_checkin IS
 ALTER TABLE citas ENABLE ROW LEVEL SECURITY;
 
 -- ---------------------------------------------------------------------------
--- 5) Verificación (descomentar para depurar)
+-- 5) Integridad: hora_checkin exige confirmada_por_kiosco = TRUE
+--    Evita estados inconsistentes (check-in sin confirmación) a nivel de BD.
 -- ---------------------------------------------------------------------------
--- SELECT column_name, data_type
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'citas'
+      AND constraint_name = 'chk_citas_checkin_consistente'
+  ) THEN
+    ALTER TABLE citas
+      ADD CONSTRAINT chk_citas_checkin_consistente
+      CHECK (confirmada_por_kiosco = TRUE OR hora_checkin IS NULL);
+  END IF;
+END $$;
+
+COMMENT ON CONSTRAINT chk_citas_checkin_consistente ON citas IS
+  'Regla del kiosco: hora_checkin solo se guarda si confirmada_por_kiosco = TRUE.';
+
+-- ---------------------------------------------------------------------------
+-- 6) Índice compuesto para la consulta más frecuente del kiosco: la cita del día
+--    (WHERE fecha = CURRENT_DATE AND paciente_id = ? AND estado ...).
+-- ---------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_citas_kiosco_diarias
+  ON citas (fecha, paciente_id, estado);
+
+-- ---------------------------------------------------------------------------
+-- 7) Verificación (descomentar para depurar)
+-- ---------------------------------------------------------------------------
+-- SELECT column_name, data_type, is_nullable, column_default
 -- FROM information_schema.columns
 -- WHERE table_name IN ('pacientes', 'citas')
 --   AND column_name IN ('rostro_embedding', 'confirmada_por_kiosco', 'hora_checkin')
@@ -95,6 +131,8 @@ ALTER TABLE citas ENABLE ROW LEVEL SECURITY;
 
 -- ---------------------------------------------------------------------------
 -- ROLLBACK (solo si la migración aún no se ha desplegado a producción):
+--   DROP INDEX  IF EXISTS idx_citas_kiosco_diarias;
+--   ALTER TABLE citas      DROP CONSTRAINT IF EXISTS chk_citas_checkin_consistente;
 --   ALTER TABLE citas      DROP COLUMN IF EXISTS hora_checkin;
 --   ALTER TABLE citas      DROP COLUMN IF EXISTS confirmada_por_kiosco;
 --   ALTER TABLE pacientes  DROP COLUMN IF EXISTS rostro_embedding;

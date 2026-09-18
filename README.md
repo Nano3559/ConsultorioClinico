@@ -337,7 +337,7 @@ en `backend/db/migrations/` (11 aplicadas: `001`…`010`):
 - Roles (`enum`): `admin`, `medico`, `recepcion`, `paciente`.
 - Estados de cita: `programada`, `confirmada`, `en_curso`, `completada`, `cancelada`, `no_show`.
 - Estados de pago: `pendiente`, `pagado`, `cancelado`. Métodos: `efectivo`, `tarjeta`, `transferencia`, `otro`.
-- Columnas del kiosco (migración **`011`**, pendiente de crear — ver tabla 10 del plan):
+- Columnas del kiosco (migración **`011`**, diseñada — pendiente de aplicar en KIO-04):
   `pacientes.rostro_embedding` (vector(128)), `citas.confirmada_por_kiosco` (boolean)
   y `citas.hora_checkin` (timestamp).
 - Protecciones a nivel de BD: índice único antidescuento (`uq_citas_medico_fecha_hora`),

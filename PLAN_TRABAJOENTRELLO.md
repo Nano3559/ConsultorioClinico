@@ -366,7 +366,7 @@ Paciente llega → Tablet "mire a la cámara" → Foto base64 → Haar + LBPH re
 
 | ID | Qué hacer | Dónde va (archivos/rutas) | Estado |
 |----|-----------|---------------------------|--------|
-| **KIO-01** | Diseñar la migración 011: extensión `vector` (pgvector), `pacientes.rostro_embedding vector(128)`, `citas.confirmada_por_kiosco` y `citas.hora_checkin` | `backend/db/migrations/011_kiosco_facial.sql` (nunca editar las aplicadas) | ⏳ |
+| **KIO-01** | Diseñar la migración 011: extensión `vector` (pgvector), `pacientes.rostro_embedding vector(128)`, `citas.confirmada_por_kiosco` y `citas.hora_checkin` | `backend/db/migrations/011_kiosco_facial.sql` (nunca editar las aplicadas) | ✅ |
 | **KIO-02** | Crear `backend/vision/`: FastAPI, `requirements.txt` y arranque en `:8000` | `backend/vision/main.py`, `requirements.txt` | ⏳ |
 | **KIO-03** | Pantalla kiosco "mire a la cámara" + estudio del plugin de cámara | `frontend/lib/features/public/kiosk/kiosk_page.dart` (ruta `/kiosco` en `main.dart`) + `docs/KIOSCO_CAMERA.md` | ✅ |
 | **KIO-04** | Aplicar migración 011 en Supabase: `CREATE EXTENSION vector`, columnas y RLS | **Ejecución** en Supabase SQL Editor; archivo en `backend/db/migrations/011_kiosco_facial.sql` | ⏳ |
@@ -413,7 +413,7 @@ Paciente llega → Tablet "mire a la cámara" → Foto base64 → Haar + LBPH re
 | Ruta `/kiosco` registrada | `frontend/lib/main.dart` | ✅ |
 | Permiso `CAMERA` en Android | `frontend/android/app/src/main/AndroidManifest.xml` | ✅ |
 | Dependencias `camera`/`permission_handler` | `frontend/pubspec.yaml` | ✅ |
-| Migración 011 (kiosco) | `backend/db/migrations/011_kiosco_facial.sql` | ⏳ No creada |
+| Migración 011 (kiosco) | `backend/db/migrations/011_kiosco_facial.sql` | ✅ Creada (diseñada; aplicar en KIO-04) |
 | Rutas kiosco/visión | `backend/src/routes/` | ⏳ No creadas |
 | Controlador kiosco/visión | `backend/src/controllers/` | ⏳ No creado |
 | `backend/vision/` (Python) | `backend/vision/` | ⏳ No creado |
