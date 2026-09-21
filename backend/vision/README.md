@@ -24,6 +24,25 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+## Reconocimiento facial
+
+### Capturar 20 imágenes de un paciente
+
+```bash
+python capture_faces.py <paciente_id>
+```
+
+Guarda las imágenes en `backend/vision/dataset/paciente_{id}/`.
+
+### Entrenar el modelo LBPH
+
+```bash
+python train_model.py
+```
+
+Genera `backend/vision/modelo_lbph.yml` usando todas las imágenes del
+dataset. Umbral de confianza: 80; tamaño de rostro: 200x200.
+
 ## Endpoints
 
 | Método | Ruta    | Descripción              |
