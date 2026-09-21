@@ -1,4 +1,4 @@
-# 🏥 PLAN DE TRABAJO — CONSULTORIO CLÍNICO
+ey# 🏥 PLAN DE TRABAJO — CONSULTORIO CLÍNICO
 
 > Tablero de gestión de proyecto en [Trello](https://trello.com/invite/b/6a867165af8254c50740291d/ATTI657d9506f77dc4e12454e57e3c2b663f943051AD/consultorioclinico)
 
@@ -261,7 +261,7 @@ Flutter Web → Internet → Node.js API → Supabase
 
 ---
 
-## 🤖 TABLA 9: SPRINT 6 — KIOSCO DE AUTO-CHECK-IN CON RECONOCIMIENTO FACIAL (15 AL 30 DE SEPTIEMBRE)
+## 🤖 TABLA 9: HITO 3 SPRINT 6 — KIOSCO DE AUTO-CHECK-IN CON RECONOCIMIENTO FACIAL (15 AL 30 DE SEPTIEMBRE)
 
 > **Nueva fase definida el 15/09/2026 a partir del README actualizado:** integra
 > **Visión por Computadora** al proyecto (OpenCV + LBPH + FastAPI + pgvector).
