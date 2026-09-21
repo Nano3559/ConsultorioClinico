@@ -53,4 +53,7 @@ module.exports = {
     anonKey: process.env.SUPABASE_ANON_KEY || '',
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   },
+
+  // URL base del microservicio de visión (Python + FastAPI)
+  visionServiceUrl: process.env.VISION_SERVICE_URL || 'http://localhost:8000',
 };

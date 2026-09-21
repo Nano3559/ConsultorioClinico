@@ -48,4 +48,5 @@ dataset. Umbral de confianza: 80; tamaño de rostro: 200x200.
 | Método | Ruta    | Descripción              |
 |--------|---------|--------------------------|
 | GET    | /health | Estado del servicio.     |
+| POST   | /api/kiosco/verificar-rostro | Recibe una imagen base64 y devuelve el paciente reconocido + su cita del día. |
 | GET    | /docs   | Documentación interactiva (Swagger UI). |

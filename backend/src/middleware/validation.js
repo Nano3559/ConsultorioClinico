@@ -102,6 +102,16 @@ const horarioUpdateValidation = [
   body('hora_fin').optional().matches(/^\d{2}:\d{2}$/).withMessage('La hora de fin debe tener formato HH:MM'),
 ];
 
+const kioscoVerificarRostroValidation = [
+  body('imagen')
+    .isString()
+    .withMessage('La imagen debe ser una cadena base64')
+    .notEmpty()
+    .withMessage('La imagen es obligatoria')
+    .isLength({ max: 20000000 })
+    .withMessage('La imagen no puede superar 20 MB'),
+];
+
 module.exports = {
   validate,
   passwordStrongValidation,
@@ -116,4 +126,5 @@ module.exports = {
   citaEstadoValidation,
   horarioValidation,
   horarioUpdateValidation,
+  kioscoVerificarRostroValidation,
 };
