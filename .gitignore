@@ -43,6 +43,12 @@ npm-debug.log*
 yarn-error.log*
 .pnpm-store/
 
+# --- Python (backend/vision) ------------------------------------------
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
 # --- IDE / editores ---------------------------------------------------
 .idea/
 .vscode/
