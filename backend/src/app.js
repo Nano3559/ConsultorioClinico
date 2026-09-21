@@ -56,7 +56,8 @@ app.get('/', (req, res) => {
       consultas: '/api/consultas',
       pagos: '/api/pagos',
       reportes: '/api/reportes',
-      dashboard: '/api/dashboard'
+      dashboard: '/api/dashboard',
+      kiosco: '/api/kiosco'
     }
   });
 });
@@ -79,6 +80,7 @@ app.use('/api/consultas', require('./routes/consultaRoutes'));
 app.use('/api/pagos', require('./routes/pagoRoutes'));
 app.use('/api/reportes', require('./routes/reporteRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/kiosco', require('./routes/kioscoRoutes'));
 
 // Health check (info mínima, sin datos sensibles)
 app.get('/api/health', (req, res) => {
