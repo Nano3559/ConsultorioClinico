@@ -134,3 +134,104 @@ describe('POST /api/kiosco/verificar-rostro', () => {
     assert.ok(/Error interno del microservicio/i.test(res.body.message));
   });
 });
+
+// ============================================================================
+// CONFIRMAR-CITA
+// ============================================================================
+describe('POST /api/kiosco/confirmar-cita', () => {
+  test('422 - campos ausentes', async () => {
+    const res = await request(app).post('/api/kiosco/confirmar-cita').send({});
+    assert.equal(res.status, 422);
+    assert.equal(res.body.success, false);
+    assert.ok(Array.isArray(res.body.errors));
+  });
+
+  test('422 - paciente_id inválido', async () => {
+    const res = await request(app)
+      .post('/api/kiosco/confirmar-cita')
+      .send({ paciente_id: 'abc', cita_id: 1 });
+    assert.equal(res.status, 422);
+  });
+
+  test('404 - cita no encontrada', async () => {
+    const res = await request(app)
+      .post('/api/kiosco/confirmar-cita')
+      .send({ paciente_id: 7, cita_id: 999 });
+    assert.equal(res.status, 404);
+    assert.equal(res.body.success, false);
+    assert.equal(res.body.message, 'Cita no encontrada');
+  });
+
+  test('400 - la cita no pertenece al paciente', async () => {
+    supabaseMock.seedCita({
+      id: 10,
+      paciente_id: 5,
+      medico_id: 1,
+      fecha: '2026-09-21',
+      hora: '09:00',
+      estado: 'programada',
+      confirmada_por_kiosco: false,
+    });
+    const res = await request(app)
+      .post('/api/kiosco/confirmar-cita')
+      .send({ paciente_id: 7, cita_id: 10 });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.message, 'La cita no pertenece al paciente indicado');
+  });
+
+  test('400 - cita en estado final (completada/cancelada/no_show)', async () => {
+    supabaseMock.seedCita({
+      id: 11,
+      paciente_id: 7,
+      medico_id: 1,
+      fecha: '2026-09-21',
+      hora: '09:00',
+      estado: 'cancelada',
+      confirmada_por_kiosco: false,
+    });
+    const res = await request(app)
+      .post('/api/kiosco/confirmar-cita')
+      .send({ paciente_id: 7, cita_id: 11 });
+    assert.equal(res.status, 400);
+    assert.ok(/No se puede confirmar/i.test(res.body.message));
+  });
+
+  test('400 - cita ya confirmada por el kiosco', async () => {
+    supabaseMock.seedCita({
+      id: 12,
+      paciente_id: 7,
+      medico_id: 1,
+      fecha: '2026-09-21',
+      hora: '09:00',
+      estado: 'confirmada',
+      confirmada_por_kiosco: true,
+      hora_checkin: '2026-09-21T08:58:00Z',
+    });
+    const res = await request(app)
+      .post('/api/kiosco/confirmar-cita')
+      .send({ paciente_id: 7, cita_id: 12 });
+    assert.equal(res.status, 400);
+    assert.ok(/ya fue confirmada/i.test(res.body.message));
+  });
+
+  test('200 - check-in exitoso: confirmada, confirmada_por_kiosco y hora_checkin', async () => {
+    supabaseMock.seedCita({
+      id: 13,
+      paciente_id: 7,
+      medico_id: 1,
+      fecha: '2026-09-21',
+      hora: '09:00',
+      estado: 'programada',
+      confirmada_por_kiosco: false,
+    });
+    const res = await request(app)
+      .post('/api/kiosco/confirmar-cita')
+      .send({ paciente_id: 7, cita_id: 13 });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.data.estado, 'confirmada');
+    assert.equal(res.body.data.confirmada_por_kiosco, true);
+    assert.ok(res.body.data.hora_checkin, 'debe registrar hora_checkin');
+  });
+});

@@ -20,6 +20,7 @@ const inserciones = [];
 function reset() {
   USUARIOS.length = 0;
   inserciones.length = 0;
+  CITAS.length = 0;
 }
 
 function getUsuarios() {
@@ -157,14 +158,96 @@ function makeOtherChain(tabla) {
   };
 }
 
+// Tabla 'citas' en memoria para tests del kiosco (confirmar-cita).
+let CITAS = [];
+
+function seedCita(cita) {
+  CITAS.push(cita);
+  return cita;
+}
+
+function getCitas() {
+  return CITAS;
+}
+
+function makeCitasChain() {
+  let eqFiltros = {};
+  let limitN = null;
+  let updateValores = null;
+
+  function resolver() {
+    let result = CITAS.filter((c) =>
+      Object.keys(eqFiltros).every((campo) => c[campo] === eqFiltros[campo])
+    );
+    if (limitN != null) result = result.slice(0, limitN);
+    return { data: result, error: null };
+  }
+
+  const base = {
+    select: () => base,
+    eq: (campo, valor) => {
+      eqFiltros[campo] = valor;
+      return base;
+    },
+    limit: (n) => {
+      limitN = n;
+      return Promise.resolve(resolver());
+    },
+    then: (resolve, reject) => {
+      try {
+        return resolve(resolver());
+      } catch (e) {
+        if (reject) return reject(e);
+        throw e;
+      }
+    },
+    single: () => Promise.resolve({
+      data: resolver().data[0] || null,
+      error: null,
+    }),
+    update: (valores) => {
+      updateValores = valores;
+      return {
+        eq: (campo, valor) => {
+          eqFiltros[campo] = valor;
+          const { data } = resolver();
+          data.forEach((c) => Object.assign(c, updateValores));
+          return {
+            select: () => ({
+    single: () => Promise.resolve({
+      data: resolver().data[0] || null,
+      error: null,
+    }),
+              then: (resolve) => resolve(resolver()),
+            }),
+            then: (resolve) => resolve(resolver()),
+          };
+        },
+      };
+    },
+  };
+
+  return base;
+}
+
 const getSupabase = () => {
   const chain = {
     from(tabla) {
       if (tabla === 'usuarios') return makeUsuariosChain();
+      if (tabla === 'citas') return makeCitasChain();
       return makeOtherChain(tabla);
     },
   };
   return chain;
 };
 
-module.exports = { getSupabase, reset, seedUsuario, seedUsuarioConHash, getUsuarios, getInserciones };
+module.exports = {
+  getSupabase,
+  reset,
+  seedUsuario,
+  seedUsuarioConHash,
+  getUsuarios,
+  getInserciones,
+  seedCita,
+  getCitas,
+};

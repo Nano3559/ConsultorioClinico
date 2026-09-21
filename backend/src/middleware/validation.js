@@ -112,6 +112,11 @@ const kioscoVerificarRostroValidation = [
     .withMessage('La imagen no puede superar 20 MB'),
 ];
 
+const kioscoConfirmarCitaValidation = [
+  body('paciente_id').isInt({ min: 1 }).withMessage('El ID del paciente debe ser un número entero válido'),
+  body('cita_id').isInt({ min: 1 }).withMessage('El ID de la cita debe ser un número entero válido'),
+];
+
 module.exports = {
   validate,
   passwordStrongValidation,
@@ -127,4 +132,5 @@ module.exports = {
   horarioValidation,
   horarioUpdateValidation,
   kioscoVerificarRostroValidation,
+  kioscoConfirmarCitaValidation,
 };
