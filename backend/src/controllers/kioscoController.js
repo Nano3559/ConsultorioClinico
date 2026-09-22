@@ -2,6 +2,7 @@ const config = require('../config/config');
 const { getSupabase } = require('../config/supabase');
 const { sendSuccess, sendError } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
+const { llamarVision } = require('../services/visionService');
 
 /**
  * POST /api/kiosco/verificar-rostro
@@ -16,17 +17,7 @@ const verificarRostro = async (req, res) => {
       return sendError(res, 'La imagen es obligatoria', 400);
     }
 
-    const visionUrl = config.visionServiceUrl;
-    if (!visionUrl) {
-      return sendError(res, 'Microservicio de visión no configurado', 503);
-    }
-
-    const respuesta = await fetch(`${visionUrl.replace(/\/+$/, '')}/api/kiosco/verificar-rostro`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imagen }),
-      signal: AbortSignal.timeout(15000),
-    });
+    const respuesta = await llamarVision('/api/kiosco/verificar-rostro', { imagen });
 
     let dato;
     try {
@@ -36,11 +27,7 @@ const verificarRostro = async (req, res) => {
     }
 
     if (!respuesta.ok) {
-      return sendError(
-        res,
-        dato.message || 'Error interno del microservicio de visión',
-        respuesta.status
-      );
+      return sendError(res, dato.message || 'Error interno del microservicio de visión', respuesta.status);
     }
 
     const body = { success: dato.success !== false };
@@ -50,6 +37,9 @@ const verificarRostro = async (req, res) => {
   } catch (error) {
     if (error.name === 'TimeoutError') {
       return sendError(res, 'El servicio de visión tardó demasiado en responder', 504);
+    }
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode, error.tipo);
     }
     console.error('kiosco.verificarRostro:', error.message);
     return sendError(res, 'No se pudo conectar con el servicio de visión', 502);
