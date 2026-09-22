@@ -44,6 +44,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../data/models/kiosk_verification.dart';
+
 /// Configuración de la API.
 class ApiConfig {
   ApiConfig._();
@@ -171,6 +173,36 @@ class ApiClient {
       return ApiResult.failure(msg.toString());
     }
     return ApiResult.failure('Respuesta inesperada del servidor');
+  }
+
+  // ---- Kiosco de auto-check-in (KIO-09 / KIO-15) -------------------------
+  // POST /api/kiosco/verificar-rostro { imagen: base64 }
+  //   -> { success, message, data: { paciente_id, nombre, confianza, cita } }
+  // No requiere JWT (la tablet es de recepción); el backend aplica rate-limit.
+  Future<ApiResult<KioskVerification>> verificarRostro(String imagenBase64) async {
+    final res = await postJson('/kiosco/verificar-rostro', {'imagen': imagenBase64});
+    if (!res.isSuccess || res.data == null) {
+      return ApiResult.failure(res.error ?? 'Sin conexión con el servidor');
+    }
+    try {
+      return ApiResult.success(KioskVerification.fromJson(res.data!));
+    } catch (_) {
+      return const ApiResult.failure('Respuesta inesperada del servidor');
+    }
+  }
+
+  // POST /api/kiosco/confirmar-cita { paciente_id, cita_id }
+  //   -> { success, message, data: cita confirmada }
+  Future<ApiResult<Map<String, dynamic>>> confirmarCitaKiosco({
+    required dynamic pacienteId,
+    required dynamic citaId,
+    String? token,
+  }) async {
+    return postJson(
+      '/kiosco/confirmar-cita',
+      {'paciente_id': pacienteId, 'cita_id': citaId},
+      token: token,
+    );
   }
 
   void dispose() => _client.close();
