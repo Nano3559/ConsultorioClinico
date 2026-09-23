@@ -35,8 +35,10 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// Límite ampliado a 25 MB: las imágenes base64 del kiosco/visión (hasta 20 MB
+// cada una según validación) superan el límite anterior de 1 MB.
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(morgan('dev'));
 
 // Ruta raíz
@@ -57,7 +59,8 @@ app.get('/', (req, res) => {
       pagos: '/api/pagos',
       reportes: '/api/reportes',
       dashboard: '/api/dashboard',
-      kiosco: '/api/kiosco'
+      kiosco: '/api/kiosco',
+      vision: '/api/vision'
     }
   });
 });
@@ -81,6 +84,7 @@ app.use('/api/pagos', require('./routes/pagoRoutes'));
 app.use('/api/reportes', require('./routes/reporteRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/kiosco', require('./routes/kioscoRoutes'));
+app.use('/api/vision', require('./routes/visionRoutes'));
 
 // Health check (info mínima, sin datos sensibles)
 app.get('/api/health', (req, res) => {

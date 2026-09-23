@@ -36,6 +36,8 @@ function getApp() {
   delete require.cache[path.resolve(__dirname, '../../src/controllers/authController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/authRoutes.js')];
   delete require.cache[path.resolve(__dirname, '../../src/middleware/rateLimiter.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/controllers/visionController.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/routes/visionRoutes.js')];
 
   const app = require('../../src/app');
   return app;
@@ -47,6 +49,8 @@ function restore() {
   delete require.cache[path.resolve(__dirname, '../../src/app.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/authController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/authRoutes.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/controllers/visionController.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/routes/visionRoutes.js')];
 }
 
 module.exports = { getApp, restore };

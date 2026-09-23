@@ -5,20 +5,20 @@ const config = require('../config/config');
 /**
  * Tiempo máximo de espera (ms) para cada llamada HTTP al microservicio de
  * visión (Python + FastAPI), 5 segundos por defecto (dia21.txt).
- * Configurable con VISION_TIMEOUT_MS.
+ * Configurable con VISION_TIMEOUT_MS (KIO-16).
  * @type {number}
  */
-const TIMEOUT_MS = Number(process.env.VISION_TIMEOUT_MS) || 5000;
+const TIMEOUT_MS = Number(config.vision.timeoutMs) || 5000;
 
 /**
  * Cantidad de reintentos ante fallos de red/timeout con el microservicio de
- * visión, 3 por defecto (dia21.txt). Configurable con VISION_RETRIES.
+ * visión, 3 por defecto (dia21.txt). Configurable con VISION_RETRIES (KIO-16).
  * NOTA: solo se reintenta cuando fetch lanza (fallo de conexión o timeout);
  * si el microservicio responde HTTP (2xx/4xx/5xx) se respeta su estado tal
  * cual, sin reintentar, para no duplicar operaciones ni enmascarar errores.
  * @type {number}
  */
-const MAX_REINTENTOS = Number(process.env.VISION_RETRIES) || 3;
+const MAX_REINTENTOS = Number(config.vision.retries) || 3;
 
 /**
  * Espera entre reintentos (ms), backoff exponencial leve (base 300 ms).

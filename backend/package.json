@@ -13,7 +13,7 @@
     "db:migrate:status": "node db/migrate.js --status",
     "db:init": "node db/index.js",
     "db:check": "node db/index.js --check",
-    "test": "node --test test/auth.test.js test/kiosco.test.js",
+    "test": "node --test test/auth.test.js test/kiosco.test.js test/vision.test.js",
     "test:api": "node test/apiTest.js"
   },
   "dependencies": {
