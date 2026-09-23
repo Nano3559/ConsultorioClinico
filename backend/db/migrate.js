@@ -14,6 +14,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { Client } = require('pg');
 
 const STATUS_ONLY = process.argv.includes('--status');
@@ -33,7 +34,8 @@ async function main() {
     console.error(
       '❌ Falta SUPABASE_DB_URL en backend/.env\n' +
         '   Cópiala desde Supabase Dashboard -> Project Settings -> Database\n' +
-        '   -> Connection string -> URI (usa tu password de base de datos).'
+        '   -> Connection string -> selecciona "Transaction pooler" -> copia la URI\n' +
+        '   (usa tu password de base de datos).'
     );
     process.exit(1);
   }
@@ -53,7 +55,23 @@ async function main() {
       ? false
       : { rejectUnauthorized: false },
   });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (err) {
+    console.error('❌ No se pudo conectar a la base de datos:');
+    console.error(`   ${err.message}`);
+    if (/EAI_AGAIN|getaddrinfo|ENOTFOUND|ENETUNREACH|EADDRNOTAVAIL/i.test(err.message || '')) {
+      console.error(
+        '\n💡 Pista: la conexión DIRECTA (db.<ref>.supabase.co) es solo IPv6\n' +
+          '   y muchos ISP/DNS no la resuelven. Usa el TRANSACTION POOLER:\n' +
+          '   Dashboard -> Project Settings -> Database -> Connection string\n' +
+          '   -> selecciona "Transaction pooler" (puerto 6543) y usa esa URI.'
+      );
+    } else if (/ECONNREFUSED|ETIMEDOUT/i.test(err.message || '')) {
+      console.error('\n💡 Revisa que la contraseña, el host y el puerto de la URI sean correctos.');
+    }
+    process.exit(1);
+  }
 
   // Registro de migraciones aplicadas (esquema public, nombre descriptivo)
   await client.query(`
