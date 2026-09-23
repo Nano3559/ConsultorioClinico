@@ -1,4 +1,6 @@
-"""Captura 20 imágenes del rostro con la cámara para un paciente.
+"""Captura imágenes del rostro con la cámara para un paciente.
+
+Cantidad configurable con VISION_CAPTURE_COUNT (KIO-16), 20 por defecto.
 
 Uso:
     python capture_faces.py <paciente_id>
@@ -8,10 +10,13 @@ import os
 import sys
 
 import cv2
+from dotenv import load_dotenv
 
 from face_service import DATASET_DIR, TAMANO_ROSTRO, face_service
 
-CANTIDAD_IMAGENES = 20
+load_dotenv()
+
+CANTIDAD_IMAGENES = int(os.getenv('VISION_CAPTURE_COUNT', '20'))
 
 
 def capturar(paciente_id):

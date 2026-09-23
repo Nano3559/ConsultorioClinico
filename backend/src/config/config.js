@@ -54,6 +54,45 @@ module.exports = {
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   },
 
-  // URL base del microservicio de visión (Python + FastAPI)
-  visionServiceUrl: process.env.VISION_SERVICE_URL || 'http://localhost:8000',
+  // Configuración del microservicio de visión (Python + FastAPI). Variables
+  // VISION_* (KIO-16 del kiosco de auto-check-in). Centralizadas aquí para
+  // que el proxy Node (visionService/kiosco) y el módulo de visión compartan
+  // los mismos valores configurables por .env.
+  vision: {
+    // VISION_ENABLED: si es 'false' se desactiva el reconocimiento (fallback
+    // a recepción). Por defecto habilitado.
+    enabled: process.env.VISION_ENABLED !== 'false',
+
+    // URL base del microservicio de visión (alias VISION_SERVICE_URL /
+    // VISION_PYTHON_SERVICE_URL). Mantiene la variable original del README.
+    serviceUrl:
+      process.env.VISION_PYTHON_SERVICE_URL ||
+      process.env.VISION_SERVICE_URL ||
+      'http://localhost:8000',
+
+    // Ruta del modelo de rostros entrenado (LBPH) usado por el módulo.
+    faceModel: process.env.VISION_FACE_MODEL || '',
+
+    // Umbral de confianza LBPH: por debajo se considera "rostro reconocido".
+    confidenceThreshold: Number(process.env.VISION_CONFIDENCE_THRESHOLD) || 80,
+
+    // Cantidad de muestras a capturar por paciente al registrar el rostro.
+    captureCount: Number(process.env.VISION_CAPTURE_COUNT) || 20,
+
+    // Ruta del clasificador Haar Cascade para detección de rostros.
+    cascadePath: process.env.VISION_CASCADE_PATH || '',
+
+    // Tiempo máximo de espera por llamada HTTP (ms).
+    timeoutMs: Number(process.env.VISION_TIMEOUT_MS) || 5000,
+
+    // Reintentos ante fallos de red/timeout.
+    retries: Number(process.env.VISION_RETRIES) || 3,
+  },
+
+  // Alias retrocompatible: el proxy Node (visionService.js / kioscoController)
+  // usa `config.visionServiceUrl`. Apunta al mismo valor configurable.
+  visionServiceUrl:
+    process.env.VISION_PYTHON_SERVICE_URL ||
+    process.env.VISION_SERVICE_URL ||
+    'http://localhost:8000',
 };
