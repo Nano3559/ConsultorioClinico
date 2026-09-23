@@ -21,6 +21,7 @@ function reset() {
   USUARIOS.length = 0;
   inserciones.length = 0;
   CITAS.length = 0;
+  PACIENTES.length = 0;
 }
 
 function getUsuarios() {
@@ -235,11 +236,89 @@ const getSupabase = () => {
     from(tabla) {
       if (tabla === 'usuarios') return makeUsuariosChain();
       if (tabla === 'citas') return makeCitasChain();
+      if (tabla === 'pacientes') return makePacientesChain();
       return makeOtherChain(tabla);
     },
   };
   return chain;
 };
+
+// ============================================================================
+// Tabla 'pacientes' en memoria para tests del registro/consulta de rostro
+// (rutas /api/vision/registrar-rostro y /api/vision/rostro).
+// ============================================================================
+let PACIENTES = [];
+
+function seedPaciente(paciente) {
+  PACIENTES.push(paciente);
+  return paciente;
+}
+
+function getPacientes() {
+  return PACIENTES;
+}
+
+function makePacientesChain() {
+  let eqFiltros = {};
+  let limitN = null;
+  let updateValores = null;
+
+  function resolver() {
+    let result = PACIENTES.filter((p) =>
+      Object.keys(eqFiltros).every((campo) => {
+        const valorEsperado = eqFiltros[campo];
+        if (campo === 'id' && typeof valorEsperado === 'string') {
+          return p[campo] === Number(valorEsperado);
+        }
+        return p[campo] === valorEsperado;
+      })
+    );
+    if (limitN != null) result = result.slice(0, limitN);
+    return { data: result, error: null };
+  }
+
+  const base = {
+    select: () => base,
+    eq: (campo, valor) => {
+      eqFiltros[campo] = valor;
+      return base;
+    },
+    limit: (n) => {
+      limitN = n;
+      return Promise.resolve(resolver());
+    },
+    then: (resolve, reject) => {
+      try {
+        return resolve(resolver());
+      } catch (e) {
+        if (reject) return reject(e);
+        throw e;
+      }
+    },
+    single: () => Promise.resolve({
+      data: resolver().data[0] || null,
+      error: null,
+    }),
+    update: (valores) => {
+      updateValores = valores;
+      return {
+        eq: (campo, valor) => {
+          eqFiltros[campo] = valor;
+          const { data } = resolver();
+          data.forEach((p) => Object.assign(p, updateValores));
+          return {
+            select: () => ({
+              then: (resolve) => resolve(resolver()),
+            }),
+            then: (resolve) => resolve(resolver()),
+          };
+        },
+      };
+    },
+  };
+
+  return base;
+}
 
 module.exports = {
   getSupabase,
@@ -250,4 +329,6 @@ module.exports = {
   getInserciones,
   seedCita,
   getCitas,
+  seedPaciente,
+  getPacientes,
 };

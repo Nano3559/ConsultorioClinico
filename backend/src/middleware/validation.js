@@ -117,6 +117,19 @@ const kioscoConfirmarCitaValidation = [
   body('cita_id').isInt({ min: 1 }).withMessage('El ID de la cita debe ser un número entero válido'),
 ];
 
+// KIO-10: registrar el rostro de un paciente (muestras base64 + reentrena).
+// Validamos el array de imágenes y su tamaño (hasta 20 MB por imagen).
+const registrarRostroValidation = [
+  body('imagenes')
+    .isArray({ min: 1 })
+    .withMessage('Debe enviar al menos una imagen')
+    .custom((imagenes) => imagenes.every((img) => typeof img === 'string' && img.length > 0))
+    .withMessage('Cada imagen debe ser una cadena base64 no vacía'),
+  body('imagenes.*')
+    .isLength({ max: 20000000 })
+    .withMessage('Una imagen no puede superar 20 MB'),
+];
+
 module.exports = {
   validate,
   passwordStrongValidation,
@@ -133,4 +146,5 @@ module.exports = {
   horarioUpdateValidation,
   kioscoVerificarRostroValidation,
   kioscoConfirmarCitaValidation,
+  registrarRostroValidation,
 };

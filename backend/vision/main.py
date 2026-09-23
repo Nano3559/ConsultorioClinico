@@ -31,6 +31,10 @@ class VerificarRostroRequest(BaseModel):
     imagen: str
 
 
+class RegistrarRostroRequest(BaseModel):
+    imagenes: list[str] = []
+
+
 def _cliente_supabase():
     if not SUPABASE_URL or not SUPABASE_KEY:
         return None
@@ -128,5 +132,52 @@ def verificar_rostro(payload: VerificarRostroRequest):
             'nombre': nombre,
             'confianza': confianza,
             'cita': cita,
+        },
+    }
+
+
+@app.post('/api/vision/registrar-rostro/{paciente_id}')
+def registrar_rostro(paciente_id: int, payload: RegistrarRostroRequest):
+    """Registra el rostro de un paciente (KIO-10): guarda las muestras
+    recibidas en base64, reentrena el modelo LBPH y genera el descriptor
+    vectorial de 128 dimensiones (KIO-07) para `pacientes.rostro_embedding`.
+
+    El frontend envía varias imágenes del rostro; aquí se detecta, se recorta
+    y se guardan en el dataset, y luego se vuelve a entrenar el modelo.
+    """
+    if not payload.imagenes:
+        return {
+            'success': False,
+            'message': 'Al menos una imagen es obligatoria',
+            'data': None,
+        }
+
+    imagenes = [_decodificar_imagen(b64) for b64 in payload.imagenes]
+    if not any(img is not None for img in imagenes):
+        return {
+            'success': False,
+            'message': 'No se pudo decodificar ninguna imagen',
+            'data': None,
+        }
+
+    # Guardar las muestras detectadas del paciente
+    registrado = face_service.registrar_rostro(
+        paciente_id, [img for img in imagenes if img is not None]
+    )
+
+    # Reentrenar el modelo LBPH con todo el dataset
+    entrenamiento = face_service.entrenar_modelo()
+
+    # Descriptor de 128 dimensiones para almacenar en pgvector (KIO-07)
+    descriptor = face_service.obtener_descriptor(paciente_id)
+
+    return {
+        'success': True,
+        'message': 'Rostro registrado y modelo reentrenado',
+        'data': {
+            'paciente_id': paciente_id,
+            'guardadas': registrado['guardados'],
+            'entrenamiento': entrenamiento,
+            'rostro_embedding': descriptor,
         },
     }
