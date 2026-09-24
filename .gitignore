@@ -48,6 +48,10 @@ __pycache__/
 *.py[cod]
 venv/
 .venv/
+backend/vision/dataset/
+backend/vision/models/
+*.yml.gz
+*.lbph
 
 # --- IDE / editores ---------------------------------------------------
 .idea/

@@ -101,6 +101,11 @@ Errores: `400` (solicitud inválida), `401` (no autenticado), `403` (sin permiso
 | [`GET /reportes/citas`](#get-reportescitas) | Reporte de citas |
 | [`GET /reportes/ingresos`](#get-reportesingresos) | Reporte de ingresos |
 | [`GET /dashboard`](#get-dashboard) | Resumen de métricas |
+| [`POST /kiosco/verificar-rostro`](#post-kioscoverificar-rostro) | Kiosco: verificar rostro (sin auth) |
+| [`POST /kiosco/confirmar-cita`](#post-kioscoconfirmar-cita) | Kiosco: confirmar cita del día (sin auth) |
+| [`GET /kiosco/intentos`](#get-kioscointentos) | Kiosco: auditoría de intentos (admin/recepción) |
+| [`POST /vision/registrar-rostro/:pacienteId`](#post-visionregistrar-rostropacienteid) | Registrar rostro del paciente (admin) |
+| [`GET /vision/rostro/:pacienteId`](#get-visionrostropacienteid) | Estado del rostro del paciente (admin) |
 
 ---
 
@@ -504,6 +509,85 @@ Reporte de ingresos por período y método de pago.
 Resumen de métricas: pacientes activos, citas de hoy, médicos activos, ingresos del mes y citas por estado.
 
 - **Acceso:** 🔒 autenticado.
+
+---
+
+## Kiosco de auto-check-in y visión facial
+
+Los endpoints del kiosco (`/kiosco/*`) son **públicos por diseño**: la tablet
+del consultorio no autentica pacientes. Se protegen contra abuso con
+**rate limit por IP** (15 minutos) y la confirmación exige una verificación
+facial exitosa **del mismo paciente e IP** en los últimos
+`KIOSCO_VERIFICATION_WINDOW_MIN` minutos (por defecto 15).
+
+### `POST /kiosco/verificar-rostro`
+
+Verifica el rostro de un paciente contra el microservicio de visión
+(`backend/vision`) y devuelve sus datos y su cita del día (si existe).
+
+```json
+{ "imagen": "<foto en base64>" }
+```
+
+**Respuesta (200):**
+
+```json
+{
+  "success": true,
+  "message": "Rostro reconocido",
+  "data": {
+    "paciente_id": 7,
+    "nombre": "Ana López",
+    "confianza": 42.5,
+    "cita": { "id": 99, "fecha": "2026-09-23", "hora": "10:00", "estado": "programada" }
+  }
+}
+```
+
+Si el rostro no está registrado, responde `200` con `success: false` y
+`data.paciente_id: null`. Errores: `422` (imagen ausente), `429` (límite por
+IP), `502`/`504` (microservicio de visión no disponible). Cada intento queda
+auditado en `intentos_acceso`.
+
+### `POST /kiosco/confirmar-cita`
+
+Confirma (check-in) la cita **del día de hoy** del paciente tras una
+verificación facial válida.
+
+```json
+{ "paciente_id": 7, "cita_id": 99 }
+```
+
+**Comprobaciones:** cita existe (404), pertenece al paciente (400), es de hoy
+(400), no está en estado final (400), no fue ya confirmada por el kiosco (400)
+y hubo verificación facial reciente del mismo paciente + IP (403).
+
+**Respuesta (200):** cita con `estado: "confirmada"`,
+`confirmada_por_kiosco: true` y `hora_checkin` registrada.
+
+### `GET /kiosco/intentos`
+
+Auditoría de los intentos del kiosco. Requiere `admin` o `recepcion`.
+
+Query opcional: `?exitoso=true|false` y `?limit=1..200` (defecto 50).
+
+### `POST /vision/registrar-rostro/:pacienteId`
+
+Registra el rostro de un paciente (KIO-10): el microservicio guarda las
+muestras, reentrena el modelo LBPH y devuelve el descriptor vectorial (128
+dimensiones) para `pacientes.rostro_embedding`.
+
+```json
+{ "imagenes": ["<foto1 base64>", "<foto2 base64>"] }
+```
+
+Requiere `admin`. Respuesta (200): `{ paciente_id, guardadas, entrenamiento,
+rostro_embedding }`.
+
+### `GET /vision/rostro/:pacienteId`
+
+Indica si el paciente tiene rostro registrado. Requiere `admin`.
+Respuesta (200): `{ paciente_id, nombre, rostro_registrado, dimensiones }`.
 
 ---
 

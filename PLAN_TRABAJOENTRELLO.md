@@ -367,35 +367,35 @@ Paciente llega → Tablet "mire a la cámara" → Foto base64 → Haar + LBPH re
 | ID | Qué hacer | Dónde va (archivos/rutas) | Estado |
 |----|-----------|---------------------------|--------|
 | **KIO-01** | Diseñar la migración 011: extensión `vector` (pgvector), `pacientes.rostro_embedding vector(128)`, `citas.confirmada_por_kiosco` y `citas.hora_checkin` | `backend/db/migrations/011_kiosco_facial.sql` (nunca editar las aplicadas) | ✅ |
-| **KIO-02** | Crear `backend/vision/`: FastAPI, `requirements.txt` y arranque en `:8000` | `backend/vision/main.py`, `requirements.txt` | ⏳ |
+| **KIO-02** | Crear `backend/vision/`: FastAPI, `requirements.txt` y arranque en `:8000` | `backend/vision/main.py`, `requirements.txt` | ✅ |
 | **KIO-03** | Pantalla kiosco "mire a la cámara" + estudio del plugin de cámara | `frontend/lib/features/public/kiosk/kiosk_page.dart` (ruta `/kiosco` en `main.dart`) + `docs/KIOSCO_CAMERA.md` | ✅ |
 | **KIO-04** | Aplicar migración 011 en Supabase: `CREATE EXTENSION vector`, columnas y RLS | **Ejecución** en Supabase SQL Editor; archivo en `backend/db/migrations/011_kiosco_facial.sql` | ⏳ (ejecución: `npm run db:migrate`) |
-| **KIO-05** | `face_service.py`: detector Haar + reconocedor LBPH (`lbph.yml.gz`) | `backend/vision/face_service.py` | ⏳ |
+| **KIO-05** | `face_service.py`: detector Haar + reconocedor LBPH (`lbph.yml.gz`) | `backend/vision/face_service.py` | ✅ |
 | **KIO-06** | Captura de webcam en base64 con vista previa (permiso CAMERA, cámara frontal) | `frontend/lib/features/public/kiosk/kiosk_camera_service.dart` (+ `android/AndroidManifest.xml`, `pubspec.yaml`) | ✅ |
 | **KIO-07** | Guardar/consultar `rostro_embedding` (vector 128) | SQL/RLS en `011_kiosco_facial.sql`; consultas en `backend/src/` (pacientes) | ✅ |
-| **KIO-08** | API `POST /api/kiosco/verificar-rostro` (imagen base64 → visión → paciente + cita del día) | `backend/src/routes/kioscoRoutes.js` + `backend/src/controllers/kioscoController.js` (+ alta en `app.js`) | ⏳ |
-| **KIO-09** | Enviar la imagen del kiosco al endpoint y mostrar el resultado | `frontend/lib/features/public/kiosk/kiosk_page.dart` (hook `onPhotoCaptured`, ya listo) + `frontend/lib/services/api_client.dart` | ⏳ |
+| **KIO-08** | API `POST /api/kiosco/verificar-rostro` (imagen base64 → visión → paciente + cita del día) | `backend/src/routes/kioscoRoutes.js` + `backend/src/controllers/kioscoController.js` (+ alta en `app.js`) | ✅ |
+| **KIO-09** | Enviar la imagen del kiosco al endpoint y mostrar el resultado | `frontend/lib/features/public/kiosk/kiosk_service.dart` + `kiosk_page.dart` (flujo foto → verificar-rostrO) | ✅ |
 | **KIO-10** | Endpoint `POST /api/vision/registrar-rostro/:pacienteId` (guarda muestra + reentrena) | `backend/src/routes/` (rutas visión) + `backend/vision/capture_faces.py` | ✅ |
-| **KIO-11** | API `POST /api/kiosco/confirmar-cita` (`confirmada_por_kiosco`, `hora_checkin`) | `backend/src/controllers/kioscoController.js` + `backend/src/routes/kioscoRoutes.js` | ⏳ |
-| **KIO-12** | Pantallas de éxito ("Cita confirmada") y fallo ("Pase a recepción") | `frontend/lib/features/public/kiosk/kiosk_page.dart` (estados de UI) | ⏳ |
+| **KIO-11** | API `POST /api/kiosco/confirmar-cita` (`confirmada_por_kiosco`, `hora_checkin`) | `backend/src/controllers/kioscoController.js` + `backend/src/routes/kioscoRoutes.js` | ✅ |
+| **KIO-12** | Pantallas de éxito ("Cita confirmada") y fallo ("Pase a recepción") | `frontend/lib/features/public/kiosk/kiosk_page.dart` (estados de UI) | ✅ |
 | **KIO-13** | Scripts `capture_faces.py` + `train_model.py` (dataset → `models/lbph.yml.gz`) | `backend/vision/capture_faces.py`, `backend/vision/train_model.py` | ✅ |
-| **KIO-14** | Proxy Node → microservicio Python + manejo de errores | `backend/src/controllers/kioscoController.js` (fetch a `VISION_PYTHON_SERVICE_URL`) | ⏳ |
-| **KIO-15** | Integrar el kiosco con el flujo de citas del día (buscar cita pendiente) | `backend/src/controllers/kioscoController.js` + `frontend/lib/features/public/kiosk/kiosk_page.dart` | ⏳ |
+| **KIO-14** | Proxy Node → microservicio Python + manejo de errores | `backend/src/controllers/kioscoController.js` (fetch a `VISION_PYTHON_SERVICE_URL`) | ✅ |
+| **KIO-15** | Integrar el kiosco con el flujo de citas del día (buscar cita pendiente) | `backend/src/controllers/kioscoController.js` + `frontend/lib/features/public/kiosk/kiosk_page.dart` | ✅ |
 | **KIO-16** | Variables `VISION_ENABLED`, `VISION_PYTHON_SERVICE_URL`, `VISION_FACE_MODEL`, `VISION_CONFIDENCE_THRESHOLD`, `VISION_CAPTURE_COUNT`, `VISION_CASCADE_PATH` | `backend/.env.example` + `backend/src/config/config.js` + `backend/.env` local | ✅ |
-| **KIO-17** | Tests de la API kiosco (mock de visión) + rate limit | `backend/test/` (node:test + supertest) | ⏳ |
-| **KIO-18** | Diseño visual del kiosco (modo tablet, branding) | `frontend/lib/features/public/kiosk/kiosk_page.dart` + `frontend/lib/core/theme/` | ⏳ |
-| **KIO-19** | Auditoría de intentos de verificación | Tabla `intentos_acceso` (ya existe, migración 010) o nueva en `011_kiosco_facial.sql` | ⏳ |
-| **KIO-20** | Restringir por rol (admin/recepcion) y límite por IP en el kiosco | `backend/src/routes/kioscoRoutes.js` (middleware `checkRole` + `rateLimiter`) | ⏳ |
-| **KIO-21** | Fallback: "Pasar a recepción" con datos manuales | `frontend/lib/features/public/kiosk/kiosk_page.dart` | ⏳ |
-| **KIO-22** | Índice HNSW de pgvector + revisión de RLS | Migración nueva tras `011` (`backend/db/migrations/012_*.sql`) | ⏳ |
+| **KIO-17** | Tests de la API kiosco (mock de visión) + rate limit | `backend/test/` (node:test + supertest) | ✅ |
+| **KIO-18** | Diseño visual del kiosco (modo tablet, branding) | `frontend/lib/features/public/kiosk/kiosk_page.dart` + `frontend/lib/core/theme/` | ✅ |
+| **KIO-19** | Auditoría de intentos de verificación | `backend/db/migrations/012_kiosco_seguridad.sql` + `kioscoController.js` + `GET /api/kiosco/intentos` | ✅ |
+| **KIO-20** | Restringir por rol (admin/recepcion) y límite por IP en el kiosco | `backend/src/routes/kioscoRoutes.js` (middleware `checkRole` + `rateLimiter`) | ✅ |
+| **KIO-21** | Fallback: "Pasar a recepción" con datos manuales | `frontend/lib/features/public/kiosk/kiosk_page.dart` | ✅ |
+| **KIO-22** | Índice HNSW de pgvector + revisión de RLS | Migración nueva tras `011` (`backend/db/migrations/012_kiosco_seguridad.sql`) | ✅ |
 | **KIO-23** | Despliegue del microservicio de visión (Vercel o servidor propio) | `backend/vision/` (runtime/requirements) + `vercel.json` | ⏳ |
 | **KIO-24** | Pruebas de kiosco en web (Chrome) y Android (tablet) | Ejecución `flutter run` / `flutter build` | ⏳ |
-| **KIO-25** | Documentar migración 011 + rollback | `docs/` (extender `REVISION_BASE_DE_DATOS.md`) | ⏳ |
-| **KIO-26** | Documentar endpoints del kiosco | `docs/API.md` + este README | ⏳ |
+| **KIO-25** | Documentar migración 011 + rollback | `docs/` (extender `REVISION_BASE_DE_DATOS.md`) | ✅ |
+| **KIO-26** | Documentar endpoints del kiosco | `docs/API.md` + este README | ✅ |
 | **KIO-27** | Pruebas con cámara real de cada integrante | Ejecución local `flutter run -d chrome`, registrar rostros | ⏳ |
-| **KIO-28** | Optimizar consultas pgvector | Migración `012` + queries del controlador kiosco | ⏳ |
+| **KIO-28** | Optimizar consultas pgvector | Migración `012` + queries del controlador kiosco | ✅ |
 | **KIO-29** | Ajuste de umbral LBPH + corrección de bugs | `backend/vision/face_service.py` + `VISION_CONFIDENCE_THRESHOLD` | ⏳ |
-| **KIO-30** | Bugs de pantalla kiosco y tiempos de captura | `frontend/lib/features/public/kiosk/kiosk_page.dart` + `kiosk_camera_service.dart` | ⏳ |
+| **KIO-30** | Bugs de pantalla kiosco y tiempos de captura | `frontend/lib/features/public/kiosk/kiosk_page.dart` + `kiosk_camera_service.dart` | ✅ |
 | **KIO-31** | QA end-to-end: registro → verificación → confirmación | Ejecución completa local/deploy | ⏳ |
 | **KIO-32** | QA de la API + deploy Vercel | `backend/` + Vercel | ⏳ |
 | **KIO-33** | QA del flujo kiosco + demo en tablet | Frontend + tablet física | ⏳ |
@@ -414,11 +414,16 @@ Paciente llega → Tablet "mire a la cámara" → Foto base64 → Haar + LBPH re
 | Permiso `CAMERA` en Android | `frontend/android/app/src/main/AndroidManifest.xml` | ✅ |
 | Dependencias `camera`/`permission_handler` | `frontend/pubspec.yaml` | ✅ |
 | Migración 011 (kiosco) | `backend/db/migrations/011_kiosco_facial.sql` | ✅ Creada (diseñada; aplicar en KIO-04) |
+| Migración 012 (seguridad kiosco) | `backend/db/migrations/012_kiosco_seguridad.sql` | ✅ Creada (KIO-19/22/28): auditoría + HNSW + RLS |
 | Rutas kiosco/visión | `backend/src/routes/` | ✅ kioscoRoutes + visionRoutes |
 | Controlador kiosco/visión | `backend/src/controllers/` | ✅ kioscoController + visionController |
 | Rutas de visión (registro de rostro) | `backend/src/routes/visionRoutes.js` | ✅ Implementadas (`/api/vision/...`) |
 | `backend/vision/` (Python) | `backend/vision/` | ✅ FastAPI + face_service + scripts |
 | Variables `VISION_*` | `backend/.env.example`, `backend/src/config/config.js` | ✅ Añadidas (KIO-16) |
+| Variables `KIOSCO_*` (ventana y rate limits) | `backend/.env.example`, `backend/src/config/config.js` | ✅ Añadidas (KIO-20) |
+| Servicio de red del kiosco | `frontend/lib/features/public/kiosk/kiosk_service.dart` | ✅ verificarRostro + confirmarCita |
+| Auditoría de intentos (`GET /kiosco/intentos`) | `backend/src/routes/kioscoRoutes.js` + `kioscoController.js` | ✅ admin/recepcion (KIO-19) |
+| Tests de la API kiosco | `backend/test/kiosco.test.js` | ✅ 21 casos (incl. 429, 403 guard, cita de hoy) |
 
 ---
 
