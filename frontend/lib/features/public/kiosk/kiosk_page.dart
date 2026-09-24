@@ -2,38 +2,39 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/ambient_background.dart';
 import 'kiosk_camera_service.dart';
+import 'kiosk_service.dart';
 
-/// Modo kiosco del consultorio: pantalla de bienvenida del auto-check-in.
+/// Modo kiosco del consultorio: pantalla de auto-check-in por rostro.
 ///
-/// Flujo (KIO-03 → KIO-09):
+/// Flujo completo (KIO-03 → KIO-09 → KIO-12 → KIO-15 → KIO-21):
 /// 1. La tablet muestra "Bienvenido, por favor mire a la cámara".
 /// 2. La cámara frontal inicia la vista previa y un conteo automático.
-/// 3. Al capturar, se entrega la foto (base64) vía [onPhotoCaptured] para que
-///    una etapa posterior la envíe a `POST /api/kiosco/verificar-rostro`.
-/// 4. Si no se reconoce el rostro, el kiosco redirige a recepción.
+/// 3. Al capturar, la foto (base64) se envía a
+///    `POST /api/kiosco/verificar-rostro` (KioskService).
+/// 4. Si se reconoce el rostro y el paciente tiene cita HOY, se confirma el
+///    check-in en `POST /api/kiosco/confirmar-cita`.
+/// 5. Si no se reconoce (o no hay cita/servicio), el kiosco ofrece reintentar
+///    o pasar a recepción.
 class KioskPage extends StatefulWidget {
-  const KioskPage({super.key, this.onPhotoCaptured, this.onFallback});
-
-  /// Recibe la foto capturada (base64) cuando el integrante confirma el check-in.
-  final void Function(String base64)? onPhotoCaptured;
-
-  /// Se invoca cuando el paciente elige pasar a recepción.
-  final VoidCallback? onFallback;
+  const KioskPage({super.key});
 
   @override
   State<KioskPage> createState() => _KioskPageState();
 }
 
+/// Etapa del flujo de auto-check-in.
+enum _KioskStage { idle, verifying, success, noCita, unrecognized, error }
+
 class _KioskPageState extends State<KioskPage> {
   static const int _countdownFrom = 4;
 
   final KioskCameraService _camera = KioskCameraService(frontPreference: true);
+  final KioskService _service = KioskService();
 
   bool _initializing = true;
   KioskCameraException? _error;
@@ -41,6 +42,10 @@ class _KioskPageState extends State<KioskPage> {
   int _countdown = _countdownFrom;
   bool _extraBusy = false;
   KioskPhoto? _photo;
+
+  _KioskStage _stage = _KioskStage.idle;
+  KioskVerificacion? _verificacion;
+  String? _resultadoMensaje;
 
   @override
   void initState() {
@@ -53,6 +58,9 @@ class _KioskPageState extends State<KioskPage> {
       _initializing = true;
       _error = null;
       _photo = null;
+      _stage = _KioskStage.idle;
+      _verificacion = null;
+      _resultadoMensaje = null;
       _stopCountdown();
     });
     try {
@@ -69,9 +77,16 @@ class _KioskPageState extends State<KioskPage> {
     }
   }
 
+  /// Reinicia el kiosco para recibir al siguiente paciente.
+  void _reiniciar() {
+    _stopCountdown();
+    _camera.dispose();
+    _initCamera();
+  }
+
   void _startCountdown() {
     _stopCountdown();
-    if (_photo != null || _error != null || _extraBusy) return;
+    if (_photo != null || _error != null || _extraBusy || _stage != _KioskStage.idle) return;
     setState(() => _countdown = _countdownFrom);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return timer.cancel();
@@ -99,6 +114,7 @@ class _KioskPageState extends State<KioskPage> {
         _photo = photo;
         _extraBusy = false;
       });
+      await _verifyPhoto(photo);
     } on KioskCameraException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -106,6 +122,60 @@ class _KioskPageState extends State<KioskPage> {
         _extraBusy = false;
       });
     }
+  }
+
+  /// Envía la foto al backend y, si el rostro se reconoce con cita de hoy,
+  /// confirma el check-in (KIO-09/KIO-12/KIO-15/KIO-21).
+  Future<void> _verifyPhoto(KioskPhoto photo) async {
+    setState(() {
+      _stage = _KioskStage.verifying;
+      _resultadoMensaje = null;
+    });
+
+    final KioskVerificacion verificacion;
+    try {
+      verificacion = await _service.verificarRostro(photo.base64);
+    } on KioskServiceException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _resultadoMensaje = e.message;
+        _stage = _esFalloRostro(e.message)
+            ? _KioskStage.unrecognized
+            : _KioskStage.error;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    _verificacion = verificacion;
+
+    // Sin cita hoy: el paciente pasa a recepción para orientación.
+    if (!verificacion.cita.existe) {
+      setState(() => _stage = _KioskStage.noCita);
+      return;
+    }
+
+    try {
+      await _service.confirmarCita(
+        pacienteId: verificacion.pacienteId,
+        citaId: verificacion.cita.id,
+      );
+    } on KioskServiceException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _resultadoMensaje = e.message;
+        _stage = _KioskStage.error;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _stage = _KioskStage.success);
+  }
+
+  bool _esFalloRostro(String mensaje) {
+    return RegExp(r'no reconocid|no se pudo reconocer', caseSensitive: false)
+        .hasMatch(mensaje);
   }
 
   void _retry() {
@@ -116,33 +186,16 @@ class _KioskPageState extends State<KioskPage> {
   void _resetPhoto() {
     setState(() {
       _photo = null;
+      _stage = _KioskStage.idle;
+      _verificacion = null;
+      _resultadoMensaje = null;
       _countdown = _countdownFrom;
     });
     _startCountdown();
   }
 
-  void _confirmVerification() {
-    final photo = _photo;
-    if (photo == null) return;
-    final callback = widget.onPhotoCaptured;
-    if (callback != null) {
-      callback(photo.base64);
-      setState(() {
-        _photo = null;
-        _countdown = _countdownFrom;
-      });
-      _startCountdown();
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text(
-        'Verificación de identidad disponible en la integración del 17/09.',
-      ),
-    ));
-  }
-
+  /// El usuario decide pasar a recepción para confirmación manual.
   void _passToReception() {
-    widget.onFallback?.call();
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -158,7 +211,7 @@ class _KioskPageState extends State<KioskPage> {
           FilledButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              context.go('/');
+              _reiniciar();
             },
             child: const Text('Entendido'),
           ),
@@ -226,7 +279,7 @@ class _KioskPageState extends State<KioskPage> {
             ),
           ),
           TextButton.icon(
-            onPressed: () => context.go('/'),
+            onPressed: _reiniciar,
             icon: const Icon(Icons.close, size: 20),
             label: const Text('Salir'),
           ),
@@ -430,13 +483,17 @@ class _KioskPageState extends State<KioskPage> {
         ],
         _controls(),
         const SizedBox(height: 14),
+        if (_stage != _KioskStage.idle && _stage != _KioskStage.verifying) _resultadoCard(),
+        const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextButton.icon(
               onPressed: _passToReception,
               icon: const Icon(Icons.support_agent, size: 18),
-              label: const Text('¿Problemas? Pase a recepción'),
+              label: Text(_stage == _KioskStage.idle
+                  ? '¿Problemas? Pase a recepción'
+                  : 'Pase a recepción'),
             ),
           ],
         ),
@@ -470,6 +527,7 @@ class _KioskPageState extends State<KioskPage> {
           if (_photo == null && ready) _pulseFaceGuide(side),
           if (_photo == null) _cornerBrackets(side),
           if (_initializing) _loadingLayer(),
+          if (_stage == _KioskStage.verifying) _verifyingLayer(),
           Positioned(top: 12, left: 12, right: 12, child: _statusChip()),
           if (_photo == null && ready && !_extraBusy)
             Positioned(
@@ -516,6 +574,46 @@ class _KioskPageState extends State<KioskPage> {
           width: 96,
           height: 96,
           child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json'),
+        ),
+      ),
+    );
+  }
+
+  /// Capa de "verificando identidad" sobre la foto capturada mientras se
+  /// consulta el microservicio de visión.
+  Widget _verifyingLayer() {
+    return Container(
+      color: const Color(0xB30B3B37),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [BoxShadow(color: AppColors.shadowStrong, blurRadius: 18)],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 26,
+                height: 26,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Text(
+                'Verificando identidad…',
+                style: TextStyle(
+                  color: AppColors.dark,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -642,6 +740,21 @@ class _KioskPageState extends State<KioskPage> {
     if (_error != null) {
       return (Icons.error_outline, _error!.message, AppColors.danger, AppColors.dangerBg);
     }
+    if (_stage == _KioskStage.verifying) {
+      return (Icons.verified_user_outlined, 'Verificando…', AppColors.info, AppColors.infoBg);
+    }
+    if (_stage == _KioskStage.success) {
+      return (Icons.check_circle, 'Check-in confirmado', AppColors.success, AppColors.successBg);
+    }
+    if (_stage == _KioskStage.unrecognized) {
+      return (Icons.face_retouching_off, 'Rostro no reconocido', AppColors.warning, AppColors.warningBg);
+    }
+    if (_stage == _KioskStage.noCita) {
+      return (Icons.event_busy, 'Sin cita hoy', AppColors.warning, AppColors.warningBg);
+    }
+    if (_stage == _KioskStage.error) {
+      return (Icons.error_outline, 'Error en el check-in', AppColors.danger, AppColors.dangerBg);
+    }
     if (_photo != null) {
       return (Icons.check_circle, 'Foto tomada', AppColors.success, AppColors.successBg);
     }
@@ -685,6 +798,49 @@ class _KioskPageState extends State<KioskPage> {
         ],
       );
     }
+    switch (_stage) {
+      case _KioskStage.verifying:
+        return FilledButton.icon(
+          onPressed: null,
+          icon: const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+          label: const Text('Verificando identidad…'),
+        );
+      case _KioskStage.success:
+        return FilledButton.icon(
+          onPressed: _reiniciar,
+          icon: const Icon(Icons.check_circle),
+          label: const Text('Siguiente paciente'),
+        );
+      case _KioskStage.noCita:
+      case _KioskStage.unrecognized:
+      case _KioskStage.error:
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _retry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: FilledButton.icon(
+                onPressed: _passToReception,
+                icon: const Icon(Icons.support_agent),
+                label: const Text('Pase a recepción'),
+              ),
+            ),
+          ],
+        );
+      case _KioskStage.idle:
+        break;
+    }
     if (_photo != null) {
       return Row(
         children: [
@@ -699,7 +855,7 @@ class _KioskPageState extends State<KioskPage> {
           Expanded(
             flex: 2,
             child: FilledButton.icon(
-              onPressed: _confirmVerification,
+              onPressed: () => _verifyPhoto(_photo!),
               icon: const Icon(Icons.verified_user),
               label: const Text('Continuar'),
             ),
@@ -712,5 +868,100 @@ class _KioskPageState extends State<KioskPage> {
       icon: const Icon(Icons.photo_camera),
       label: Text(_extraBusy ? 'Capturando…' : 'Capturar ahora'),
     );
+  }
+
+  Widget _resultadoCard() {
+    final (icon, color, bg, titulo, detalle) = _resultadoData();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.16), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  detalle,
+                  style: const TextStyle(
+                    color: AppColors.dark,
+                    fontSize: 13.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  (IconData, Color, Color, String, String) _resultadoData() {
+    final v = _verificacion;
+    final nombre = v?.nombre ?? '';
+    switch (_stage) {
+      case _KioskStage.success:
+        final cita = v!.cita;
+        return (
+          Icons.check_circle,
+          AppColors.success,
+          AppColors.successBg,
+          'Check-in confirmado',
+          '$nombre, ya puede pasar a la sala de espera. '
+              'Su cita de hoy es a las ${cita.hora}.',
+        );
+      case _KioskStage.noCita:
+        return (
+          Icons.event_busy,
+          AppColors.warning,
+          AppColors.warningBg,
+          'Bienvenido, $nombre',
+          'Hoy no tiene una cita registrada en el consultorio. '
+              'Nuestro personal de recepción podrá ayudarle.',
+        );
+      case _KioskStage.unrecognized:
+        return (
+          Icons.face_retouching_off,
+          AppColors.warning,
+          AppColors.warningBg,
+          'No se reconoció su rostro',
+          'Asegúrese de estar frente a la cámara con buena iluminación '
+              'o pase a recepción para confirmar su turno.',
+        );
+      case _KioskStage.error:
+        return (
+          Icons.cloud_off,
+          AppColors.danger,
+          AppColors.dangerBg,
+          'No fue posible confirmar su check-in',
+          _resultadoMensaje ?? 'Intente de nuevo en unos momentos o pase a recepción.',
+        );
+      case _KioskStage.verifying:
+      case _KioskStage.idle:
+        return (Icons.info, AppColors.info, AppColors.infoBg, '', '');
+    }
   }
 }
