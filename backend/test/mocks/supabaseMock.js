@@ -22,6 +22,7 @@ function reset() {
   inserciones.length = 0;
   CITAS.length = 0;
   PACIENTES.length = 0;
+  INTENTOS.length = 0;
 }
 
 function getUsuarios() {
@@ -237,11 +238,110 @@ const getSupabase = () => {
       if (tabla === 'usuarios') return makeUsuariosChain();
       if (tabla === 'citas') return makeCitasChain();
       if (tabla === 'pacientes') return makePacientesChain();
+      if (tabla === 'intentos_acceso') return makeIntentosChain();
       return makeOtherChain(tabla);
     },
   };
   return chain;
 };
+
+// ============================================================================
+// Tabla 'intentos_acceso' en memoria para tests del kiosco (KIO-19/20):
+// auditoría de verificaciones faciales y validación de la "ventana de
+// verificación" que exige confirmar-cita.
+// ============================================================================
+let INTENTOS = [];
+
+function seedIntento(intento) {
+  const fila = {
+    id: INTENTOS.length + 1,
+    tipo_acceso: intento.tipo_acceso || 'kiosco_verificacion',
+    usuario_id: null,
+    email: null,
+    referencia_id: intento.referencia_id ?? null,
+    ip_address: intento.ip_address || 'desconocida',
+    user_agent: intento.user_agent || 'test',
+    exitoso: intento.exitoso !== false,
+    detalle: intento.detalle || 'reconocido',
+    creado_en: intento.creado_en || new Date().toISOString(),
+  };
+  INTENTOS.push(fila);
+  return fila;
+}
+
+function getIntentos() {
+  return INTENTOS;
+}
+
+function makeIntentosChain() {
+  let filtros = {};
+  let rangosMin = {};
+  let orden = null;
+  let limitN = null;
+
+  function resolver() {
+    let result = INTENTOS.filter((i) =>
+      Object.keys(filtros).every((campo) => {
+        const esperado = filtros[campo];
+        return i[campo] === esperado;
+      })
+    );
+    // Aplica rango inferior (>=) para la ventana de verificación (creado_en).
+    Object.keys(rangosMin).forEach((campo) => {
+      const limite = rangosMin[campo];
+      result = result.filter((i) => {
+        const valor = i[campo];
+        return typeof valor === 'string' && valor >= limite;
+      });
+    });
+    if (orden) {
+      result = result.slice().sort((a, b) => {
+        const dir = orden.desc ? -1 : 1;
+        if (a[orden.campo] < b[orden.campo]) return -1 * dir;
+        if (a[orden.campo] > b[orden.campo]) return 1 * dir;
+        return 0;
+      });
+    }
+    if (limitN != null) result = result.slice(0, limitN);
+    return { data: result, error: null };
+  }
+
+  const base = {
+    select: () => base,
+    eq: (campo, valor) => {
+      filtros[campo] = valor;
+      return base;
+    },
+    gte: (campo, valor) => {
+      rangosMin[campo] = valor;
+      return base;
+    },
+    order: (campo, opts = {}) => {
+      orden = { campo, desc: opts.ascending === false };
+      return base;
+    },
+    limit: (n) => {
+      limitN = n;
+      return Promise.resolve(resolver());
+    },
+    then: (resolve, reject) => {
+      try {
+        return resolve(resolver());
+      } catch (e) {
+        if (reject) return reject(e);
+        throw e;
+      }
+    },
+    single: () => Promise.resolve({ data: resolver().data[0] || null, error: null }),
+    insert: (valor) => {
+      const fila = seedIntento(valor);
+      return Promise.resolve({ data: [fila], error: null });
+    },
+    update: () => Promise.resolve({ data: null, error: null }),
+  };
+
+  return base;
+}
 
 // ============================================================================
 // Tabla 'pacientes' en memoria para tests del registro/consulta de rostro
@@ -331,4 +431,6 @@ module.exports = {
   getCitas,
   seedPaciente,
   getPacientes,
+  seedIntento,
+  getIntentos,
 };
