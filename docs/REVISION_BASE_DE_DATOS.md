@@ -146,3 +146,42 @@ Mejor aún: obligar a ingresar la cédula.
 
 Crear `backend/db/migrations/007_integridad_pendiente.sql` con los índices y CHECK de
 los puntos 2.3, 2.4, 2.5 y 2.6, y ajustar los controladores/rutas del punto 3.
+
+---
+
+## 6. ACTUALIZACIONES APLICADAS (kiosco y visión facial)
+
+HITO 3 — módulo de auto-check-in por reconocimiento facial. Migraciones nuevas:
+
+### `011_vision_facial.sql` (KIO-07/KIO-16)
+
+- `pacientes.rostro_embedding VECTOR(128)` — descriptor facial para búsquedas
+  pgvector (modelo LBPH + descriptor promedio de 128 dimensiones del
+  microservicio `backend/vision`).
+- Índice `idx_pacientes_rostro` básico sobre el embedding.
+- Trigger / validación de umbral de confianza configurable en la aplicación
+  (`VISION_CONFIDENCE_THRESHOLD`, default 80).
+
+### `012_kiosco_seguridad.sql` (KIO-19/KIO-20/KIO-22/KIO-28)
+
+- `intentos_acceso`: nuevas columnas `tipo_acceso` (TEXT), `referencia_id`
+  (BIGINT, para `paciente_id`/`cita_id`) y `detalle` (TEXT). Permiten auditar
+  el kiosco separado del login.
+- Índice `idx_intentos_ip_fecha (ip_address, creado_en)` — consultas de
+  "última verificación facial reciente de esta IP" y recuento para rate limit.
+- Índice HNSW `idx_pacientes_rostro_hnsw` (más preciso que el de la 011) sobre
+  `rostro_embedding` con `vector_cosine_ops`, creado solo si la extensión
+  `vector` existe (IF EXISTS).
+- RLS re-habilitado explícitamente en `intentos_acceso`, `pacientes` y `citas`
+  tras las definiciones.
+- El archivo incluye comentarios de ROLLBACK (DROP de índices/columnas) para
+  reversión manual en desarrollo.
+
+### Reglas en el backend (ver `docs/API.md` → Kiosco)
+
+- `verificar-rostro` / `confirmar-cita`: públicos, con rate limit por IP de 15
+  minutos (`KIOSCO_VERIFY_RATE_MAX=30`, `KIOSCO_CONFIRM_RATE_MAX=10`).
+- `confirmar-cita` exige: cita de HOY, perteneciente al paciente, no en estado
+  final, no ya confirmada por kiosco y verificación facial exitosa del mismo
+  paciente + IP en la ventana `KIOSCO_VERIFICATION_WINDOW_MIN=15`.
+- `GET /kiosco/intentos` restringido a `admin`/`recepcion`.

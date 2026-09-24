@@ -95,4 +95,20 @@ module.exports = {
     process.env.VISION_PYTHON_SERVICE_URL ||
     process.env.VISION_SERVICE_URL ||
     'http://localhost:8000',
+
+  // Configuración de seguridad del kiosco de auto-check-in (KIO-15/19/20).
+  // Controla la auditoría de intentos, la ventana de verificación válida para
+  // confirmar la cita y los límites de tasa por IP de los endpoints públicos.
+  kiosco: {
+    // Minutos durante los que una verificación facial exitosa (misma IP)
+    // habilita confirmar la cita sin volver a verificar.
+    verificationWindowMs:
+      (Number(process.env.KIOSCO_VERIFICATION_WINDOW_MIN) || 15) * 60 * 1000,
+
+    // Máximo de verificaciones faciales por IP en la ventana de 15 minutos.
+    verifyRateMax: Number(process.env.KIOSCO_VERIFY_RATE_MAX) || 30,
+
+    // Máximo de confirmaciones de cita por IP en la ventana de 15 minutos.
+    confirmRateMax: Number(process.env.KIOSCO_CONFIRM_RATE_MAX) || 10,
+  },
 };
