@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 
@@ -42,7 +43,16 @@ class LandingFooter extends StatelessWidget {
             const SizedBox(height: 16),
             const _FooterColumn(title: 'Pacientes', items: ['Solicitar cita', 'Contacto']),
           ],
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
+          TextButton.icon(
+            onPressed: () => context.go('/kiosco'),
+            icon: const Icon(Icons.face_retouching_natural, color: AppColors.primaryLight, size: 20),
+            label: const Text(
+              'Kiosco de auto-check-in',
+              style: TextStyle(color: Color(0xFFCCFBF1), fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 16),
           const Divider(color: Color(0xFF1E293B)),
           const SizedBox(height: 16),
           Text(
