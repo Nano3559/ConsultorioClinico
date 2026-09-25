@@ -65,6 +65,16 @@ const verificarRostro = async (req, res) => {
   const ip = obtenerIp(req);
   const supabase = getSupabase();
   try {
+    // KIO-16: si el reconocimiento facial está deshabilitado (VISION_ENABLED
+    // = false) el kiosco no puede auto-verificar; se deriva a recepción con un
+    // mensaje claro y el intento queda auditado (KIO-19).
+    if (!config.vision.enabled) {
+      await registrarIntento(supabase, {
+        tipo: 'kiosco_verificacion', ip, exitoso: false, detalle: 'vision_deshabilitada',
+      });
+      return sendError(res, 'El reconocimiento facial del kiosco está deshabilitado. Pase a recepción para confirmar su turno', 503);
+    }
+
     const { imagen } = req.body;
     if (!imagen || typeof imagen !== 'string') {
       await registrarIntento(supabase, {
