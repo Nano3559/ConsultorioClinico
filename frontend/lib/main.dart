@@ -114,8 +114,17 @@ class _EntranceLayerState extends State<EntranceLayer> with WidgetsBindingObserv
   }
 }
 
+/// Ruta inicial configurable en compilación:
+/// flutter build windows --dart-define=RUTA_INICIAL=/kiosco
+/// El .exe del kiosco abre directo en el auto-check-in (sin pasar por el
+/// inicio). Por defecto abre en '/' (uso normal).
+const String _rutaInicial = String.fromEnvironment(
+  'RUTA_INICIAL',
+  defaultValue: '/',
+);
+
 final _router = GoRouter(
-  initialLocation: '/',
+  initialLocation: _rutaInicial,
   routes: [
     GoRoute(
       path: '/',
