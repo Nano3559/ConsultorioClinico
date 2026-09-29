@@ -684,6 +684,7 @@ detallada en **`docs/AGENTES.md`**.
 - `CONTRIBUTING.md` — guía rápida de contribución (flujo git del equipo).
 - `AGENTS.md` — reglas que debe cumplir cualquier agente de IA en el repo.
 - `docs/INSTALACION.md` — **guía de instalación desde cero en un PC nuevo** (Git, Node, Flutter, clonar, configurar y correr).
+- `docs/INSTALACION_KIOSCO.md` — **instalar el kiosco en una PC sin saber código** (doble clic + `.bat`, para recepción/administración).
 - `docs/GIT_CONVENTION.md` — convenciones de Git (ramas, commits, PRs, tags).
 - `docs/STACK.md` — stack tecnológico en detalle y decisiones técnicas.
 - `docs/AGENTES.md` — agentes (GLM 5.3, DeepSeek v4 Pro, GPT 5.6 Luna) y skills de OpenCode.
