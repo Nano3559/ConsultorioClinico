@@ -537,7 +537,7 @@ class ClinicProvider extends ChangeNotifier {
       final citaId = citaRef.id;
       batch.set(citaRef, {...body, 'id': citaId});
       // Turno ocupado (id deterministico). La regla impide duplicados.
-      final dispId = '${medicoId}__${fecha}__${time}';
+      final dispId = '${medicoId}__${fecha}__$time';
       batch.set(fs.collection('disponibilidad').doc(dispId), {
         'medico_id': medicoId,
         'fecha': fecha,
@@ -616,7 +616,7 @@ class ClinicProvider extends ChangeNotifier {
         batch.delete(fs.collection('disponibilidad')
             .doc('${old.doctorId}__${_fmt(old.date)}__${old.time}'));
       }
-      batch.set(fs.collection('disponibilidad').doc('${medicoId}__${nuevaFecha}__${time}'), {
+      batch.set(fs.collection('disponibilidad').doc('${medicoId}__${nuevaFecha}__$time'), {
         'medico_id': medicoId,
         'fecha': nuevaFecha,
         'hora': time,

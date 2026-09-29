@@ -417,6 +417,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         // Visitante recurrente sin sesión: el correo ya existe, iniciamos sesión.
         if (err.toLowerCase().contains('registrado') && !staff) {
           final le = await auth.loginPatient(_ci.text.trim(), _birthDate!);
+          if (!mounted) return;
           if (le == null && auth.uid != null) {
             patientId = auth.uid!;
           } else {
@@ -488,12 +489,12 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         actions: [
           FilledButton(
             onPressed: () async {
-              final auth = context.read<AuthProvider>();
-              final clinic = context.read<ClinicProvider>();
+              final auth = ctx.read<AuthProvider>();
+              final clinic = ctx.read<ClinicProvider>();
               final err = await auth.loginPatient(patient.ci, patient.birthDate);
-              if (!context.mounted) return;
+              if (!ctx.mounted) return;
               if (err != null) {
-                ScaffoldMessenger.of(context)
+                ScaffoldMessenger.of(ctx)
                     .showSnackBar(SnackBar(content: Text(err)));
                 return;
               }
@@ -501,6 +502,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
               clinic.loadAll();
               Navigator.of(ctx).pop();
+              if (!mounted) return;
               context.go('/app');
             },
             child: const Text('Entrar con mi cuenta'),

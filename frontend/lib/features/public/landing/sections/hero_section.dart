@@ -194,7 +194,7 @@ class _HeroText extends StatelessWidget {
               width: double.infinity,
               height: isMobile ? 170 : 240,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 height: isMobile ? 170 : 240,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
@@ -276,9 +276,10 @@ class _HeroCard extends StatelessWidget {
       );
     }
 
-    final doctor = clinic.doctorById(next!.doctorId);
+    final cita = next;
+    final doctor = clinic.doctorById(cita.doctorId);
     final specialty = clinic.specialtyById(doctor.specialtyId);
-    final mainLine = isMedico ? clinic.patientName(next!.patientId) : doctor.displayName;
+    final mainLine = isMedico ? clinic.patientName(cita.patientId) : doctor.displayName;
     final subLine = isMedico ? 'Paciente' : '${specialty.name} · ${doctor.displayName}';
 
     return _CardBox(
@@ -295,7 +296,7 @@ class _HeroCard extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            AppStatusBadge(status: next!.status),
+            AppStatusBadge(status: cita.status),
           ],
         ),
         const SizedBox(height: 20),
@@ -331,7 +332,7 @@ class _HeroCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '${AppFormatters.shortDate(next!.date)} · ${next!.time}',
+                  '${AppFormatters.shortDate(cita.date)} · ${cita.time}',
                   style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark),
                 ),
               ),
