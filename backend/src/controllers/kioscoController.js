@@ -187,6 +187,12 @@ const confirmarCita = async (req, res) => {
       return sendError(res, 'La cita ya fue confirmada por el kiosco', 400);
     }
 
+    // Kiosco Windows (reconocimiento local, offline): si trae la clave
+    // compartida válida en x-kiosk-key, el rostro ya fue verificado en el
+    // equipo y se puede confirmar sin la verificación en nube.
+    const kioskKey = String(req.headers['x-kiosk-key'] || '');
+    const kioskOk = config.kiosco.apiKey !== '' && kioskKey === config.kiosco.apiKey;
+
     // KIO-20: exige una verificación facial exitosa reciente (misma IP) para
     // confirmar. Así el kiosco solo confirma a quien acaba de pasar por la
     // cámara, no a cualquiera que conozca los IDs.
@@ -203,7 +209,7 @@ const confirmarCita = async (req, res) => {
       .limit(1);
 
     if (errorIntento) throw errorIntento;
-    if (!intentos || intentos.length === 0) {
+    if (!kioskOk && (!intentos || intentos.length === 0)) {
       return sendError(res, 'Debe verificar primero el rostro en el kiosco', 403);
     }
 

@@ -42,6 +42,10 @@ service cloud.firestore {
     match /pacientes/{pacienteId} {
       allow read: if true;
       allow write: if isStaff() || (isSignedIn() && request.auth.uid == pacienteId);
+      // La foto del rostro se guarda al agendar (flujo público): solo se permite
+      // cambiar el campo foto_base64 (máx ~900KB), nada más.
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['foto_base64'])
+                    && request.resource.data.foto_base64.size() < 900000;
     }
 
     // ---- Especialidades (catalogo publico) ----

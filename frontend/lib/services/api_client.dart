@@ -75,9 +75,10 @@ class ApiClient {
 
   final http.Client _client;
 
-  Map<String, String> _headers({String? token}) => {
+  Map<String, String> _headers({String? token, Map<String, String>? extra}) => {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
+        if (extra != null) ...extra,
       };
 
   Future<ApiResult<Map<String, dynamic>>> getJson(
@@ -102,11 +103,14 @@ class ApiClient {
     String path,
     Map<String, dynamic> body, {
     String? token,
+    Map<String, String>? extraHeaders,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path');
       final res = await _client
-          .post(uri, headers: _headers(token: token), body: jsonEncode(body))
+          .post(uri,
+              headers: _headers(token: token, extra: extraHeaders),
+              body: jsonEncode(body))
           .timeout(ApiConfig.timeout);
       return _parse(res);
     } catch (e) {

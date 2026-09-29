@@ -1,4 +1,4 @@
-name: consultorio_clinico
+name: kiosco_consultorio
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -34,22 +34,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  provider: ^6.1.5+1
-  go_router: ^17.5.0
-  intl: ^0.20.3
-  fl_chart: ^1.2.0
   http: ^1.6.0
-  flutter_map: ^7.0.2
-  latlong2: ^0.9.1
-  lottie: ^3.5.1
-  firebase_core: ^3.6.0
-  firebase_auth: ^5.3.0
-  cloud_firestore: ^5.4.0
-  camera: ^0.12.1
-  permission_handler: ^13.0.2
-  firebase_storage: ^12.4.0
-  file_picker: ^8.1.2
-  image: ^4.2.0
   opencv_dart: ^2.2.2
 
 dev_dependencies:
@@ -75,7 +60,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/lottie/
+    - assets/opencv/haarcascade_frontalface_default.xml
 
   # To add assets to your application, add an assets section, like this:
   # assets:
