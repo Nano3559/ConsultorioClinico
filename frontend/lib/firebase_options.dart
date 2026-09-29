@@ -22,9 +22,7 @@ class DefaultFirebaseOptions {
           'DefaultFirebaseOptions no ha sido configurado para macOS.',
         );
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions no ha sido configurado para Windows.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions no ha sido configurado para Linux.',
@@ -51,6 +49,15 @@ class DefaultFirebaseOptions {
     appId: '1:279633708085:android:10ffae799fe788254f9d7c',
     messagingSenderId: '279633708085',
     projectId: 'consultorioclinico-2026',
+    storageBucket: 'consultorioclinico-2026.firebasestorage.app',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyC4LkmBEK4RozuqL374WsvB6dqyWZbtmgg',
+    appId: '1:279633708085:web:635a153c63e299864f9d7c',
+    messagingSenderId: '279633708085',
+    projectId: 'consultorioclinico-2026',
+    authDomain: 'consultorioclinico-2026.firebaseapp.com',
     storageBucket: 'consultorioclinico-2026.firebasestorage.app',
   );
 }
