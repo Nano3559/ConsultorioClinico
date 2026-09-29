@@ -15,7 +15,28 @@ from face_service import face_service, UMBRAL_SIMILITUD, MODEL_PACK
 
 load_dotenv()
 
-app = FastAPI(title='Vision Service - Consultorio Clínico', version='0.3.0')
+# Warmup al arranque: precarga los modelos InsightFace + MediaPipe ANTES de
+# aceptar requests. La primera inferencia en frío tarda 30-60s (descarga +
+# carga en RAM) y reventaría el timeout del backend; con warmup el servicio
+# solo marca /health OK cuando ya puede responder rápido.
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        face_service._insightface()
+        print('[vision] modelos InsightFace listos', flush=True)
+    except Exception as exc:
+        print(f'[vision] AVISO: InsightFace no cargó al arranque: {exc}', flush=True)
+    yield
+
+
+app = FastAPI(
+    title='Vision Service - Consultorio Clínico',
+    version='0.3.0',
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,6 +77,29 @@ def _decodificar_imagen(base64_img):
         return cv2.imdecode(arreglo, cv2.IMREAD_COLOR)
     except Exception:
         return None
+
+
+def _parse_vector(valor):
+    """Normaliza un embedding pgvector a lista de floats.
+
+    postgrest lo devuelve como string "[0.1,0.2,...]" (o lista según el
+    cliente/versión): se aceptan ambas formas.
+    """
+    if isinstance(valor, list):
+        try:
+            nums = [float(x) for x in valor]
+        except (TypeError, ValueError):
+            return None
+        return nums
+    if isinstance(valor, str):
+        texto = valor.strip()
+        if not (texto.startswith('[') and texto.endswith(']')):
+            return None
+        try:
+            return [float(x) for x in texto[1:-1].split(',') if x.strip() != '']
+        except ValueError:
+            return None
+    return None
 
 
 def _cita_del_dia(supabase, paciente_id):
@@ -116,6 +160,8 @@ def verificar_rostro(payload: VerificarRostroRequest):
 
     # Plantillas vigentes desde Supabase (el kiosco puede pasar su shortlist;
     # por defecto se comparan todas las registradas, límite operativo 2000).
+    # NOTA: sin .not_() (cambió en postgrest-py v2): se filtra en Python y
+    # el vector llega como string "[...]" (se parsea con _parse_vector).
     plantillas = {}
     supabase = _cliente_supabase()
     if supabase:
@@ -123,13 +169,12 @@ def verificar_rostro(payload: VerificarRostroRequest):
             data_emb = (
                 supabase.from_('pacientes')
                 .select('id, rostro_embedding')
-                .not_.is_('rostro_embedding', 'null')
                 .limit(2000)
                 .execute()
             )
             for fila in data_emb.data or []:
-                emb = fila.get('rostro_embedding')
-                if isinstance(emb, list) and len(emb) == 512:
+                emb = _parse_vector(fila.get('rostro_embedding'))
+                if emb is not None and len(emb) == 512:
                     plantillas[fila['id']] = emb
         except Exception:
             plantillas = {}

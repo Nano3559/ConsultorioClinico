@@ -4,7 +4,13 @@ opencv-python==4.8.1.78
 # 1.26.4 (no 1.26.2): onnxruntime 1.17.1 exige numpy>=1.26.4.
 numpy==1.26.4
 python-multipart==0.0.6
-supabase==2.0.0
+# websockets>=14: lo exige realtime>=2.31 (traído por supabase>=2.15);
+# con websockets 12 el import de supabase falla (sin módulo asyncio).
+websockets>=14
+# Piso 2.15: las versiones viejas rechazan en local las claves nuevas
+# sb_publishable_/sb_secret_ ("Invalid API key") y el gateway nuevo ya no
+# acepta las JWT legacy. Con >= pip resuelve la última compatible.
+supabase>=2.15
 python-dotenv==1.0.0
 # Motor facial: detección SCRFD + embedding ArcFace 512-d (CPU con onnxruntime)
 insightface==0.7.3

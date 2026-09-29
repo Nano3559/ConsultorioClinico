@@ -95,8 +95,10 @@ module.exports = {
     // Ruta del clasificador Haar Cascade para detección de rostros.
     cascadePath: process.env.VISION_CASCADE_PATH || '',
 
-    // Tiempo máximo de espera por llamada HTTP (ms).
-    timeoutMs: Number(process.env.VISION_TIMEOUT_MS) || 5000,
+    // Tiempo máximo de espera por llamada HTTP (ms). Default 30s: la
+    // primera inferencia en frío del microservicio es lenta (carga de
+    // modelos); con warmup al arranque las siguientes responden en ms.
+    timeoutMs: Number(process.env.VISION_TIMEOUT_MS) || 30000,
 
     // Reintentos ante fallos de red/timeout.
     retries: Number(process.env.VISION_RETRIES) || 3,
