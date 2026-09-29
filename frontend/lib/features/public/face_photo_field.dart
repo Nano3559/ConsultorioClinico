@@ -1,157 +1,71 @@
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import 'kiosk/kiosk_camera_service.dart';
 
-/// Campo de foto del rostro, OBLIGATORIO al agendar una cita.
-///
-/// La foto se guarda SIN procesar (el reconocimiento OpenCV vive solo en el
-/// kiosco Windows). Intenta usar la cámara del equipo (web/móvil) y, si no hay
-/// cámara disponible (escritorio), permite elegir un archivo de imagen.
-class FacePhotoField extends StatefulWidget {
-  const FacePhotoField({
-    super.key,
-    required this.onChanged,
-    this.initialBytes,
-  });
+/// Una foto del pack facial con su pose.
+class MuestraFacial {
+  const MuestraFacial({required this.bytes, required this.pose});
 
-  final ValueChanged<Uint8List?> onChanged;
-  final Uint8List? initialBytes;
+  /// Bytes JPEG originales de la cámara (se comprimen al enviar).
+  final Uint8List bytes;
+
+  /// Una de: frontal, izquierda, derecha, arriba, abajo.
+  final String pose;
+}
+
+/// Pasos de la captura guiada estilo Binance: el paciente mueve la cabeza
+/// (no basta una foto fija: una imagen impresa no gira ni parpadea).
+const _poses = <String, String>{
+  'frontal': 'Mire de frente a la cámara',
+  'izquierda': 'Gire el rostro a SU izquierda',
+  'derecha': 'Gire el rostro a SU derecha',
+  'arriba': 'Levante apenas el mentón',
+  'abajo': 'Baje apenas el mentón y parpadee',
+};
+
+/// Campo de fotos del rostro, OBLIGATORIO al agendar (salvo registro vigente).
+///
+/// Solo cámara (sin selector de archivos a propósito): el pack multi-pose
+/// exige ángulos reales del rostro en vivo. Si la cámara falla, se muestra
+/// el error con botón Reintentar en vez de un camino silencioso.
+class FacePhotoField extends StatefulWidget {
+  const FacePhotoField({super.key, required this.onChanged});
+
+  /// Se emite con la lista completa (5 poses) o null si se quita.
+  final ValueChanged<List<MuestraFacial>?> onChanged;
 
   @override
   State<FacePhotoField> createState() => _FacePhotoFieldState();
 }
 
 class _FacePhotoFieldState extends State<FacePhotoField> {
-  Uint8List? _bytes;
+  List<MuestraFacial> _muestras = [];
   bool _busy = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _bytes = widget.initialBytes;
-  }
+  bool get _completo => _muestras.length >= _poses.length;
 
-  Future<void> _takePhoto() async {
+  Future<void> _abrirGuia() async {
     setState(() => _busy = true);
-    final service = KioskCameraService();
-    try {
-      await service.initialize();
-    } catch (e) {
-      // La cámara ya falló: no se puede reintentar desde aquí, así que en vez
-      // de solo avisar se cae directamente al selector de archivos. Antes
-      // únicamente se mostraba un aviso y el usuario tenía que pulsar otro
-      // botón, lo que en el kiosco Windows (sin cámara) era un callejón.
-      await service.dispose();
-      if (!mounted) return;
-      setState(() => _busy = false);
-      final msg = e is KioskCameraException
-          ? e.message
-          : 'No se pudo abrir la cámara en este equipo.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$msg Abriendo el selector de archivos...')),
-      );
-      await _pickFile();
-      return;
-    }
-    if (!mounted) {
-      await service.dispose();
-      return;
-    }
-    Uint8List? bytes;
-    try {
-      bytes = await showDialog<Uint8List>(
-        context: context,
-        builder: (ctx) => _CameraDialog(service: service),
-      );
-    } catch (_) {
-      bytes = null;
-    }
-    await service.dispose();
+    final resultado = await showDialog<List<MuestraFacial>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const _GuiaCapturaDialog(),
+    );
     if (!mounted) return;
     setState(() => _busy = false);
-    if (bytes != null) {
-      setState(() => _bytes = bytes);
-      widget.onChanged(bytes);
+    if (resultado != null && resultado.isNotEmpty) {
+      setState(() => _muestras = resultado);
+      widget.onChanged(resultado);
     }
     // Si canceló el diálogo no se muestra nada (no es un error).
   }
 
-  Future<void> _pickFile() async {
-    setState(() => _busy = true);
-    try {
-      final res = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-        withData: true,
-      );
-      if (!mounted) return;
-      final files = res?.files ?? [];
-      if (files.isEmpty) {
-        // El usuario canceló: no es error, no se avisa nada.
-        setState(() => _busy = false);
-        return;
-      }
-      // En web, file_picker lanza LateInitializationError cuando el
-      // <input type="file"> no entrega los bytes del archivo. Ocurre con
-      // imágenes grandes o cuando el navegador no da permiso de lectura.
-      // Antes se propagaba el error crudo al SnackBar; se traduce a un
-      // mensaje accionable.
-      final file = files.first;
-      final bytes = _leerBytes(file);
-      if (bytes == null || bytes.isEmpty) {
-        setState(() => _busy = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No se pudo leer el archivo. Prueba con una foto más '
-              'pequeña (JPG o PNG de menos de 2 MB).',
-            ),
-          ),
-        );
-        return;
-      }
-      setState(() {
-        _bytes = bytes;
-        _busy = false;
-      });
-      widget.onChanged(bytes);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No se pudo leer el archivo (${e.runtimeType}). '
-            'Prueba con una foto más pequeña (JPG o PNG de menos de 2 MB).',
-          ),
-        ),
-      );
-    }
-  }
-
-  /// Lee los bytes del archivo seleccionado.
-  ///
-  /// En web `file_picker` lanza `LateInitializationError` desde `bytes` cuando
-  /// el navegador no entrega el contenido del archivo. Se captura aquí para
-  /// devolver `null` y que el flujo de validación siga intacto.
-  Uint8List? _leerBytes(PlatformFile file) {
-    try {
-      return file.bytes;
-    } on Error {
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   void _clear() {
-    setState(() => _bytes = null);
+    setState(() => _muestras = []);
     widget.onChanged(null);
   }
 
@@ -170,13 +84,14 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _bytes == null ? AppColors.danger : AppColors.success,
+                  color: _completo ? AppColors.success : AppColors.danger,
                   width: 1.6,
                 ),
               ),
-              child: _bytes == null
-                  ? const Icon(Icons.face_outlined, color: AppColors.muted, size: 44)
-                  : Image.memory(_bytes!, fit: BoxFit.cover),
+              child: _muestras.isEmpty
+                  ? const Icon(Icons.face_outlined,
+                      color: AppColors.muted, size: 44)
+                  : Image.memory(_muestras.first.bytes, fit: BoxFit.cover),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -185,12 +100,16 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                 children: [
                   const Text(
                     'Foto del rostro *',
-                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, color: AppColors.dark),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Obligatoria. Se usa solo en el kiosco del consultorio para reconocerte.',
-                    style: TextStyle(fontSize: 12, color: AppColors.muted, height: 1.4),
+                  Text(
+                    _completo
+                        ? 'Pack completo (${_muestras.length}/${_poses.length} poses). Se usa solo en el kiosco para reconocerte.'
+                        : 'Obligatoria: 5 fotos guiadas (frente, lados, arriba, abajo). Se usa solo en el kiosco para reconocerte.',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.muted, height: 1.4),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -198,16 +117,13 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                     runSpacing: 8,
                     children: [
                       FilledButton.icon(
-                        onPressed: _busy ? null : _takePhoto,
+                        onPressed: _busy ? null : _abrirGuia,
                         icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                        label: Text(_bytes == null ? 'Tomar foto' : 'Repetir foto'),
+                        label: Text(_muestras.isEmpty
+                            ? 'Tomar fotos'
+                            : 'Repetir fotos'),
                       ),
-                      OutlinedButton.icon(
-                        onPressed: _busy ? null : _pickFile,
-                        icon: const Icon(Icons.upload_file_outlined, size: 18),
-                        label: const Text('Elegir archivo'),
-                      ),
-                      if (_bytes != null)
+                      if (_muestras.isNotEmpty)
                         TextButton(
                           onPressed: _clear,
                           child: const Text('Quitar'),
@@ -219,11 +135,11 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
             ),
           ],
         ),
-        if (_bytes == null)
+        if (!_completo)
           const Padding(
             padding: EdgeInsets.only(top: 6),
             child: Text(
-              'Debes registrar tu foto para completar la solicitud.',
+              'Completa las 5 fotos guiadas para continuar.',
               style: TextStyle(fontSize: 12, color: AppColors.danger),
             ),
           ),
@@ -232,74 +148,279 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
   }
 }
 
-/// Diálogo con vista previa de la cámara y botón de captura.
-class _CameraDialog extends StatefulWidget {
-  const _CameraDialog({required this.service});
-
-  final KioskCameraService service;
+/// Diálogo de captura guiada: vista previa + óvalo guía + instrucciones por
+/// pose + miniaturas. Sin selector de archivos: todo es cámara en vivo.
+class _GuiaCapturaDialog extends StatefulWidget {
+  const _GuiaCapturaDialog();
 
   @override
-  State<_CameraDialog> createState() => _CameraDialogState();
+  State<_GuiaCapturaDialog> createState() => _GuiaCapturaDialogState();
 }
 
-class _CameraDialogState extends State<_CameraDialog> {
-  bool _capturing = false;
+class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
+  final _camera = KioskCameraService(frontPreference: true);
+  final List<MuestraFacial> _muestras = [];
 
-  Future<void> _capture() async {
-    setState(() => _capturing = true);
+  bool _initializing = true;
+  bool _capturing = false;
+  bool _enviando = false;
+  KioskCameraException? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  @override
+  void dispose() {
+    _camera.dispose();
+    super.dispose();
+  }
+
+  Future<void> _init() async {
+    setState(() {
+      _initializing = true;
+      _error = null;
+    });
     try {
-      final photo = await widget.service.capture();
-      if (!mounted) return;
-      Navigator.of(context).pop(photo.bytes);
+      await _camera.initialize();
     } on KioskCameraException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      setState(() => _capturing = false);
+      setState(() {
+        _initializing = false;
+        _error = e;
+      });
+      return;
     }
+    if (!mounted) return;
+    setState(() => _initializing = false);
+  }
+
+  String get _poseActual => _poses.keys.elementAt(_muestras.length);
+  String get _instruccion => _poses.values.elementAt(_muestras.length);
+  bool get _completo => _muestras.length >= _poses.length;
+
+  Future<void> _capturar() async {
+    if (_capturing || _completo) return;
+    setState(() => _capturing = true);
+    try {
+      final photo = await _camera.capture();
+      if (!mounted) return;
+      setState(() {
+        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: _poseActual));
+        _capturing = false;
+      });
+    } on KioskCameraException catch (e) {
+      if (!mounted) return;
+      setState(() => _capturing = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  void _quitarUltima() {
+    if (_muestras.isEmpty) return;
+    setState(() => _muestras.removeLast());
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = widget.service.controller;
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      title: const Text('Foto del rostro', style: TextStyle(fontWeight: FontWeight.w800)),
+      title: const Text('Fotos del rostro',
+          style: TextStyle(fontWeight: FontWeight.w800)),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Mira a la cámara de frente, con buena luz y sin lentes oscuros.',
-              style: TextStyle(color: AppColors.muted, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(
-                aspectRatio: 4 / 3,
-                child: controller == null
-                    ? const ColoredBox(
-                        color: AppColors.background,
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    : CameraPreview(controller),
-              ),
-            ),
-          ],
-        ),
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: _initializing
+            ? const SizedBox(
+                height: 220,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : _error != null
+                ? _panelError()
+                : _panelCaptura(),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
+        if (_error == null)
+          FilledButton.icon(
+            onPressed: (_enviando || !_completo) ? null : () {
+              setState(() => _enviando = true);
+              Navigator.of(context).pop(List.of(_muestras));
+            },
+            icon: const Icon(Icons.check),
+            label: const Text('Usar estas fotos'),
+          ),
+      ],
+    );
+  }
+
+  /// Error de cámara VISIBLE con reintento (antes caía en silencio al
+  /// selector de archivos). Incluye ayuda según el motivo.
+  Widget _panelError() {
+    final e = _error!;
+    final ayuda = e.kind == KioskCameraError.denied
+        ? 'Toca el ícono de cámara en la barra del navegador y permite el acceso, o habilítalo en Ajustes del teléfono.'
+        : 'Revisa que ninguna otra app esté usando la cámara.';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.videocam_off_outlined,
+            size: 56, color: AppColors.muted),
+        const SizedBox(height: 12),
+        Text(e.message, textAlign: TextAlign.center),
+        const SizedBox(height: 8),
+        Text(ayuda,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: _capturing ? null : _capture,
-          icon: const Icon(Icons.camera_alt_outlined),
-          label: const Text('Capturar'),
+          onPressed: _init,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Reintentar'),
         ),
       ],
     );
   }
+
+  Widget _panelCaptura() {
+    final controller = _camera.controller;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            _completo
+                ? 'Pack completo. Revisa y confirma.'
+                : 'Foto ${_muestras.length + 1}/${_poses.length}: $_instruccion',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: 4 / 3,
+            child: controller == null || !_camera.isInitialized
+                ? const ColoredBox(
+                    color: AppColors.background,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CameraPreview(controller),
+                      const CustomPaint(painter: _OvaloGuia()),
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < _poses.length; i++)
+              Container(
+                width: 26,
+                height: 26,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: i < _muestras.length
+                      ? AppColors.success
+                      : AppColors.surface,
+                ),
+                child: Center(
+                  child: i < _muestras.length
+                      ? const Icon(Icons.check,
+                          size: 14, color: Colors.white)
+                      : Text('${i + 1}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.muted)),
+                ),
+              ),
+            if (_muestras.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Quitar la última foto',
+                onPressed: _quitarUltima,
+                icon: const Icon(Icons.undo),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (!_completo)
+          FilledButton.icon(
+            onPressed: _capturing ? null : _capturar,
+            icon: _capturing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child:
+                        CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.camera_alt_outlined),
+            label: Text(_capturing ? 'Capturando...' : 'Capturar'),
+          ),
+        if (_muestras.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 56,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _muestras.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              itemBuilder: (_, i) => ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(_muestras[i].bytes,
+                    width: 56, height: 56, fit: BoxFit.cover),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Óvalo guía estilo Binance sobre la vista previa.
+class _OvaloGuia extends CustomPainter {
+  const _OvaloGuia();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    final rect = Rect.fromCenter(
+      center: Offset(size.width / 2, size.height / 2),
+      width: size.width * 0.52,
+      height: size.height * 0.72,
+    );
+    canvas.drawOval(rect, paint);
+    // Sombra fuera del óvalo para enfocar la atención.
+    final sombra = Paint()..color = Colors.black.withValues(alpha: 0.35);
+    canvas.drawPath(
+      Path()
+        ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+        ..addOval(rect)
+        ..fillType = PathFillType.evenOdd,
+      sombra,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -38,7 +38,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   late final TextEditingController _reason = TextEditingController();
 
   DateTime? _birthDate;
-  Uint8List? _faceBytes;
+  List<MuestraFacial> _faceMuestras = [];
   DateTime _date = DateTime.now().add(const Duration(days: 1));
   String? _specialtyId;
   String? _doctorId;
@@ -198,7 +198,8 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                     ),
                   if (_fotoRequerida)
                     FacePhotoField(
-                      onChanged: (b) => setState(() => _faceBytes = b),
+                      onChanged: (m) =>
+                          setState(() => _faceMuestras = m ?? []),
                     )
                   else
                     Container(
@@ -384,7 +385,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
           _phone.text = res.telefono ?? _phone.text;
           _email.text = res.email ?? _email.text;
           _fotoRequerida = res.fotoRequerida;
-          if (!_fotoRequerida) _faceBytes = null;
+          if (!_fotoRequerida) _faceMuestras = [];
         } else {
           _fotoRequerida = true;
         }
@@ -464,11 +465,15 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   String _doctorName(ClinicProvider clinic) =>
       _doctorId == null ? '' : clinic.doctorById(_doctorId!).displayName;
 
-  /// Comprime la foto del rostro (sin procesar) a base64 para guardarla en
-  /// Firestore. Funciona sin facturación (sin Storage).
+  /// Comprime la foto FRONTAL del pack (sin procesar) a base64 para
+  /// guardarla en Firestore. Funciona sin facturación (sin Storage).
   String? _faceBase64() {
-    final bytes = _faceBytes;
-    if (bytes == null) return null;
+    if (_faceMuestras.isEmpty) return null;
+    final frontal = _faceMuestras.firstWhere(
+      (m) => m.pose == 'frontal',
+      orElse: () => _faceMuestras.first,
+    );
+    final bytes = frontal.bytes;
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return null;
@@ -487,10 +492,11 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    // La foto solo es obligatoria si el backend no tiene un registro vigente.
-    if (_fotoRequerida && _faceBytes == null) {
+    // La foto solo es obligatoria si el backend no tiene un registro vigente:
+    // se exigen las 5 poses del pack (una foto fija no sirve contra suplantación).
+    if (_fotoRequerida && _faceMuestras.length < 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registra tu foto del rostro para completar la solicitud')),
+        const SnackBar(content: Text('Completa las 5 fotos guiadas del rostro para continuar')),
       );
       return;
     }
@@ -588,7 +594,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         const SnackBar(content: Text('Cita registrada, pero no se pudo guardar la foto. Avísalo en recepción.')),
       );
     }
-    if (_faceBytes != null && _fotoRequerida) {
+    if (_faceMuestras.isNotEmpty && _fotoRequerida) {
       // Mejor esfuerzo: no bloquea el éxito de la reserva si falla.
       await _subirPackBackend();
     }
@@ -614,13 +620,19 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     }
   }
 
-  /// Sube el pack facial al backend (mejor esfuerzo, fuera del camino crítico).
+  /// Sube el pack facial multi-pose al backend (mejor esfuerzo, fuera del
+  /// camino crítico). Son las 5 fotos guiadas (no una fija): el servidor
+  /// valida calidad por muestra y genera las plantillas.
   Future<void> _subirPackBackend() async {
-    final bytes = _faceBytes;
-    if (bytes == null || _birthDate == null) return;
+    if (_faceMuestras.isEmpty || _birthDate == null) return;
     try {
-      final b64 = FotoUtils.aBase64Liviano(bytes);
-      if (b64 == null) return;
+      final muestras = <Map<String, String>>[];
+      for (final m in _faceMuestras) {
+        final b64 = FotoUtils.aBase64Liviano(m.bytes);
+        if (b64 == null) continue;
+        muestras.add({'imagen': b64, 'pose': m.pose});
+      }
+      if (muestras.isEmpty) return;
       await _packService.ingestarPaquete(
         cedula: _ci.text.trim(),
         nombre: _name.text.trim(),
@@ -629,9 +641,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         email: _email.text.trim(),
         fechaNacimiento:
             '${_birthDate!.year.toString().padLeft(4, '0')}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
-        muestras: [
-          {'imagen': b64, 'pose': 'frontal'},
-        ],
+        muestras: muestras,
       );
     } catch (_) {
       // Se ignora: la cita ya quedó registrada; recepción completa el rostro.
