@@ -41,18 +41,33 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
     setState(() => _busy = true);
     try {
       final service = KioskCameraService();
+      var cameraOk = false;
       try {
         await service.initialize();
-      } on KioskCameraException {
+        cameraOk = true;
+      } catch (_) {
+        // Cualquier fallo de cámara (permiso, sin cámara, navegador)
+        // cae al selector de archivo.
+        cameraOk = false;
+      }
+      if (!cameraOk) {
         await service.dispose();
-        await _pickFile();
+        if (mounted) await _pickFile();
         return;
       }
-      if (!mounted) return;
-      final bytes = await showDialog<Uint8List>(
-        context: context,
-        builder: (ctx) => _CameraDialog(service: service),
-      );
+      if (!mounted) {
+        await service.dispose();
+        return;
+      }
+      Uint8List? bytes;
+      try {
+        bytes = await showDialog<Uint8List>(
+          context: context,
+          builder: (ctx) => _CameraDialog(service: service),
+        );
+      } catch (_) {
+        bytes = null;
+      }
       await service.dispose();
       if (!mounted) return;
       if (bytes != null) {
