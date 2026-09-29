@@ -11,6 +11,8 @@ class Patient {
     this.antecedentes = '',
     this.alergias = '',
     this.observaciones = '',
+    this.photoUrl = '',
+    this.faceBase64 = '',
   });
 
   final String id;
@@ -23,6 +25,12 @@ class Patient {
   final String antecedentes;
   final String alergias;
   final String observaciones;
+
+  /// URL de la foto del rostro (para el kiosco). Vacía = sin foto registrada.
+  final String photoUrl;
+
+  /// Foto del rostro en base64 (capturada al agendar, sin procesar).
+  final String faceBase64;
 
   String get fullName => '$firstName $lastName';
 
@@ -42,6 +50,8 @@ class Patient {
       antecedentes: (json['antecedentes'] ?? '').toString(),
       alergias: (json['alergias'] ?? '').toString(),
       observaciones: (json['observaciones'] ?? json['contacto_emergencia'] ?? '').toString(),
+      photoUrl: (json['foto_url'] ?? '').toString(),
+      faceBase64: (json['foto_base64'] ?? '').toString(),
     );
   }
 
@@ -57,6 +67,7 @@ class Patient {
         'antecedentes': antecedentes,
         'alergias': alergias,
         'observaciones': observaciones,
+        if (photoUrl.isNotEmpty) 'foto_url': photoUrl,
       };
 
   Patient copyWith({
@@ -69,6 +80,8 @@ class Patient {
     String? antecedentes,
     String? alergias,
     String? observaciones,
+    String? photoUrl,
+    String? faceBase64,
   }) {
     return Patient(
       id: id,
@@ -81,6 +94,8 @@ class Patient {
       antecedentes: antecedentes ?? this.antecedentes,
       alergias: alergias ?? this.alergias,
       observaciones: observaciones ?? this.observaciones,
+      photoUrl: photoUrl ?? this.photoUrl,
+      faceBase64: faceBase64 ?? this.faceBase64,
     );
   }
 }

@@ -110,5 +110,11 @@ module.exports = {
 
     // Máximo de confirmaciones de cita por IP en la ventana de 15 minutos.
     confirmRateMax: Number(process.env.KIOSCO_CONFIRM_RATE_MAX) || 10,
+
+    // Clave compartida del kiosco Windows (reconocimiento local, offline).
+    // Si el request trae el header x-kiosk-key con este valor, confirmar-cita
+    // acepta el check-in sin exigir la verificación facial en nube (el kiosco
+    // ya verificó el rostro localmente con OpenCV). Vacía = desactivado.
+    apiKey: process.env.KIOSK_API_KEY || '',
   },
 };

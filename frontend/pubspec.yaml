@@ -47,6 +47,10 @@ dependencies:
   cloud_firestore: ^5.4.0
   camera: ^0.12.1
   permission_handler: ^13.0.2
+  firebase_storage: ^12.4.0
+  file_picker: ^8.1.2
+  image: ^4.2.0
+  opencv_dart: ^2.2.2
 
 dev_dependencies:
   flutter_test:
