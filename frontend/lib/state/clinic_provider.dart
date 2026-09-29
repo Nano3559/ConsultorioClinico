@@ -436,6 +436,22 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
+  /// Guarda la foto del rostro en base64 (capturada al agendar, sin procesar;
+  /// el kiosco la descarga para el reconocimiento local).
+  Future<String?> setPatientFace(String patientId, String base64) async {
+    try {
+      await _fs.update('pacientes', patientId, {'foto_base64': base64});
+      final i = _patients.indexWhere((x) => x.id == patientId);
+      if (i >= 0) _patients[i] = _patients[i].copyWith(faceBase64: base64);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
+    }
+  }
+
   Future<Doctor?> addDoctor(Doctor d) async {
     final data = {
       'nombre': d.name.split(' ').first,
@@ -537,7 +553,7 @@ class ClinicProvider extends ChangeNotifier {
       final citaId = citaRef.id;
       batch.set(citaRef, {...body, 'id': citaId});
       // Turno ocupado (id deterministico). La regla impide duplicados.
-      final dispId = '${medicoId}__${fecha}__${time}';
+      final dispId = '${medicoId}__${fecha}__$time';
       batch.set(fs.collection('disponibilidad').doc(dispId), {
         'medico_id': medicoId,
         'fecha': fecha,
@@ -616,7 +632,7 @@ class ClinicProvider extends ChangeNotifier {
         batch.delete(fs.collection('disponibilidad')
             .doc('${old.doctorId}__${_fmt(old.date)}__${old.time}'));
       }
-      batch.set(fs.collection('disponibilidad').doc('${medicoId}__${nuevaFecha}__${time}'), {
+      batch.set(fs.collection('disponibilidad').doc('${medicoId}__${nuevaFecha}__$time'), {
         'medico_id': medicoId,
         'fecha': nuevaFecha,
         'hora': time,

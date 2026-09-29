@@ -23,6 +23,8 @@ function reset() {
   CITAS.length = 0;
   PACIENTES.length = 0;
   INTENTOS.length = 0;
+  // SESIONES no se limpia: los tokens obtenidos en before() deben seguir
+  // válidos tras los reset() intermedios de cada describe.
 }
 
 function getUsuarios() {
@@ -141,15 +143,16 @@ function makeUsuariosChain() {
   return base;
 }
 
-/** Cadena genérica para tablas no-usuarios (sesiones, intentos_acceso, medicos, pacientes). */
+/** Cadena genérica para tablas no-usuarios (sesiones, medicos, rostro_muestras...). */
 function makeOtherChain(tabla) {
-  return {
-    select: () => ({
-      then: (resolve) => resolve({ data: [], error: null }),
-    }),
-    eq: () => Promise.resolve({ data: null, error: null }),
+  const base = {
+    select: () => base,
+    eq: () => base,
+    not: () => base,
+    order: () => base,
     limit: () => Promise.resolve({ data: [], error: null }),
-    order: () => Promise.resolve({ data: [], error: null }),
+    range: () => Promise.resolve({ data: [], error: null }),
+    then: (resolve) => resolve({ data: [], error: null }),
     insert: (valor) => {
       inserciones.push({ tabla, valor });
       return Promise.resolve({ data: [valor], error: null });
@@ -158,6 +161,7 @@ function makeOtherChain(tabla) {
     upsert: () => Promise.resolve({ data: null, error: null }),
     single: () => Promise.resolve({ data: null, error: null }),
   };
+  return base;
 }
 
 // Tabla 'citas' en memoria para tests del kiosco (confirmar-cita).
@@ -239,7 +243,25 @@ const getSupabase = () => {
       if (tabla === 'citas') return makeCitasChain();
       if (tabla === 'pacientes') return makePacientesChain();
       if (tabla === 'intentos_acceso') return makeIntentosChain();
+      if (tabla === 'sesiones') return makeSesionesChain();
       return makeOtherChain(tabla);
+    },
+    // Storage privado (bucket `rostros`): upload + URLs firmadas.
+    storage: {
+      from(bucket) {
+        return {
+          upload: async (ruta) =>
+            Promise.resolve({ data: { path: ruta }, error: null }),
+          createSignedUrls: async (rutas) =>
+            Promise.resolve({
+              data: (rutas || []).map((p) => ({
+                path: p,
+                signedUrl: `https://storage.test/${bucket}/${p}?firmada=1`,
+              })),
+              error: null,
+            }),
+        };
+      },
     },
   };
   return chain;
@@ -361,6 +383,7 @@ function getPacientes() {
 function makePacientesChain() {
   let eqFiltros = {};
   let limitN = null;
+  let offsetN = 0;
   let updateValores = null;
 
   function resolver() {
@@ -372,6 +395,102 @@ function makePacientesChain() {
         }
         return p[campo] === valorEsperado;
       })
+    );
+    if (offsetN) result = result.slice(offsetN);
+    if (limitN != null) result = result.slice(0, limitN);
+    return { data: result, error: null };
+  }
+
+  const base = {
+    select: () => base,
+    eq: (campo, valor) => {
+      eqFiltros[campo] = valor;
+      return base;
+    },
+    // .not() se acepta y no filtra (suficiente para el manifest en tests).
+    not: () => base,
+    order: () => base,
+    range: (desde, hasta) => {
+      offsetN = Math.max(desde || 0, 0);
+      limitN = Math.max((hasta || 0) - offsetN + 1, 0);
+      return Promise.resolve(resolver());
+    },
+    limit: (n) => {
+      limitN = n;
+      return Promise.resolve(resolver());
+    },
+    then: (resolve, reject) => {
+      try {
+        return resolve(resolver());
+      } catch (e) {
+        if (reject) return reject(e);
+        throw e;
+      }
+    },
+    single: () => Promise.resolve({
+      data: resolver().data[0] || null,
+      error: null,
+    }),
+    // insert() con encadenamiento insert().select().single() (puente online:
+    // el pack de la reserva crea el paciente del backend por cédula).
+    insert: (valor) => {
+      const nuevo = { ...valor };
+      if (!nuevo.id) {
+        nuevo.id = PACIENTES.reduce((m, p) => (p.id ? Math.max(m, p.id) : m), 0) + 1;
+      }
+      PACIENTES.push(nuevo);
+      inserciones.push({ tabla: 'pacientes', valor: nuevo });
+      const promesa = Promise.resolve({ data: [nuevo], error: null });
+      return {
+        select: () => ({
+          single: async () => {
+            const res = await promesa;
+            return { data: res.data[0], error: null };
+          },
+          then: (resolve, reject) => promesa.then(resolve, reject),
+        }),
+        then: (resolve, reject) => promesa.then(resolve, reject),
+        single: async () => {
+          const res = await promesa;
+          return { data: res.data[0], error: null };
+        },
+      };
+    },
+    update: (valores) => {
+      updateValores = valores;
+      return {
+        eq: (campo, valor) => {
+          eqFiltros[campo] = valor;
+          const { data } = resolver();
+          data.forEach((p) => Object.assign(p, updateValores));
+          return {
+            select: () => ({
+              then: (resolve) => resolve(resolver()),
+            }),
+            then: (resolve) => resolve(resolver()),
+          };
+        },
+      };
+    },
+  };
+
+  return base;
+}
+
+// ============================================================================
+// Tabla 'sesiones' en memoria: el login inserta {usuario_id, token_id, ...}
+// y verifyToken valida contra ella (fail-closed si no hay fila activa).
+// ============================================================================
+let SESIONES = [];
+
+function makeSesionesChain() {
+  let eqFiltros = {};
+  let limitN = null;
+  let updateValores = null;
+
+  function resolver() {
+    let result = SESIONES.filter((s) =>
+      Object.keys(eqFiltros).every((campo) => s[campo] === eqFiltros[campo])
     );
     if (limitN != null) result = result.slice(0, limitN);
     return { data: result, error: null };
@@ -399,18 +518,23 @@ function makePacientesChain() {
       data: resolver().data[0] || null,
       error: null,
     }),
+    insert: (valor) => {
+      const fila = { id: SESIONES.length + 1, activa: true, ...valor };
+      SESIONES.push(fila);
+      return Promise.resolve({ data: [fila], error: null });
+    },
     update: (valores) => {
       updateValores = valores;
       return {
         eq: (campo, valor) => {
           eqFiltros[campo] = valor;
-          const { data } = resolver();
-          data.forEach((p) => Object.assign(p, updateValores));
           return {
-            select: () => ({
-              then: (resolve) => resolve(resolver()),
-            }),
-            then: (resolve) => resolve(resolver()),
+            eq: (campo2, valor2) => {
+              eqFiltros[campo2] = valor2;
+              const { data } = resolver();
+              data.forEach((s) => Object.assign(s, updateValores));
+              return Promise.resolve({ data, error: null });
+            },
           };
         },
       };

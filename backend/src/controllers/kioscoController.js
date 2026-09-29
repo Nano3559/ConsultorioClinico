@@ -3,6 +3,12 @@ const { getSupabase } = require('../config/supabase');
 const { sendSuccess, sendError } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
 const { llamarVision } = require('../services/visionService');
+const {
+  hashPlantilla,
+  rostroVigente,
+  parseEmbedding,
+  procesarPaquete,
+} = require('../services/rostroService');
 
 /**
  * Devuelve la IP real del cliente detrás de proxies (x-forwarded-for).
@@ -187,6 +193,12 @@ const confirmarCita = async (req, res) => {
       return sendError(res, 'La cita ya fue confirmada por el kiosco', 400);
     }
 
+    // Kiosco Windows (reconocimiento local, offline): si trae la clave
+    // compartida válida en x-kiosk-key, el rostro ya fue verificado en el
+    // equipo y se puede confirmar sin la verificación en nube.
+    const kioskKey = String(req.headers['x-kiosk-key'] || '');
+    const kioskOk = config.kiosco.apiKey !== '' && kioskKey === config.kiosco.apiKey;
+
     // KIO-20: exige una verificación facial exitosa reciente (misma IP) para
     // confirmar. Así el kiosco solo confirma a quien acaba de pasar por la
     // cámara, no a cualquiera que conozca los IDs.
@@ -203,7 +215,7 @@ const confirmarCita = async (req, res) => {
       .limit(1);
 
     if (errorIntento) throw errorIntento;
-    if (!intentos || intentos.length === 0) {
+    if (!kioskOk && (!intentos || intentos.length === 0)) {
       return sendError(res, 'Debe verificar primero el rostro en el kiosco', 403);
     }
 
@@ -273,4 +285,207 @@ const listarIntentos = async (req, res) => {
   }
 };
 
-module.exports = { verificarRostro, confirmarCita, listarIntentos };
+/**
+ * GET /api/kiosco/manifest?limit=500&offset=0
+ * Manifiesto de sincronización del kiosco: versión del pack de modelos +
+ * lista de pacientes con plantilla (hash md5 para comparar sin descargar).
+ *
+ * El kiosco lo pide cada KIOSCO_SYNC_MINUTOS: compara hashes con su caché
+ * local y solo descarga los paquetes que cambiaron (ver obtenerPaquete).
+ * Si `modelo_version` difiere de la local, actualiza sus modelos.
+ * Protegido con kioskAuth (nunca público: son datos biométricos en lote).
+ */
+const obtenerManifest = async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const limite = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 2000);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+    const { data, error, count } = await supabase
+      .from('pacientes')
+      .select('id, cedula, nombre, apellido, rostro_embedding, rostro_actualizado_en', { count: 'exact' })
+      .not('rostro_embedding', 'is', null)
+      .eq('activo', true)
+      .order('id')
+      .range(offset, offset + limite - 1);
+
+    if (error) throw error;
+
+    const pacientes = (data || []).map((p) => ({
+      paciente_id: p.id,
+      cedula: p.cedula,
+      nombre: `${p.nombre || ''} ${p.apellido || ''}`.trim(),
+      rostro_actualizado_en: p.rostro_actualizado_en,
+      rostro_vigente: rostroVigente(p),
+      template_hash: hashPlantilla(p.rostro_embedding),
+    }));
+
+    return sendSuccess(res, {
+      modelo_version: config.vision.modelVersion,
+      modelo_pack: config.vision.modelPack,
+      sync_minutos: config.kiosco.syncMinutos,
+      total: count ?? pacientes.length,
+      limit: limite,
+      offset,
+      pacientes,
+    }, 'Manifiesto de sincronización');
+  } catch (error) {
+    console.error('kiosco.obtenerManifest:', error.message);
+    return sendError(res, 'Error al generar el manifiesto', 500);
+  }
+};
+
+/**
+ * GET /api/kiosco/paquete/:pacienteId
+ * Descarga el paquete completo de un paciente para el kiosco: plantilla
+ * principal 128-d, embeddings por pose y URLs firmadas (10 min) de sus
+ * fotos de referencia. Protegido con kioskAuth.
+ */
+const obtenerPaquete = async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const pacienteId = parseInt(req.params.pacienteId, 10);
+
+    const { data: pacientes, error: errorPaciente } = await supabase
+      .from('pacientes')
+      .select('id, cedula, nombre, apellido, rostro_embedding, rostro_actualizado_en')
+      .eq('id', pacienteId)
+      .limit(1);
+    if (errorPaciente) throw errorPaciente;
+    if (!pacientes || pacientes.length === 0) {
+      return sendError(res, 'Paciente no encontrado', 404);
+    }
+    const paciente = pacientes[0];
+    const embedding = parseEmbedding(paciente.rostro_embedding);
+    if (!embedding) {
+      return sendError(res, 'El paciente no tiene rostro registrado', 404);
+    }
+
+    const { data: muestras, error: errorMuestras } = await supabase
+      .from('rostro_muestras')
+      .select('pose, storage_path, embedding, calidad')
+      .eq('paciente_id', pacienteId);
+    if (errorMuestras) throw errorMuestras;
+
+    const bucket = config.kiosco.rostroBucket;
+    const rutas = (muestras || [])
+      .map((m) => String(m.storage_path || '').replace(`${bucket}/`, ''))
+      .filter(Boolean);
+    let firmadas = {};
+    if (rutas.length > 0) {
+      const { data: urls, error: errorUrls } = await supabase.storage
+        .from(bucket)
+        .createSignedUrls(rutas, 600);
+      if (errorUrls) throw errorUrls;
+      for (const u of urls || []) {
+        if (u && u.path) firmadas[u.path] = u.signedUrl;
+      }
+    }
+
+    const poses = (muestras || []).map((m) => {
+      const ruta = String(m.storage_path || '').replace(`${bucket}/`, '');
+      return {
+        pose: m.pose,
+        embedding: parseEmbedding(m.embedding),
+        calidad: m.calidad,
+        foto_url: firmadas[ruta] || null,
+      };
+    });
+
+    return sendSuccess(res, {
+      paciente_id: paciente.id,
+      nombre: `${paciente.nombre || ''} ${paciente.apellido || ''}`.trim(),
+      rostro_embedding: embedding,
+      rostro_actualizado_en: paciente.rostro_actualizado_en,
+      template_hash: hashPlantilla(embedding),
+      poses,
+    }, 'Paquete del paciente');
+  } catch (error) {
+    console.error('kiosco.obtenerPaquete:', error.message);
+    return sendError(res, 'Error al descargar el paquete', 500);
+  }
+};
+
+/**
+ * GET /api/kiosco/modelo
+ * Versión del pack de modelos que el kiosco debe tener. Si difiere de la
+ * local, el kiosco descarga el pack (los .onnx vienen del zoo de OpenCV en
+ * el primer uso) y reinicia su reconocedor. Protegido con kioskAuth.
+ */
+const obtenerModelo = async (req, res) =>
+  sendSuccess(res, {
+    version: config.vision.modelVersion,
+    pack: config.vision.modelPack,
+    umbral_similitud: config.vision.similarityThreshold,
+    notas: 'El sidecar Python del kiosco descarga el pack en el primer uso; ante cambio de versión, purgar el caché local y reiniciar.',
+  }, 'Modelo de visión vigente');
+
+/**
+ * POST /api/kiosco/paquete-rostro (público, rate limit 5/h por IP)
+ * Puente de la reserva online: crea el paciente del backend por cédula si no
+ * existe (solo datos mínimos) y registra su pack de fotos multi-pose con el
+ * mismo pipeline de recepción (procesarPaquete).
+ *
+ * Body: { cedula, nombre, apellido, telefono?, email?, fecha_nacimiento?, muestras: [{imagen, pose}] }
+ * Respuesta: { paciente_id, rostro_registrado, rostro_vigente }
+ */
+const ingestarPaquete = async (req, res) => {
+  const supabase = getSupabase();
+  try {
+    const { cedula, nombre, apellido, telefono, email, fecha_nacimiento, muestras } = req.body;
+
+    let paciente;
+    const { data: existentes, error: errorBuscar } = await supabase
+      .from('pacientes')
+      .select('id, cedula, nombre, apellido, rostro_embedding, rostro_actualizado_en')
+      .eq('cedula', String(cedula).trim())
+      .limit(1);
+    if (errorBuscar) throw errorBuscar;
+
+    if (existentes && existentes.length > 0) {
+      paciente = existentes[0];
+    } else {
+      const { data: creado, error: errorCrear } = await supabase
+        .from('pacientes')
+        .insert({
+          nombre: String(nombre).trim(),
+          apellido: String(apellido).trim(),
+          cedula: String(cedula).trim(),
+          telefono: telefono ? String(telefono).trim() : null,
+          email: email ? String(email).trim().toLowerCase() : null,
+          fecha_nacimiento: fecha_nacimiento || null,
+          activo: true,
+        })
+        .select('id, cedula, nombre, apellido, rostro_embedding, rostro_actualizado_en')
+        .single();
+      if (errorCrear) throw errorCrear;
+      paciente = creado;
+    }
+
+    const resultado = await procesarPaquete(supabase, paciente, muestras);
+
+    await registrarIntento(supabase, {
+      tipo: 'kiosco_verificacion',
+      referencia_id: paciente.id,
+      ip: obtenerIp(req),
+      userAgent: req.headers['user-agent'],
+      exitoso: resultado.rostro_registrado,
+      detalle: 'paquete_online',
+    });
+
+    return sendSuccess(res, {
+      paciente_id: paciente.id,
+      guardadas: resultado.guardadas,
+      por_pose: resultado.porPose,
+      rostro_registrado: resultado.rostro_registrado,
+      rostro_vigente: true,
+    }, 'Pack facial registrado');
+  } catch (error) {
+    console.error('kiosco.ingestarPaquete:', error.message);
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    return sendError(res, 'No se pudo registrar el pack facial', 500);
+  }
+};
+module.exports = { verificarRostro, confirmarCita, listarIntentos, obtenerManifest, obtenerPaquete, obtenerModelo, ingestarPaquete };

@@ -38,24 +38,12 @@ variables). Valores por defecto entre paréntesis:
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Reconocimiento facial
+## Reconocimiento facial (YuNet + SFace, liviano para plan free)
 
-### Capturar imágenes de un paciente
-
-```bash
-python capture_faces.py <paciente_id>
-```
-
-Guarda las imágenes en `backend/vision/dataset/paciente_{id}/`.
-
-### Entrenar el modelo LBPH
-
-```bash
-python train_model.py
-```
-
-Genera `backend/vision/modelo_lbph.yml` usando todas las imágenes del
-dataset.
+Sin reentrenamiento global: cada paciente se registra con su pack multi-pose
+(5 poses) vía `POST /api/vision/registrar-rostro/:id` y se compara por
+similitud coseno (embeddings SFace 128-d). Los modelos `.onnx` se descargan
+solos al primer uso desde el zoo oficial de OpenCV.
 
 ## Endpoints
 

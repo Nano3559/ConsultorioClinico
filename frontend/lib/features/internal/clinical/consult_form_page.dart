@@ -4,7 +4,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/utils/app_validators.dart';
 import '../../../core/widgets/app_status_badge.dart';
-import '../../../data/models/appointment.dart';
 import '../../../data/models/consult_record.dart';
 import '../../../data/models/user.dart';
 import '../../../state/auth_provider.dart';
@@ -75,6 +74,7 @@ class _ConsultFormPageState extends State<ConsultFormPage> {
         AppointmentStatus.atendida,
       );
     }
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 

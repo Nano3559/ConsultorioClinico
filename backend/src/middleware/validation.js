@@ -117,17 +117,73 @@ const kioscoConfirmarCitaValidation = [
   body('cita_id').isInt({ min: 1 }).withMessage('El ID de la cita debe ser un número entero válido'),
 ];
 
-// KIO-10: registrar el rostro de un paciente (muestras base64 + reentrena).
-// Validamos el array de imágenes y su tamaño (hasta 20 MB por imagen).
+// Registro facial multi-pose (YuNet+SFace): acepta [{ imagen, pose }] y, por
+// compatibilidad, [base64, ...] (pose frontal). Máx 15 muestras (5 poses x 3).
+const POSES_ROSTRO = ['frontal', 'izquierda', 'derecha', 'arriba', 'abajo'];
+const muestraFacialValida = (m) => {
+  if (typeof m === 'string') return m.length > 0;
+  return (
+    m !== null &&
+    typeof m === 'object' &&
+    typeof m.imagen === 'string' &&
+    m.imagen.length > 0 &&
+    (m.pose === undefined || POSES_ROSTRO.includes(m.pose))
+  );
+};
 const registrarRostroValidation = [
   body('imagenes')
-    .isArray({ min: 1 })
-    .withMessage('Debe enviar al menos una imagen')
-    .custom((imagenes) => imagenes.every((img) => typeof img === 'string' && img.length > 0))
-    .withMessage('Cada imagen debe ser una cadena base64 no vacía'),
-  body('imagenes.*')
+    .isArray({ min: 1, max: 15 })
+    .withMessage('Debe enviar entre 1 y 15 imágenes')
+    .custom((imagenes) => imagenes.every(muestraFacialValida))
+    .withMessage('Cada muestra debe ser base64 no vacío, con pose válida (frontal, izquierda, derecha, arriba, abajo)'),
+  body('imagenes.*.imagen')
+    .optional()
     .isLength({ max: 20000000 })
     .withMessage('Una imagen no puede superar 20 MB'),
+];
+
+// Ingesta pública del pack facial (reserva online): paciente mínimo + pack.
+const paqueteRostroValidation = [
+  body('cedula')
+    .isString()
+    .withMessage('La cédula debe ser texto')
+    .trim()
+    .isLength({ min: 5, max: 20 })
+    .withMessage('La cédula debe tener entre 5 y 20 caracteres'),
+  body('nombre')
+    .isString()
+    .withMessage('El nombre es obligatorio')
+    .trim()
+    .isLength({ min: 2, max: 120 })
+    .withMessage('El nombre debe tener entre 2 y 120 caracteres'),
+  body('apellido')
+    .isString()
+    .withMessage('El apellido es obligatorio')
+    .trim()
+    .isLength({ min: 2, max: 120 })
+    .withMessage('El apellido debe tener entre 2 y 120 caracteres'),
+  body('telefono').optional().isString().isLength({ max: 30 }),
+  body('email').optional().isEmail().withMessage('Email inválido'),
+  body('fecha_nacimiento').optional().isISO8601().withMessage('Fecha de nacimiento inválida (YYYY-MM-DD)'),
+  body('muestras')
+    .isArray({ min: 1, max: 15 })
+    .withMessage('Debe enviar entre 1 y 15 muestras')
+    .custom((muestras) => muestras.every(muestraFacialValida))
+    .withMessage('Cada muestra debe ser base64 no vacío, con pose válida'),
+  body('muestras.*.imagen')
+    .optional()
+    .isLength({ max: 20000000 })
+    .withMessage('Una imagen no puede superar 20 MB'),
+];
+
+// Búsqueda pública por cédula (autocompletado de la reserva online).
+const buscarCedulaValidation = [
+  query('cedula')
+    .isString()
+    .withMessage('La cédula debe ser texto')
+    .trim()
+    .isLength({ min: 5, max: 20 })
+    .withMessage('La cédula debe tener entre 5 y 20 caracteres'),
 ];
 
 module.exports = {
@@ -147,4 +203,6 @@ module.exports = {
   kioscoVerificarRostroValidation,
   kioscoConfirmarCitaValidation,
   registrarRostroValidation,
+  paqueteRostroValidation,
+  buscarCedulaValidation,
 };

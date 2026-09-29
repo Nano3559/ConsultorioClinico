@@ -38,8 +38,8 @@ class _HoverCardState extends State<HoverCard> {
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
         transform: Matrix4.identity()
-          ..translate(0.0, _hover ? -5.0 : 0.0)
-          ..scale(_hover ? 1.012 : 1.0),
+          ..translateByDouble(0.0, _hover ? -5.0 : 0.0, 0.0, 1.0)
+          ..scaleByDouble(_hover ? 1.012 : 1.0, _hover ? 1.012 : 1.0, 1.0, 1.0),
         transformAlignment: Alignment.center,
         padding: widget.padding,
         decoration: BoxDecoration(

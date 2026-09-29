@@ -11,7 +11,6 @@ import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/responsive_row.dart';
 import '../../../data/models/appointment.dart';
 import '../../../data/models/consult_record.dart';
-import '../../../data/models/payment.dart';
 import '../../../state/clinic_provider.dart';
 import 'appointment_actions.dart';
 

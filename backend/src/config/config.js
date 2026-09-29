@@ -73,6 +73,19 @@ module.exports = {
     // Ruta del modelo de rostros entrenado (LBPH) usado por el módulo.
     faceModel: process.env.VISION_FACE_MODEL || '',
 
+    // Pack de modelos de visión usado por el microservicio
+    // (detección YuNet + embedding SFace 128-d, liviano para plan free).
+    // El kiosco descarga este mismo pack al sincronizar (ver manifest).
+    modelPack: process.env.VISION_MODEL_PACK || 'sface',
+
+    // Versión lógica del pack de modelos. Si cambia, el kiosco detecta la
+    // diferencia en el manifest y actualiza sus modelos locales.
+    modelVersion: process.env.VISION_MODEL_VERSION || 'sface_v1',
+
+    // Umbral de similitud coseno [0-1] para considerar un rostro reconocido.
+    // Punto de partida 0.5 (calibrar con datos reales: subir = más estricto).
+    similarityThreshold: Number(process.env.VISION_SIMILARITY_THRESHOLD) || 0.5,
+
     // Umbral de confianza LBPH: por debajo se considera "rostro reconocido".
     confidenceThreshold: Number(process.env.VISION_CONFIDENCE_THRESHOLD) || 80,
 
@@ -82,8 +95,10 @@ module.exports = {
     // Ruta del clasificador Haar Cascade para detección de rostros.
     cascadePath: process.env.VISION_CASCADE_PATH || '',
 
-    // Tiempo máximo de espera por llamada HTTP (ms).
-    timeoutMs: Number(process.env.VISION_TIMEOUT_MS) || 5000,
+    // Tiempo máximo de espera por llamada HTTP (ms). Default 30s: la
+    // primera inferencia en frío del microservicio es lenta (carga de
+    // modelos); con warmup al arranque las siguientes responden en ms.
+    timeoutMs: Number(process.env.VISION_TIMEOUT_MS) || 30000,
 
     // Reintentos ante fallos de red/timeout.
     retries: Number(process.env.VISION_RETRIES) || 3,
@@ -110,5 +125,26 @@ module.exports = {
 
     // Máximo de confirmaciones de cita por IP en la ventana de 15 minutos.
     confirmRateMax: Number(process.env.KIOSCO_CONFIRM_RATE_MAX) || 10,
+
+    // Clave compartida del kiosco Windows (reconocimiento local, offline).
+    // Si el request trae el header x-kiosk-key con este valor, confirmar-cita
+    // acepta el check-in sin exigir la verificación facial en nube (el kiosco
+    // ya verificó el rostro localmente con OpenCV). Vacía = desactivado.
+    apiKey: process.env.KIOSK_API_KEY || '',
+
+    // Cada cuántos minutos el kiosco comprueba el manifest de sincronización
+    // (plantillas + versión del modelo) contra la nube.
+    syncMinutos: Number(process.env.KIOSCO_SYNC_MINUTOS) || 15,
+
+    // Días de vigencia del registro facial. Si el rostro de un paciente se
+    // registró hace más días, la reserva online vuelve a pedirle foto y el
+    // kiosco sugiere re-registro. Los rasgos no cambian en 30 días salvo
+    // barba/lentes/peso (esos casos los cubre el re-registro por baja
+    // similitud); 90 días es el equilibrio recomendado.
+    reenrollDias: Number(process.env.KIOSCO_REENROLL_DIAS) || 90,
+
+    // Bucket privado de Supabase Storage donde viven los packs de fotos por
+    // persona: rostros/{cedula}_{nombre-slug}/pose_*.jpg (ver migración 013).
+    rostroBucket: process.env.KIOSCO_ROSTRO_BUCKET || 'rostros',
   },
 };

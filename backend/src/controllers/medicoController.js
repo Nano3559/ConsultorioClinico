@@ -100,9 +100,11 @@ const getById = async (req, res) => {
 
     // La cédula es única; si el formulario no la envía, generamos un marcador
     // con sufijo aleatorio para evitar colisiones con el UNIQUE de la BD.
+    // Formato corto (13 chars): la columna es varchar(20) y el formato
+    // anterior (M + timestamp + 8 hex = 22 chars) siempre fallaba.
     const cedulaFinal = cedula && String(cedula).trim()
       ? String(cedula).trim()
-      : `M${Date.now()}${crypto.randomBytes(4).toString('hex')}`;
+      : `M${Date.now().toString().slice(-8)}${crypto.randomBytes(2).toString('hex')}`;
 
     const { data: existentes } = await supabase
       .from('medicos')

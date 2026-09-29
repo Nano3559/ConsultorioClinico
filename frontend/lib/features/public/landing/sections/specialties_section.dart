@@ -81,7 +81,7 @@ class _SpecialtyCard extends StatelessWidget {
                 width: double.infinity,
                 height: 128,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, _, _) => Container(
                   height: 128,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(

@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Fotos de rostro para el kiosco (capturadas al agendar la cita, SIN procesar).
+// El kiosco (Windows, offline) las descarga y hace el reconocimiento local.
+//
+// NOTA demo: la escritura es pública pero limitada (solo imágenes <= 5MB en
+// rostros/). En producción, firmarla con el uid del paciente o una Function.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /rostros/{pacienteId}/{archivo} {
+      allow read: if true;
+      allow write: if request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

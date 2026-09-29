@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/ambient_background.dart';
 import 'kiosk_camera_service.dart';
 import 'kiosk_service.dart';
+import 'kiosk_sync_service.dart';
 
 /// Modo kiosco del consultorio: pantalla de auto-check-in por rostro.
 ///
@@ -36,6 +37,11 @@ class _KioskPageState extends State<KioskPage> {
   final KioskCameraService _camera = KioskCameraService(frontPreference: true);
   final KioskService _service = KioskService();
 
+  /// Sincronización con la nube (plantillas + versión del modelo): corre en
+  /// segundo plano cada KIOSCO_SYNC_MINUTOS y descarga solo lo que cambió
+  /// (compara hashes del manifest). Silenciosa: no interrumpe al paciente.
+  final KioskSyncService _sync = KioskSyncService();
+
   bool _initializing = true;
   KioskCameraException? _error;
   Timer? _countdownTimer;
@@ -51,6 +57,18 @@ class _KioskPageState extends State<KioskPage> {
   void initState() {
     super.initState();
     _initCamera();
+    // Primera sincronización al abrir + periódica. Si el modelo cambió,
+    // se registra para que el operador actualice el sidecar Python.
+    _sync.start((r) {
+      if (!mounted) return;
+      if (r.modeloCambio) {
+        setState(() {
+          _resultadoMensaje =
+              'Hay una actualización del modelo de reconocimiento '
+              '(${r.modeloRemoto}). Avise al personal de sistemas.';
+        });
+      }
+    });
   }
 
   Future<void> _initCamera() async {
@@ -78,10 +96,16 @@ class _KioskPageState extends State<KioskPage> {
   }
 
   /// Reinicia el kiosco para recibir al siguiente paciente.
-  void _reiniciar() {
+  ///
+  /// Se hace `await` del `dispose()`: si no, la cámara anterior sigue
+  /// liberando el dispositivo mientras la nueva intenta inicializarse, y en
+  /// móvil eso produce `CameraException: Camera has been disposed` o deja la
+  /// pantalla en negro de forma intermitente entre pacientes.
+  Future<void> _reiniciar() async {
     _stopCountdown();
-    _camera.dispose();
-    _initCamera();
+    await _camera.dispose();
+    if (!mounted) return;
+    await _initCamera();
   }
 
   void _startCountdown() {
@@ -209,9 +233,10 @@ class _KioskPageState extends State<KioskPage> {
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              _reiniciar();
+              if (!mounted) return;
+              await _reiniciar();
             },
             child: const Text('Entendido'),
           ),
@@ -223,6 +248,7 @@ class _KioskPageState extends State<KioskPage> {
   @override
   void dispose() {
     _stopCountdown();
+    _sync.dispose();
     _camera.dispose();
     super.dispose();
   }
