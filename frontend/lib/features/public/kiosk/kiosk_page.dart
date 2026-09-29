@@ -82,10 +82,23 @@ class _KioskPageState extends State<KioskPage> {
       _stopCountdown();
     });
     try {
-      await _camera.initialize();
+      // Timeout anti-congelamiento: en algunos equipos de escritorio el
+      // plugin de cámara no responde nunca (sin cámara, driver ocupado) y
+      // sin esto la pantalla queda en "Iniciando cámara…" para siempre.
+      // Vencido el plazo se muestra el panel de error con Reintentar.
+      await _camera.initialize().timeout(const Duration(seconds: 15));
       if (!mounted) return;
       setState(() => _initializing = false);
       _startCountdown();
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() {
+        _initializing = false;
+        _error = const KioskCameraException(
+          KioskCameraError.notSupported,
+          'La cámara tardó demasiado en responder. Revise que esté conectada y libre, y reintente.',
+        );
+      });
     } on KioskCameraException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -527,23 +540,24 @@ class _KioskPageState extends State<KioskPage> {
     );
   }
 
+  /// Visor grande: ocupa media pantalla de alto y todo el ancho disponible,
+  /// para que el paciente se vea bien de lejos en el kiosco.
   Widget _viewfinder() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final side = constraints.maxWidth >= 380 ? 340.0 : constraints.maxWidth;
-        return Center(
-          child: SizedBox(
-            width: side,
-            height: side,
-            child: _viewfinderStack(side),
-          ),
-        );
-      },
+    final h = MediaQuery.sizeOf(context).height;
+    final viewH = (h * 0.5).clamp(320.0, 560.0);
+    return Center(
+      child: SizedBox(
+        width: double.infinity,
+        height: viewH,
+        child: _viewfinderStack(viewH),
+      ),
     );
   }
 
   Widget _viewfinderStack(double side) {
     final ready = _camera.isInitialized && _error == null;
+    final puedeCapturar =
+        _photo == null && ready && !_extraBusy && !_initializing;
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
       child: Stack(
@@ -562,7 +576,47 @@ class _KioskPageState extends State<KioskPage> {
               right: 14,
               child: Center(child: _tipPill()),
             ),
+          // Botón de captura SUPERPUESTO al visor (overlap): grande,
+          // circular y siempre a mano; el de abajo se oculta en este estado.
+          if (puedeCapturar)
+            Positioned(
+              bottom: 52,
+              left: 0,
+              right: 0,
+              child: Center(child: _botonCapturaOverlap()),
+            ),
         ],
+      ),
+    );
+  }
+
+  /// Botón circular de captura flotante sobre la vista previa.
+  Widget _botonCapturaOverlap() {
+    return GestureDetector(
+      onTap: () => _captureNow(),
+      child: Container(
+        width: 78,
+        height: 78,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(color: AppColors.primary, width: 4),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: _extraBusy
+            ? const Padding(
+                padding: EdgeInsets.all(22),
+                child: CircularProgressIndicator(
+                    strokeWidth: 3, color: AppColors.primary),
+              )
+            : const Icon(Icons.photo_camera,
+                size: 36, color: AppColors.primaryDark),
       ),
     );
   }
@@ -889,11 +943,9 @@ class _KioskPageState extends State<KioskPage> {
         ],
       );
     }
-    return FilledButton.icon(
-      onPressed: (_initializing || _extraBusy) ? null : _captureNow,
-      icon: const Icon(Icons.photo_camera),
-      label: Text(_extraBusy ? 'Capturando…' : 'Capturar ahora'),
-    );
+    // Sin foto: el botón de captura vive SUPERPUESTO al visor
+    // (_botonCapturaOverlap), aquí no se muestra nada.
+    return const SizedBox.shrink();
   }
 
   Widget _resultadoCard() {
