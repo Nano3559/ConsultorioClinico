@@ -85,36 +85,93 @@ class KioskCameraService {
       );
     }
 
-    CameraDescription selected;
-    try {
-      if (frontPreference) {
-        selected = cameras.firstWhere(
-          (c) => c.lensDirection == CameraLensDirection.front,
-        );
-      } else {
-        throw const _NotFound();
-      }
-    } on _NotFound {
-      selected = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
+    // Se elige siempre con `orElse`: `firstWhere` sin él lanza StateError, que
+    // no es una CameraException y por tanto se escapaba del `on` de abajo.
+    // En equipos sin cámara frontal (kioscos con solo cámara trasera, webcams
+    // que reportan lente unspecified) eso abortaba la inicialización.
+    final preferred = frontPreference
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+    final opposite = frontPreference
+        ? CameraLensDirection.back
+        : CameraLensDirection.front;
+
+    final selected = cameras.firstWhere(
+      (c) => c.lensDirection == preferred,
+      orElse: () => cameras.firstWhere(
+        (c) => c.lensDirection == opposite,
         orElse: () => cameras.first,
-      );
-    }
+      ),
+    );
 
     _controller = CameraController(
       selected,
-      ResolutionPreset.high,
+      // `low` en móvil reduce mucho el peso de la foto (LBPH no necesita alta
+      // resolución) y evita el 413 de Vercel en el body base64.
+      ResolutionPreset.medium,
       enableAudio: false,
     );
     try {
       await _controller!.initialize();
     } on CameraException {
-      throw const KioskCameraException(
-        KioskCameraError.notSupported,
-        'No se pudo iniciar la vista previa de la cámara.',
-      );
+      // Puede fallar por resolución no soportada o por permission revocada
+      // entre availableCameras() e initialize(): se reintenta una vez con
+      // `low` antes de rendirse.
+      try {
+        _controller = CameraController(
+          selected,
+          ResolutionPreset.low,
+          enableAudio: false,
+        );
+        await _controller!.initialize();
+      } on CameraException {
+        await _controller?.dispose();
+        _controller = null;
+        throw const KioskCameraException(
+          KioskCameraError.notSupported,
+          'No se pudo iniciar la vista previa de la cámara.',
+        );
+      }
     }
   }
+
+  /// Alterna entre la cámara frontal y la trasera en caliente.
+  ///
+  /// Necesario en el kiosco: muchoséfonos traen varias cámaras y la frontal
+  /// puede fallar al inicializar (ocupada por otra app, sin permisos en
+  /// runtime, hardware incompatible). Permite al operador recuperar el
+  /// servicio sin reiniciar la app.
+  Future<void> switchCamera() async {
+    if (_controller == null) return;
+    final List<CameraDescription> cameras;
+    try {
+      cameras = await availableCameras();
+    } on CameraException {
+      return;
+    }
+    if (cameras.length < 2) return;
+
+    final current = _controller!.description;
+    final target = cameras.firstWhere(
+      (c) =>
+          c.name != current.name &&
+          c.lensDirection != current.lensDirection,
+      orElse: () => cameras.firstWhere(
+        (c) => c.name != current.name,
+        orElse: () => current,
+      ),
+    );
+    if (target.name == current.name) return;
+
+    final previous = _controller;
+    _controller = null;
+    await previous?.dispose();
+    await initialize();
+  }
+
+  /// Si la cámara actual es frontal (para etiquetar el botón de la UI).
+  bool get isFrontFacing =>
+      _controller?.description.lensDirection == CameraLensDirection.front;
 
   /// Toma una foto y la devuelve en memoria (bytes + base64).
   Future<KioskPhoto> capture() async {
@@ -141,8 +198,4 @@ class KioskCameraService {
     await _controller?.dispose();
     _controller = null;
   }
-}
-
-class _NotFound implements Exception {
-  const _NotFound();
 }
