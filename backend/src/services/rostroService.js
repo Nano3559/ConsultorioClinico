@@ -5,7 +5,7 @@ const config = require('../config/config');
 const { llamarVision } = require('./visionService');
 
 /**
- * Lógica compartida del registro facial multi-pose (InsightFace).
+ * Lógica compartida del registro facial multi-pose (YuNet+SFace).
  *
  * La usan dos caminos:
  *   - visionController.registrarRostro (recepción/admin, paciente ya existe).
@@ -103,7 +103,7 @@ const rostroVigente = (paciente, dias = config.kiosco.reenrollDias) => {
 
 /**
  * Procesa un pack de fotos: llama al microservicio Python (detección
- * InsightFace + calidad + embedding 512-d por pose + foto liviana),
+ * YuNet+SFace + calidad + embedding 128-d por pose + foto liviana),
  * sube las fotos al bucket privado y persiste plantillas + vigencia.
  *
  * @param {object} supabase Cliente Supabase (service_role).
@@ -170,7 +170,7 @@ const procesarPaquete = async (supabase, paciente, muestras) => {
   // por el microservicio) + marca de vigencia para la política de 1 mes+.
   let rostroRegistrado = false;
   const embedding = dataVision.rostro_embedding;
-  if (Array.isArray(embedding) && embedding.length === 512 && guardadas > 0) {
+  if (Array.isArray(embedding) && embedding.length === 128 && guardadas > 0) {
     const { error: errorUpdate } = await supabase
       .from('pacientes')
       .update({

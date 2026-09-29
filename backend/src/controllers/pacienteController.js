@@ -194,7 +194,7 @@ const buscarPorCedula = async (req, res) => {
     }
     const p = data[0];
     const embedding = parseEmbedding(p.rostro_embedding);
-    const registrado = embedding !== null && embedding.length === 512;
+    const registrado = embedding !== null && embedding.length === 128;
     const vigente = rostroVigente(p);
     return sendSuccess(res, {
       existe: true,

@@ -6,7 +6,7 @@
  * - POST /api/vision/registrar-rostro/:pacienteId: validación
  *   (imagenes ausentes), autenticación (401), roles (403), paciente no
  *   encontrado (404), éxito multi-pose (proxy al microservicio mockeado con
- *   fetch + subida a Storage + plantillas + embedding 512-d y vigencia), y
+ *   fetch + subida a Storage + plantillas + embedding 128-d y vigencia), y
  *   errores del microservicio (502/504).
  * - GET /api/vision/rostro/:pacienteId: consulta del descriptor + vigencia.
  *
@@ -84,8 +84,8 @@ after(() => {
   restore();
 });
 
-function embedding512() {
-  return Array.from({ length: 512 }, (_, i) => (i + 1) / 512);
+function embedding128() {
+  return Array.from({ length: 128 }, (_, i) => (i + 1) / 128);
 }
 
 function muestraPose(pose, calidad = 82.5) {
@@ -94,7 +94,7 @@ function muestraPose(pose, calidad = 82.5) {
     guardada: true,
     calidad,
     foto: 'aG9sYQ==',
-    embedding: embedding512(),
+    embedding: embedding128(),
   };
 }
 
@@ -162,7 +162,7 @@ describe('POST /api/vision/registrar-rostro/:pacienteId', () => {
     assert.equal(res.body.message, 'Paciente no encontrado');
   });
 
-  test('200 - rostro registrado: guarda muestras por pose, sube fotos y persiste embedding 512-d', async () => {
+  test('200 - rostro registrado: guarda muestras por pose, sube fotos y persiste embedding 128-d', async () => {
     supabaseMock.seedPaciente({ id: 7, cedula: '0102030405', nombre: 'Ana', apellido: 'López', activo: true });
 
     global.fetch = async () =>
@@ -174,8 +174,8 @@ describe('POST /api/vision/registrar-rostro/:pacienteId', () => {
             paciente_id: 7,
             guardadas: 2,
             muestras: [muestraPose('frontal'), muestraPose('izquierda')],
-            rostro_embedding: embedding512(),
-            modelo: 'buffalo_s',
+            rostro_embedding: embedding128(),
+            modelo: 'sface',
           },
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -199,7 +199,7 @@ describe('POST /api/vision/registrar-rostro/:pacienteId', () => {
     assert.ok(res.body.data.por_pose.frontal > 0);
     assert.ok(String(res.body.data.carpeta).includes('0102030405'));
 
-    // El embedding 512-d y la vigencia deben quedar persistidos (mock)
+    // El embedding 128-d y la vigencia deben quedar persistidos (mock)
     const pacientes = supabaseMock.getPacientes();
     const p = pacientes.find((x) => x.id === 7);
     assert.ok(p.rostro_embedding, 'debe guardar rostro_embedding');
@@ -304,7 +304,7 @@ describe('GET /api/vision/rostro/:pacienteId', () => {
       id: 9,
       nombre: 'Carlos',
       apellido: 'Ruiz',
-      rostro_embedding: embedding512(),
+      rostro_embedding: embedding128(),
       rostro_actualizado_en: new Date().toISOString(),
     });
 
@@ -317,7 +317,7 @@ describe('GET /api/vision/rostro/:pacienteId', () => {
     assert.equal(res.body.data.paciente_id, 9);
     assert.equal(res.body.data.rostro_registrado, true);
     assert.equal(res.body.data.rostro_vigente, true);
-    assert.equal(res.body.data.dimensiones, 512);
+    assert.equal(res.body.data.dimensiones, 128);
     assert.equal(res.body.data.embedding_resumen.length, 3);
   });
 

@@ -338,7 +338,7 @@ const obtenerManifest = async (req, res) => {
 /**
  * GET /api/kiosco/paquete/:pacienteId
  * Descarga el paquete completo de un paciente para el kiosco: plantilla
- * principal 512-d, embeddings por pose y URLs firmadas (10 min) de sus
+ * principal 128-d, embeddings por pose y URLs firmadas (10 min) de sus
  * fotos de referencia. Protegido con kioskAuth.
  */
 const obtenerPaquete = async (req, res) => {
@@ -409,8 +409,8 @@ const obtenerPaquete = async (req, res) => {
 /**
  * GET /api/kiosco/modelo
  * Versión del pack de modelos que el kiosco debe tener. Si difiere de la
- * local, el kiosco descarga el pack (InsightFace lo obtiene de su CDN en el
- * primer uso) y reinicia su reconocedor. Protegido con kioskAuth.
+ * local, el kiosco descarga el pack (los .onnx vienen del zoo de OpenCV en
+ * el primer uso) y reinicia su reconocedor. Protegido con kioskAuth.
  */
 const obtenerModelo = async (req, res) =>
   sendSuccess(res, {

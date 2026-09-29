@@ -5,9 +5,9 @@ const { procesarPaquete, rostroVigente, parseEmbedding } = require('../services/
 
 /**
  * POST /api/vision/registrar-rostro/:pacienteId
- * Registra el rostro de un paciente (KIO-10, InsightFace multi-pose):
+ * Registra el rostro de un paciente (multi-pose, YuNet+SFace):
  * recibe las muestras en base64 etiquetadas por pose, el microservicio
- * Python detecta + mide calidad + genera embeddings 512-d, y aquí se suben
+ * Python detecta + mide calidad + genera embeddings 128-d, y aquí se suben
  * las fotos livianas al bucket privado `rostros/{cedula}_{nombre}/`, se
  * guardan las plantillas por pose (`rostro_muestras`) y se marca la vigencia
  * (`pacientes.rostro_actualizado_en`).
@@ -38,8 +38,8 @@ const registrarRostro = async (req, res) => {
       return sendError(res, 'Paciente no encontrado', 404);
     }
 
-    // Pipeline compartido: Python (InsightFace + calidad) -> Storage privado
-    // -> rostro_muestras + plantilla 512-d + vigencia.
+    // Pipeline compartido: Python (YuNet+SFace + calidad) -> Storage privado
+    // -> rostro_muestras + plantilla 128-d + vigencia.
     const resultado = await procesarPaquete(supabase, pacientes[0], imagenes);
 
     const body = {
@@ -91,7 +91,7 @@ const consultarRostro = async (req, res) => {
 
     const paciente = pacientes[0];
     const embedding = parseEmbedding(paciente.rostro_embedding);
-    const registrado = embedding !== null && embedding.length === 512;
+    const registrado = embedding !== null && embedding.length === 128;
 
     return sendSuccess(res, {
       paciente_id: paciente.id,

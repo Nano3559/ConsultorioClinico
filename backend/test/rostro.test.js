@@ -2,7 +2,7 @@
 
 /**
  * Suite de pruebas QA para la sincronización del kiosco y el puente de la
- * reserva online (rostro InsightFace multi-pose).
+ * reserva online (rostro YuNet+SFace multi-pose).
  *
  * - GET /api/pacientes/buscar?cedula=: autocompletado público (existe +
  *   foto_requerida según vigencia), validación y no encontrado.
@@ -39,8 +39,8 @@ async function loginToken(email, password) {
   return res.body.data.token;
 }
 
-function embedding512() {
-  return Array.from({ length: 512 }, (_, i) => (i + 1) / 512);
+function embedding128() {
+  return Array.from({ length: 128 }, (_, i) => (i + 1) / 128);
 }
 
 function mockPythonRegistro() {
@@ -53,11 +53,11 @@ function mockPythonRegistro() {
           paciente_id: 21,
           guardadas: 2,
           muestras: [
-            { pose: 'frontal', guardada: true, calidad: 88.0, foto: 'aG9sYQ==', embedding: embedding512() },
-            { pose: 'izquierda', guardada: true, calidad: 79.5, foto: 'bXVuZG8=', embedding: embedding512() },
+            { pose: 'frontal', guardada: true, calidad: 88.0, foto: 'aG9sYQ==', embedding: embedding128() },
+            { pose: 'izquierda', guardada: true, calidad: 79.5, foto: 'bXVuZG8=', embedding: embedding128() },
           ],
-          rostro_embedding: embedding512(),
-          modelo: 'buffalo_s',
+          rostro_embedding: embedding128(),
+          modelo: 'sface',
         },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -97,7 +97,7 @@ describe('GET /api/pacientes/buscar', () => {
       email: 'eva@test.com',
       fecha_nacimiento: '1990-05-01',
       activo: true,
-      rostro_embedding: embedding512(),
+      rostro_embedding: embedding128(),
       rostro_actualizado_en: new Date().toISOString(),
     });
 
@@ -121,7 +121,7 @@ describe('GET /api/pacientes/buscar', () => {
       nombre: 'Luis',
       apellido: 'Paz',
       activo: true,
-      rostro_embedding: embedding512(),
+      rostro_embedding: embedding128(),
       rostro_actualizado_en: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
@@ -193,7 +193,7 @@ describe('POST /api/kiosco/paquete-rostro', () => {
     const pacientes = supabaseMock.getPacientes();
     const creado = pacientes.find((p) => p.cedula === '3333333333');
     assert.ok(creado, 'debe crear el paciente del backend');
-    assert.ok(creado.rostro_embedding, 'debe guardar la plantilla 512-d');
+    assert.ok(creado.rostro_embedding, 'debe guardar la plantilla 128-d');
     assert.ok(creado.rostro_actualizado_en, 'debe marcar la vigencia');
   });
 });
@@ -208,8 +208,8 @@ describe('GET /api/kiosco/manifest', () => {
       .set('Authorization', `Bearer ${tokenAdmin}`);
 
     assert.equal(res.status, 200);
-    assert.equal(res.body.data.modelo_version, 'buffalo_s_v1');
-    assert.equal(res.body.data.modelo_pack, 'buffalo_s');
+    assert.equal(res.body.data.modelo_version, 'sface_v1');
+    assert.equal(res.body.data.modelo_pack, 'sface');
     assert.ok(Array.isArray(res.body.data.pacientes));
     const ana = res.body.data.pacientes.find((p) => p.cedula === '3333333333');
     assert.ok(ana, 'incluye al paciente registrado');
@@ -229,8 +229,8 @@ describe('GET /api/kiosco/modelo', () => {
       .set('Authorization', `Bearer ${tokenAdmin}`);
 
     assert.equal(res.status, 200);
-    assert.equal(res.body.data.version, 'buffalo_s_v1');
-    assert.equal(res.body.data.pack, 'buffalo_s');
+    assert.equal(res.body.data.version, 'sface_v1');
+    assert.equal(res.body.data.pack, 'sface');
   });
 });
 
@@ -246,7 +246,7 @@ describe('GET /api/kiosco/paquete/:pacienteId', () => {
 
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.data.rostro_embedding));
-    assert.equal(res.body.data.rostro_embedding.length, 512);
+    assert.equal(res.body.data.rostro_embedding.length, 128);
     assert.ok(Array.isArray(res.body.data.poses));
   });
 

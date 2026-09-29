@@ -25,10 +25,11 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        face_service._insightface()
-        print('[vision] modelos InsightFace listos', flush=True)
+        face_service._detector_yunet()
+        face_service._reconocedor_sface()
+        print('[vision] modelos YuNet+SFace listos', flush=True)
     except Exception as exc:
-        print(f'[vision] AVISO: InsightFace no cargó al arranque: {exc}', flush=True)
+        print(f'[vision] AVISO: modelos no cargaron al arranque: {exc}', flush=True)
     yield
 
 
@@ -174,7 +175,7 @@ def verificar_rostro(payload: VerificarRostroRequest):
             )
             for fila in data_emb.data or []:
                 emb = _parse_vector(fila.get('rostro_embedding'))
-                if emb is not None and len(emb) == 512:
+                if emb is not None and len(emb) == 128:
                     plantillas[fila['id']] = emb
         except Exception:
             plantillas = {}
@@ -226,8 +227,8 @@ def verificar_rostro(payload: VerificarRostroRequest):
 
 @app.post('/api/vision/registrar-rostro/{paciente_id}')
 def registrar_rostro(paciente_id: int, payload: RegistrarRostroRequest):
-    """Registra el rostro de un paciente (multi-pose, InsightFace): por cada
-    muestra se mide calidad, se genera el embedding 512-d y la foto liviana
+    """Registra el rostro de un paciente (multi-pose, YuNet+SFace): por cada
+    muestra se mide calidad, se genera el embedding 128-d y la foto liviana
     (recorte JPEG); el promedio normalizado es la plantilla del paciente.
 
     El frontend envía [{ imagen, pose }] (o [base64, ...] por compatibilidad).

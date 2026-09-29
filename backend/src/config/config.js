@@ -73,14 +73,14 @@ module.exports = {
     // Ruta del modelo de rostros entrenado (LBPH) usado por el módulo.
     faceModel: process.env.VISION_FACE_MODEL || '',
 
-    // Pack de modelos InsightFace usado por el microservicio de visión
-    // (detección SCRFD + embedding ArcFace 512-d). El kiosco descarga este
-    // mismo pack al sincronizar (ver manifest del kiosco).
-    modelPack: process.env.VISION_MODEL_PACK || 'buffalo_s',
+    // Pack de modelos de visión usado por el microservicio
+    // (detección YuNet + embedding SFace 128-d, liviano para plan free).
+    // El kiosco descarga este mismo pack al sincronizar (ver manifest).
+    modelPack: process.env.VISION_MODEL_PACK || 'sface',
 
     // Versión lógica del pack de modelos. Si cambia, el kiosco detecta la
     // diferencia en el manifest y actualiza sus modelos locales.
-    modelVersion: process.env.VISION_MODEL_VERSION || 'buffalo_s_v1',
+    modelVersion: process.env.VISION_MODEL_VERSION || 'sface_v1',
 
     // Umbral de similitud coseno [0-1] para considerar un rostro reconocido.
     // Punto de partida 0.5 (calibrar con datos reales: subir = más estricto).

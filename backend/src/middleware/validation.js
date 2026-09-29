@@ -117,7 +117,7 @@ const kioscoConfirmarCitaValidation = [
   body('cita_id').isInt({ min: 1 }).withMessage('El ID de la cita debe ser un número entero válido'),
 ];
 
-// Registro facial multi-pose (InsightFace): acepta [{ imagen, pose }] y, por
+// Registro facial multi-pose (YuNet+SFace): acepta [{ imagen, pose }] y, por
 // compatibilidad, [base64, ...] (pose frontal). Máx 15 muestras (5 poses x 3).
 const POSES_ROSTRO = ['frontal', 'izquierda', 'derecha', 'arriba', 'abajo'];
 const muestraFacialValida = (m) => {

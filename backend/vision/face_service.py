@@ -1,18 +1,22 @@
-"""Servicio de reconocimiento facial con InsightFace (ArcFace) + liveness.
+"""Servicio de reconocimiento facial liviano: YuNet + SFace (OpenCV Zoo).
 
-Reemplaza al prototipo Haar + LBPH:
-  - Detección: SCRFD (incluido en el pack InsightFace), muy superior a Haar
-    ante luz y ángulos.
-  - Identidad: embedding ArcFace 512-d L2-normalizado; la comparación es por
+Diseñado para correr en plan free (512 MB RAM): los modelos pesan ~40 MB
+y en RAM usan ~200 MB, contra ~1 GB de ArcFace (que hace OOM en free).
+
+  - Detección: YuNet (rápido en CPU, 5 landmarks incluidos).
+  - Identidad: SFace, embedding 128-d L2-normalizado; comparación por
     similitud coseno con umbral configurable (VISION_SIMILARITY_THRESHOLD).
   - Liveness (estilo Binance): desafío de parpadeo + giro de cabeza medidos
-    con MediaPipe Face Mesh sobre una secuencia de 2-3 frames. Una foto
-    impresa o una pantalla NO parpadea ni gira: sin liveness no hay check-in.
-  - Calidad: cada muestra se puntúa (tamaño, brillo, nitidez, un solo rostro)
-    y la foto que se guarda es LIVIANA (recorte JPEG máx 640px q80).
+    con MediaPipe Face Mesh sobre 2-3 frames (carga perezosa, solo al usar).
+  - Calidad: tamaño, brillo, nitidez (Laplacian), un solo rostro.
+  - Foto liviana: recorte JPEG máx 640px q80 (~30-60 KB).
+
+Los .onnx se descargan solos al primer uso desde el zoo oficial de OpenCV
+(a /root/.insightface o VISION_MODEL_DIR; en hosting efímero se re-descargan
+en cada cold start: ~40 MB, segundos).
 
 Variables (.env del microservicio):
-  VISION_MODEL_PACK=búfalo_s (pack InsightFace: 'buffalo_s' recomendado)
+  VISION_MODEL_DIR=dir local de modelos (defecto: ~/.insightface/models/sface)
   VISION_SIMILARITY_THRESHOLD=0.5 (umbral coseno para reconocer)
 """
 
@@ -28,7 +32,27 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, 'dataset')
 
-MODEL_PACK = os.getenv('VISION_MODEL_PACK', 'buffalo_s')
+# Pack lógico (para el manifest/sync del kiosco y el campo `modelo`).
+MODEL_PACK = os.getenv('VISION_MODEL_PACK', 'sface')
+MODEL_DIR = os.getenv(
+    'VISION_MODEL_DIR',
+    os.path.join(os.path.expanduser('~'), '.insightface', 'models', 'sface'),
+)
+
+# Modelos desde los mirrors OFICIALES de OpenCV en HuggingFace (binarios
+# reales; el zoo de GitHub guarda los .onnx en Git LFS y el raw solo entrega
+# el puntero).
+YUNET_URL = (
+    'https://huggingface.co/opencv/face_detection_yunet/resolve/main/'
+    'face_detection_yunet_2023mar.onnx'
+)
+SFACE_URL = (
+    'https://huggingface.co/opencv/face_recognition_sface/resolve/main/'
+    'face_recognition_sface_2021dec.onnx'
+)
+YUNET_PATH = os.path.join(MODEL_DIR, 'face_detection_yunet_2023mar.onnx')
+SFACE_PATH = os.path.join(MODEL_DIR, 'face_recognition_sface_2021dec.onnx')
+
 UMBRAL_SIMILITUD = float(os.getenv('VISION_SIMILARITY_THRESHOLD', '0.5'))
 
 # Calidad mínima por muestra (0-100) para aceptarla en el registro.
@@ -40,7 +64,7 @@ CALIDAD_JPEG = int(os.getenv('VISION_FOTO_JPEG_Q', '80'))
 
 # Liveness: EAR bajo este valor = ojo cerrado (parpadeo).
 UMBRAL_EAR_PARPADEO = 0.21
-# Giro de cabeza: el ratio de yaw debe variar al menos esto entre frames.
+# Giro de cabeza: el yaw debe variar al menos esto entre frames.
 UMBRAL_YAW_CAMBIO = 0.25
 
 # Landmarks MediaPipe (ojos para EAR, mejillas/nariz para yaw).
@@ -52,28 +76,60 @@ MEJILLA_DER = 454
 
 
 class MotorNoDisponible(Exception):
-    """El pack InsightFace/MediaPipe no está instalado o no descargó."""
+    """Falta opencv-contrib (SFace) o no se pudieron descargar los modelos."""
+
+
+def _descargar(url, destino):
+    import urllib.request
+
+    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    tmp = destino + '.tmp'
+    urllib.request.urlretrieve(url, tmp)
+    os.replace(tmp, destino)
 
 
 class FaceService:
     def __init__(self):
-        self._app = None
+        self._detector = None
+        self._reconocedor = None
         self._mesh = None
 
-    # -- Motores (carga perezosa: el import pesado solo al primer uso) --------
+    # -- Motores (carga perezosa) --------------------------------------------
 
-    def _insightface(self):
-        if self._app is None:
+    def _asegurar_modelos(self):
+        try:
+            if not os.path.isfile(YUNET_PATH):
+                _descargar(YUNET_URL, YUNET_PATH)
+            if not os.path.isfile(SFACE_PATH):
+                _descargar(SFACE_URL, SFACE_PATH)
+        except Exception as exc:
+            raise MotorNoDisponible(f'no se pudieron descargar los modelos: {exc}') from exc
+
+    def _detector_yunet(self):
+        if self._detector is None:
+            self._asegurar_modelos()
             try:
-                from insightface.app import FaceAnalysis
-            except ImportError as exc:
+                # Umbral 0.8 (no 0.9): con 0.9 se pierden rostros levemente
+                # rotados o con luz lateral; el filtro fino lo hace calidad().
+                self._detector = cv2.FaceDetectorYN_create(
+                    YUNET_PATH, '', (320, 320), 0.8, 0.3, 5000
+                )
+            except AttributeError as exc:
                 raise MotorNoDisponible(
-                    'InsightFace no instalado (pip install insightface onnxruntime)'
+                    'Falta opencv-contrib-python (FaceDetectorYN)'
                 ) from exc
-            app = FaceAnalysis(name=MODEL_PACK)
-            app.prepare(ctx_id=-1)  # CPU (-1); GPU si ctx_id >= 0
-            self._app = app
-        return self._app
+        return self._detector
+
+    def _reconocedor_sface(self):
+        if self._reconocedor is None:
+            self._asegurar_modelos()
+            try:
+                self._reconocedor = cv2.FaceRecognizerSF_create(SFACE_PATH, '')
+            except AttributeError as exc:
+                raise MotorNoDisponible(
+                    'Falta opencv-contrib-python (FaceRecognizerSF)'
+                ) from exc
+        return self._reconocedor
 
     def _facemesh(self):
         if self._mesh is None:
@@ -94,24 +150,47 @@ class FaceService:
     # -- Detección + embedding -------------------------------------------------
 
     def detectar(self, imagen):
-        """Devuelve las caras InsightFace (bbox, kps, embedding normado)."""
-        app = self._insightface()
+        """Devuelve lista de dicts {bbox(4), landmarks(5x2)} con YuNet."""
         if imagen is None:
             return []
-        return app.get(imagen)
+        h, w = imagen.shape[:2]
+        det = self._detector_yunet()
+        det.setInputSize((w, h))
+        _, caras = det.detect(imagen)
+        if caras is None:
+            return []
+        out = []
+        for c in caras:
+            x, y, wbox, hbox = [float(v) for v in c[0:4]]
+            lms = [[float(c[4 + i * 2]), float(c[4 + i * 2 + 1])] for i in range(5)]
+            out.append({'bbox': [x, y, wbox, hbox], 'landmarks': lms})
+        return out
 
     def embedding_de(self, imagen):
-        """Embedding 512-d L2-normalizado del rostro principal, o None."""
+        """Embedding SFace 128-d L2-normalizado del rostro principal, o None."""
         caras = self.detectar(imagen)
         if not caras:
             return None
-        mejor = max(caras, key=lambda c: (c.bbox[2] - c.bbox[0]) * (c.bbox[3] - c.bbox[1]))
-        emb = np.asarray(mejor.normed_embedding, dtype=np.float64)
-        return [round(float(x), 6) for x in emb]
+        mejor = max(caras, key=lambda c: c['bbox'][2] * c['bbox'][3])
+        return self._embedding_de_cara(imagen, mejor)
+
+    def _embedding_de_cara(self, imagen, cara):
+        """Embedding de una cara ya detectada (evita detectar dos veces)."""
+        rec = self._reconocedor_sface()
+        alineado = cv2.cvtColor(imagen, cv2.COLOR_BGR2RGB)
+        try:
+            feat = rec.feature(alineado, np.asarray(cara['landmarks'], dtype=np.float32))
+        except cv2.error:
+            return None
+        emb = np.asarray(feat, dtype=np.float64).flatten()
+        norma = np.linalg.norm(emb)
+        if norma == 0 or emb.shape[0] != 128:
+            return None
+        return [round(float(x), 6) for x in (emb / norma)]
 
     @staticmethod
     def similitud(a, b):
-        """Similitud coseno entre dos embeddings normalizados [0-1 aprox]."""
+        """Similitud coseno entre dos embeddings normalizados."""
         va = np.asarray(a, dtype=np.float64)
         vb = np.asarray(b, dtype=np.float64)
         denom = np.linalg.norm(va) * np.linalg.norm(vb)
@@ -120,9 +199,8 @@ class FaceService:
         return round(float(np.dot(va, vb) / denom), 4)
 
     def comparar(self, sonda, plantillas, umbral=UMBRAL_SIMILITUD):
-        """Compara la sonda contra {clave: embedding}; devuelve el mejor match
-        sobre el umbral o None. Las plantillas son p.ej. {paciente_id: [...]}.
-        """
+        """Compara la sonda contra {clave: embedding}; mejor match sobre el
+        umbral o None."""
         mejor_clave, mejor_sim = None, -1.0
         for clave, emb in (plantillas or {}).items():
             if not emb:
@@ -136,26 +214,22 @@ class FaceService:
 
     # -- Calidad de muestra ----------------------------------------------------
 
-    def calidad(self, imagen):
+    def calidad(self, imagen, caras=None):
         """Puntaje 0-100 de una muestra + motivos de rechazo.
-
-        Pondera: un solo rostro (excluyente), tamaño >= 100px, brillo medio
-        40-220, nitidez (varianza del Laplaciano >= 60).
+        Acepta caras pre-detectadas para no repetir la inferencia en CPU.
         """
         if imagen is None:
             return {'puntaje': 0.0, 'ok': False, 'motivo': 'imagen_vacia'}
-        try:
+        if caras is None:
             caras = self.detectar(imagen)
-        except MotorNoDisponible:
-            raise
         if len(caras) == 0:
             return {'puntaje': 0.0, 'ok': False, 'motivo': 'sin_rostro'}
         if len(caras) > 1:
             return {'puntaje': 0.0, 'ok': False, 'motivo': 'varios_rostros'}
-        x1, y1, x2, y2 = [int(v) for v in caras[0].bbox]
+        x, y, wbox, hbox = caras[0]['bbox']
         h_img, w_img = imagen.shape[:2]
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(w_img, x2), min(h_img, y2)
+        x1, y1 = max(0, int(x)), max(0, int(y))
+        x2, y2 = min(w_img, int(x + wbox)), min(h_img, int(y + hbox))
         recorte = imagen[y1:y2, x1:x2]
         if recorte.size == 0:
             return {'puntaje': 0.0, 'ok': False, 'motivo': 'recorte_vacio'}
@@ -183,16 +257,15 @@ class FaceService:
     @staticmethod
     def foto_liviana(imagen, bbox=None):
         """Recorta el rostro (margen 20%), limita al lado mayor y codifica
-        JPEG q80 en base64. Resultado típico: 30-60 KB (poco peso por diseño).
-        """
+        JPEG q80 en base64. Típico: 30-60 KB (poco peso por diseño)."""
         if imagen is None:
             return None
         h, w = imagen.shape[:2]
         if bbox is not None:
-            x1, y1, x2, y2 = [int(v) for v in bbox]
-            dx, dy = int((x2 - x1) * 0.2), int((y2 - y1) * 0.2)
-            x1, y1 = max(0, x1 - dx), max(0, y1 - dy)
-            x2, y2 = min(w, x2 + dx), min(h, y2 + dy)
+            x, y, wbox, hbox = [int(v) for v in bbox]
+            dx, dy = int(wbox * 0.2), int(hbox * 0.2)
+            x1, y1 = max(0, x - dx), max(0, y - dy)
+            x2, y2 = min(w, x + dx), min(h, y + dy)
             imagen = imagen[y1:y2, x1:x2]
             if imagen.size == 0:
                 return None
@@ -224,10 +297,7 @@ class FaceService:
         return (nx - izq) / max(der - nx, 1e-6)
 
     def liveness(self, frames):
-        """Verifica vida en una secuencia de 2+ frames (desafío del kiosco).
-
-        OK si se detecta PARPADEO (EAR cae bajo el umbral en algún frame y
-        vuelve a subir) o GIRO de cabeza (el yaw varía entre frames).
+        """Verifica vida en una secuencia de 2+ frames (parpadeo o giro).
         Con una sola imagen NO se puede probar vida: se reporta honestamente.
         """
         if not frames or len(frames) < 2:
@@ -262,10 +332,9 @@ class FaceService:
     # -- Registro multi-pose ----------------------------------------------------
 
     def registrar(self, paciente_id, muestras):
-        """Procesa [{imagen, pose}]: calidad + embedding 512-d + foto liviana
-        por muestra. Guarda el recorte liviano en dataset/paciente_{id}/
-        (auditoría local) y devuelve el promedio normalizado (plantilla).
-        """
+        """Procesa [{imagen, pose}]: calidad + embedding 128-d + foto liviana
+        por muestra. Guarda el recorte en dataset/paciente_{id}/ y devuelve el
+        promedio normalizado (plantilla del paciente)."""
         resultados = []
         embeddings = []
         directorio = os.path.join(DATASET_DIR, f'paciente_{paciente_id}')
@@ -287,10 +356,10 @@ class FaceService:
                 })
                 continue
             cara = caras[0]
-            q = self.calidad(imagen)
-            emb = [round(float(x), 6) for x in np.asarray(cara.normed_embedding, dtype=np.float64)]
-            foto = self.foto_liviana(imagen, cara.bbox)
-            if not q['ok'] or foto is None:
+            q = self.calidad(imagen, caras)
+            emb = self._embedding_de_cara(imagen, cara)
+            foto = self.foto_liviana(imagen, cara['bbox'])
+            if emb is None or not q['ok'] or foto is None:
                 resultados.append({'pose': pose, 'guardada': False, 'motivo': q.get('motivo') or 'foto_invalida', 'calidad': q['puntaje']})
                 continue
             ruta = os.path.join(directorio, f'{pose}.jpg')
