@@ -62,4 +62,8 @@ flutter build windows --release --dart-define=API_BASE_URL=https://consultorio-c
 
 - Windows 10/11 con cámara web (frontal) y pantalla táctil (recomendado).
 - Internet permanente (el reconocimiento consulta la nube).
+- **Microsoft Visual C++ Redistributable** (gratis, 2 min): lo piden casi
+  todas las apps de Windows. Descárgalo de
+  https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist
+  (elige `X64`). Sin esto, el `.exe` no abre.
 - Nada que instalar: ni Python, ni Flutter, ni programas. Todo viene en la carpeta.

@@ -1,8 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 /// Motivo por el que la cámara del kiosco no está disponible.
 enum KioskCameraError {
@@ -58,23 +57,21 @@ class KioskCameraService {
       _controller = null;
     }
 
-    if (!kIsWeb) {
-      final status = await Permission.camera.request();
-      if (!status.isGranted) {
-        throw const KioskCameraException(
-          KioskCameraError.denied,
-          'Acceso a la cámara denegado. Habilítalo e intenta de nuevo.',
-        );
-      }
-    }
-
+    // NOTA: no se usa permission_handler (su plugin nativo de Windows no
+    // compila con VS2026 y rompía el build del kiosco). En móvil el SO pide
+    // el permiso al inicializar la cámara; si se deniega, el CameraException
+    // de abajo lo reporta como KioskCameraError.denied.
     final List<CameraDescription> cameras;
     try {
       cameras = await availableCameras();
-    } on CameraException {
-      throw const KioskCameraException(
-        KioskCameraError.notSupported,
-        'No se pudo acceder a la cámara en este equipo.',
+    } on CameraException catch (e) {
+      final denied = e.code == 'CameraAccessDenied' ||
+          e.description?.toLowerCase().contains('permission') == true;
+      throw KioskCameraException(
+        denied ? KioskCameraError.denied : KioskCameraError.notSupported,
+        denied
+            ? 'Acceso a la cámara denegado. Habilítalo e intenta de nuevo.'
+            : 'No se pudo acceder a la cámara en este equipo.',
       );
     }
 
