@@ -39,68 +39,81 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
 
   Future<void> _takePhoto() async {
     setState(() => _busy = true);
+    final service = KioskCameraService();
     try {
-      final service = KioskCameraService();
-      var cameraOk = false;
-      try {
-        await service.initialize();
-        cameraOk = true;
-      } catch (_) {
-        // Cualquier fallo de cámara (permiso, sin cámara, navegador)
-        // cae al selector de archivo.
-        cameraOk = false;
-      }
-      if (!cameraOk) {
-        await service.dispose();
-        if (mounted) await _pickFile();
-        return;
-      }
-      if (!mounted) {
-        await service.dispose();
-        return;
-      }
-      Uint8List? bytes;
-      try {
-        bytes = await showDialog<Uint8List>(
-          context: context,
-          builder: (ctx) => _CameraDialog(service: service),
-        );
-      } catch (_) {
-        bytes = null;
-      }
+      await service.initialize();
+    } catch (e) {
       await service.dispose();
       if (!mounted) return;
-      if (bytes != null) {
-        setState(() => _bytes = bytes);
-        widget.onChanged(bytes);
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      setState(() => _busy = false);
+      final msg = e is KioskCameraException
+          ? e.message
+          : 'No se pudo abrir la cámara en este equipo.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$msg Usa "Elegir archivo".')),
+      );
+      return;
     }
+    if (!mounted) {
+      await service.dispose();
+      return;
+    }
+    Uint8List? bytes;
+    try {
+      bytes = await showDialog<Uint8List>(
+        context: context,
+        builder: (ctx) => _CameraDialog(service: service),
+      );
+    } catch (_) {
+      bytes = null;
+    }
+    await service.dispose();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (bytes != null) {
+      setState(() => _bytes = bytes);
+      widget.onChanged(bytes);
+    }
+    // Si canceló el diálogo no se muestra nada (no es un error).
   }
 
   Future<void> _pickFile() async {
+    setState(() => _busy = true);
     try {
       final res = await FilePicker.platform.pickFiles(
         type: FileType.image,
+        allowMultiple: false,
         withData: true,
       );
       if (!mounted) return;
-      final bytes = res?.files.single.bytes;
-      if (bytes != null) {
-        setState(() {
-          _bytes = bytes;
-          _busy = false;
-        });
-        widget.onChanged(bytes);
-      } else {
+      final files = res?.files ?? [];
+      if (files.isEmpty) {
+        // El usuario canceló: no es error, no se avisa nada.
         setState(() => _busy = false);
+        return;
       }
-    } catch (_) {
+      final bytes = files.first.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'El archivo no trajo datos. Prueba con otra foto (JPG o PNG).',
+            ),
+          ),
+        );
+        return;
+      }
+      setState(() {
+        _bytes = bytes;
+        _busy = false;
+      });
+      widget.onChanged(bytes);
+    } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo leer el archivo de imagen')),
+        SnackBar(content: Text('No se pudo leer el archivo: $e')),
       );
     }
   }
@@ -150,11 +163,17 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 8,
                     children: [
                       FilledButton.icon(
                         onPressed: _busy ? null : _takePhoto,
                         icon: const Icon(Icons.photo_camera_outlined, size: 18),
                         label: Text(_bytes == null ? 'Tomar foto' : 'Repetir foto'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _busy ? null : _pickFile,
+                        icon: const Icon(Icons.upload_file_outlined, size: 18),
+                        label: const Text('Elegir archivo'),
                       ),
                       if (_bytes != null)
                         TextButton(
