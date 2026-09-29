@@ -96,6 +96,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         active: _active,
       ));
     }
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 

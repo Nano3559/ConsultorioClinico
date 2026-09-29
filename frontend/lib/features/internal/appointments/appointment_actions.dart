@@ -230,6 +230,7 @@ void _reschedule(BuildContext context, ClinicProvider clinic, Appointment a) {
             FilledButton(
               onPressed: () async {
                 final err = await clinic.rescheduleAppointment(a.id, newDate, newTime);
+                if (!context.mounted) return;
                 Navigator.pop(ctx);
                 if (err != null) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
