@@ -43,6 +43,10 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
     try {
       await service.initialize();
     } catch (e) {
+      // La cámara ya falló: no se puede reintentar desde aquí, así que en vez
+      // de solo avisar se cae directamente al selector de archivos. Antes
+      // únicamente se mostraba un aviso y el usuario tenía que pulsar otro
+      // botón, lo que en el kiosco Windows (sin cámara) era un callejón.
       await service.dispose();
       if (!mounted) return;
       setState(() => _busy = false);
@@ -50,8 +54,9 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
           ? e.message
           : 'No se pudo abrir la cámara en este equipo.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$msg Usa "Elegir archivo".')),
+        SnackBar(content: Text('$msg Abriendo el selector de archivos...')),
       );
+      await _pickFile();
       return;
     }
     if (!mounted) {
@@ -92,13 +97,20 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
         setState(() => _busy = false);
         return;
       }
-      final bytes = files.first.bytes;
+      // En web, file_picker lanza LateInitializationError cuando el
+      // <input type="file"> no entrega los bytes del archivo. Ocurre con
+      // imágenes grandes o cuando el navegador no da permiso de lectura.
+      // Antes se propagaba el error crudo al SnackBar; se traduce a un
+      // mensaje accionable.
+      final file = files.first;
+      final bytes = _leerBytes(file);
       if (bytes == null || bytes.isEmpty) {
         setState(() => _busy = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'El archivo no trajo datos. Prueba con otra foto (JPG o PNG).',
+              'No se pudo leer el archivo. Prueba con una foto más '
+              'pequeña (JPG o PNG de menos de 2 MB).',
             ),
           ),
         );
@@ -113,8 +125,28 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
       if (!mounted) return;
       setState(() => _busy = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo leer el archivo: $e')),
+        SnackBar(
+          content: Text(
+            'No se pudo leer el archivo (${e.runtimeType}). '
+            'Prueba con una foto más pequeña (JPG o PNG de menos de 2 MB).',
+          ),
+        ),
       );
+    }
+  }
+
+  /// Lee los bytes del archivo seleccionado.
+  ///
+  /// En web `file_picker` lanza `LateInitializationError` desde `bytes` cuando
+  /// el navegador no entrega el contenido del archivo. Se captura aquí para
+  /// devolver `null` y que el flujo de validación siga intacto.
+  Uint8List? _leerBytes(PlatformFile file) {
+    try {
+      return file.bytes;
+    } on Error {
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 
