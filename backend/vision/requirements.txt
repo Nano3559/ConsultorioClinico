@@ -1,8 +1,17 @@
 fastapi==0.104.1
 uvicorn==0.24.0
 opencv-python==4.8.1.78
-opencv-contrib-python==4.8.1.78
-numpy==1.26.2
+# 1.26.4 (no 1.26.2): onnxruntime 1.17.1 exige numpy>=1.26.4.
+numpy==1.26.4
 python-multipart==0.0.6
 supabase==2.0.0
 python-dotenv==1.0.0
+# Motor facial: detección SCRFD + embedding ArcFace 512-d (CPU con onnxruntime)
+insightface==0.7.3
+onnxruntime==1.17.1
+# Liveness estilo Binance: parpadeo + giro de cabeza (Face Mesh, CPU).
+# Pin EXACTO 0.10.21 (verificado):
+#  - 0.10.9 no trae wheel para Python 3.12.
+#  - 0.10.35+ y la línea 1.0 ELIMINARON mp.solutions (el código usa esa API).
+#  - 0.10.21 trae wheel para 3.11 y 3.12 e incluye solutions.
+mediapipe==0.10.21

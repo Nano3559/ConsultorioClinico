@@ -85,13 +85,14 @@ class ApiClient {
     String path, {
     Map<String, String>? query,
     String? token,
+    Map<String, String>? extraHeaders,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(
         queryParameters: query,
       );
       final res = await _client
-          .get(uri, headers: _headers(token: token))
+          .get(uri, headers: _headers(token: token, extra: extraHeaders))
           .timeout(ApiConfig.timeout);
       return _parse(res);
     } catch (e) {

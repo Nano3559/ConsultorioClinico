@@ -73,6 +73,19 @@ module.exports = {
     // Ruta del modelo de rostros entrenado (LBPH) usado por el módulo.
     faceModel: process.env.VISION_FACE_MODEL || '',
 
+    // Pack de modelos InsightFace usado por el microservicio de visión
+    // (detección SCRFD + embedding ArcFace 512-d). El kiosco descarga este
+    // mismo pack al sincronizar (ver manifest del kiosco).
+    modelPack: process.env.VISION_MODEL_PACK || 'buffalo_s',
+
+    // Versión lógica del pack de modelos. Si cambia, el kiosco detecta la
+    // diferencia en el manifest y actualiza sus modelos locales.
+    modelVersion: process.env.VISION_MODEL_VERSION || 'buffalo_s_v1',
+
+    // Umbral de similitud coseno [0-1] para considerar un rostro reconocido.
+    // Punto de partida 0.5 (calibrar con datos reales: subir = más estricto).
+    similarityThreshold: Number(process.env.VISION_SIMILARITY_THRESHOLD) || 0.5,
+
     // Umbral de confianza LBPH: por debajo se considera "rostro reconocido".
     confidenceThreshold: Number(process.env.VISION_CONFIDENCE_THRESHOLD) || 80,
 
@@ -116,5 +129,20 @@ module.exports = {
     // acepta el check-in sin exigir la verificación facial en nube (el kiosco
     // ya verificó el rostro localmente con OpenCV). Vacía = desactivado.
     apiKey: process.env.KIOSK_API_KEY || '',
+
+    // Cada cuántos minutos el kiosco comprueba el manifest de sincronización
+    // (plantillas + versión del modelo) contra la nube.
+    syncMinutos: Number(process.env.KIOSCO_SYNC_MINUTOS) || 15,
+
+    // Días de vigencia del registro facial. Si el rostro de un paciente se
+    // registró hace más días, la reserva online vuelve a pedirle foto y el
+    // kiosco sugiere re-registro. Los rasgos no cambian en 30 días salvo
+    // barba/lentes/peso (esos casos los cubre el re-registro por baja
+    // similitud); 90 días es el equilibrio recomendado.
+    reenrollDias: Number(process.env.KIOSCO_REENROLL_DIAS) || 90,
+
+    // Bucket privado de Supabase Storage donde viven los packs de fotos por
+    // persona: rostros/{cedula}_{nombre-slug}/pose_*.jpg (ver migración 013).
+    rostroBucket: process.env.KIOSCO_ROSTRO_BUCKET || 'rostros',
   },
 };
