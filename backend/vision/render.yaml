@@ -6,7 +6,10 @@ services:
     name: consultorio-vision
     runtime: docker
     rootDir: backend/vision
+    dockerfilePath: backend/vision/Dockerfile
+    dockerContext: backend/vision
     plan: free
+    region: ohio
     healthCheckPath: /health
     envVars:
       - key: SUPABASE_URL
