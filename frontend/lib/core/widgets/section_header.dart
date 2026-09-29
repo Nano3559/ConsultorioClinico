@@ -18,7 +18,6 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = light ? AppColors.primaryLight : AppColors.primary;
     final titleColor = light ? Colors.white : AppColors.dark;
     final subColor = light ? const Color(0xFF94A3B8) : AppColors.muted;
     return Column(

@@ -41,8 +41,8 @@ class _AppStatCardState extends State<AppStatCard> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
         transform: Matrix4.identity()
-          ..translate(0.0, _hover ? -4.0 : 0.0)
-          ..scale(_hover ? 1.015 : 1.0),
+          ..translateByDouble(0.0, _hover ? -4.0 : 0.0, 0.0, 1.0)
+          ..scaleByDouble(_hover ? 1.015 : 1.0, _hover ? 1.015 : 1.0, 1.0, 1.0),
         transformAlignment: Alignment.center,
         padding: EdgeInsets.all(p),
         decoration: BoxDecoration(
