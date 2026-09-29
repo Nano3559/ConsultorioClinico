@@ -8,17 +8,46 @@ description: Guía de despliegue de ConsultorioClinico: backend Express a Vercel
 Aplica cuando se despliegue o construya para producción.
 
 ## Backend → Vercel
+**Siempre desde la RAÍZ del repo.** El proyecto `consultorio-clinico` tiene
+Root Directory = `backend`, y el link de Vercel que manda es el de la raíz
+(`.vercel/project.json` → `consultorio-clinico`). Correr `vercel` desde
+`backend/` despliega al proyecto equivocado.
 ```bash
-cd backend
 vercel login
-vercel          # preview
-vercel --prod   # producción
+git pull origin main            # main debe estar actualizado (solo main es desplegable)
+vercel deploy --dry             # revisar framework + archivos antes de subir
+vercel --prod                   # producción
 ```
 - Routing (verificado en los configs, no tocar):
-  - Raíz `vercel.json`: rewrite de todo lo que **NO** empieza con `/api/` hacia `/api/index.js`.
-  - `backend/vercel.json`: build `@vercel/node` de `api/index.js` con todas las rutas hacia él.
-- Variables en Vercel: `JWT_SECRET`, `JWT_EXPIRE`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, (`SUPABASE_DB_URL` solo para migrar). Plantilla: `backend/.env.example`.
-- `CORS_ORIGINS` vacío = navegadores bloqueados (solo server-to-server).
+  - Con Root Directory = `backend` manda `backend/vercel.json`: build
+    `@vercel/node` de `backend/api/index.js` y todas las rutas hacia él.
+  - El `vercel.json` de la raíz solo aplica si Root Directory quedara vacío, y
+    ahí su rewrite apunta a `/api/index.js` (que existe en la raíz y delega a
+    `backend/src/app`). Con Root Directory vacío el build usa el
+    `package.json` de la raíz, no el de `backend/`.
+- Si aparece `med-core2/backend` en `vercel env ls` o `vercel ls`, estás en el
+  directorio equivocado: sal de `backend/` y relanza desde la raíz.
+- Variables en Vercel (solo Production): `NODE_ENV=production`, `JWT_SECRET`,
+  `JWT_EXPIRE`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `VISION_ENABLED`,
+  `KIOSCO_VERIFICATION_WINDOW_MIN` / `KIOSCO_VERIFY_RATE_MAX` /
+  `KIOSCO_CONFIRM_RATE_MAX`. Plantilla: `backend/.env.example`.
+  - **No** setear `PORT` (lo maneja Vercel).
+  - `CORS_ORIGINS` vacío = navegadores bloqueados (solo server-to-server).
+  - `VISION_ENABLED=false` mientras el microservicio Python no exista: el
+    kiosco deriva a recepción con 503 controlado en vez de 502.
+- Verificación post-deploy (esperados: 200 / 422 / 401 / 401 / 401):
+  ```bash
+  B=https://consultorio-clinico.vercel.app
+  curl -s -o /dev/null -w "%{http_code}\n" $B/api/health
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Content-Type: application/json" -d '{}' $B/api/kiosco/verificar-rostro
+  curl -s -o /dev/null -w "%{http_code}\n" $B/api/kiosco/intentos
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Content-Type: application/json" -d '{}' $B/api/vision/registrar-rostro/1
+  curl -s -o /dev/null -w "%{http_code}\n" $B/api/vision/rostro/1
+  ```
+  Un 500 en vez de 401/422 apunta a migraciones `011_kiosco_facial.sql` /
+  `012_kiosco_seguridad.sql` sin aplicar en producción.
+
 
 ## Frontend web → Firebase Hosting
 ```bash
