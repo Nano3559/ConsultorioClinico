@@ -118,17 +118,27 @@ class KioskService {
     return verificacion;
   }
 
+  /// Clave del kiosco Windows (reconocimiento local). Se define al compilar el
+  /// .exe con `--dart-define=KIOSK_API_KEY=...`; viaja como `x-kiosk-key`.
+  static const kioskApiKey = String.fromEnvironment('KIOSK_API_KEY');
+
   /// Confirma la cita del día del paciente (check-in) en el backend.
   ///
   /// Debe llamarse justo después de [verificarRostro] desde el mismo
-  /// dispositivo (misma IP) para que el backend acepte el check-in.
+  /// dispositivo (misma IP) para que el backend acepte el check-in. Si el
+  /// kiosco ya verificó el rostro localmente (Windows, offline), pasa
+  /// [localVerified]=true y se envía la clave del kiosco en su lugar.
   Future<Map<String, dynamic>> confirmarCita({
     required int pacienteId,
     required int citaId,
+    bool localVerified = false,
   }) async {
     final res = await _api.postJson(
       '/kiosco/confirmar-cita',
       {'paciente_id': pacienteId, 'cita_id': citaId},
+      extraHeaders: localVerified && kioskApiKey.isNotEmpty
+          ? {'x-kiosk-key': kioskApiKey}
+          : null,
     );
     if (!res.isSuccess) {
       throw KioskServiceException(_mensaje(res.error));

@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -8,6 +12,7 @@ import '../../data/models/patient.dart';
 import '../../data/models/user.dart';
 import '../../state/auth_provider.dart';
 import '../../state/clinic_provider.dart';
+import 'face_photo_field.dart';
 
 /// Formulario público para solicitar una cita (Ejercicio 3).
 class RequestAppointmentPage extends StatefulWidget {
@@ -31,6 +36,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   late final TextEditingController _reason = TextEditingController();
 
   DateTime? _birthDate;
+  Uint8List? _faceBytes;
   DateTime _date = DateTime.now().add(const Duration(days: 1));
   String? _specialtyId;
   String? _doctorId;
@@ -161,6 +167,10 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                       const SizedBox(width: 12),
                       Expanded(child: _field(_email, 'Correo', AppValidators.email)),
                     ],
+                  ),
+                  const SizedBox(height: 20),
+                  FacePhotoField(
+                    onChanged: (b) => setState(() => _faceBytes = b),
                   ),
                   const SizedBox(height: 28),
                   const Text('Datos de la cita', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
@@ -367,8 +377,35 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   String _doctorName(ClinicProvider clinic) =>
       _doctorId == null ? '' : clinic.doctorById(_doctorId!).displayName;
 
+  /// Comprime la foto del rostro (sin procesar) a base64 para guardarla en
+  /// Firestore. Funciona sin facturación (sin Storage).
+  String? _faceBase64() {
+    final bytes = _faceBytes;
+    if (bytes == null) return null;
+    try {
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return null;
+      img.Image resized = decoded.width > 480
+          ? img.copyResize(decoded, width: 480)
+          : decoded;
+      List<int> jpg = img.encodeJpg(resized, quality: 70);
+      if (jpg.length > 700 * 1024) {
+        jpg = img.encodeJpg(img.copyResize(decoded, width: 320), quality: 60);
+      }
+      return base64Encode(jpg);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_faceBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registra tu foto del rostro para completar la solicitud')),
+      );
+      return;
+    }
     if (_doctorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona un médico')));
       return;
@@ -449,6 +486,15 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
+    }
+    // Foto del rostro (obligatoria): se guarda sin procesar; el kiosco la usa.
+    final face = _faceBase64();
+    if (face != null) {
+      await clinic.setPatientFace(patientId, face);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cita registrada, pero no se pudo guardar la foto. Avísalo en recepción.')),
+      );
     }
     if (staff) {
       // Personal interno: ya está dentro del sistema.

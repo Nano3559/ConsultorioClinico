@@ -8,6 +8,7 @@ import '../../../core/widgets/app_status_badge.dart';
 import '../../../data/models/user.dart';
 import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
+import 'patient_face_register_page.dart';
 import 'patient_form_page.dart';
 import '../clinical/consult_form_page.dart';
 
@@ -24,6 +25,11 @@ class PatientDetailPage extends StatelessWidget {
     final patient = clinic.patientById(patientId);
     final isMedico = auth.currentUser?.role == UserRole.medico;
     final puedeRegistrar = isMedico || auth.currentUser?.role == UserRole.admin;
+    // El endpoint /api/vision/registrar-rostro exige admin o recepcion, asi que
+    // el botón se limita a esos roles para no ofrecer una acción que el backend
+    // va a rechazar con 403.
+    final role = auth.currentUser?.role;
+    final puedeRegistrarRostro = role == UserRole.admin || role == UserRole.recepcion;
     final authorized = !isMedico || clinic.patients.any((p) => p.id == patientId);
     if (!authorized) {
       return Scaffold(
@@ -48,6 +54,19 @@ class PatientDetailPage extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => PatientFormPage(patient: patient)),
               ),
             ),
+            if (puedeRegistrarRostro)
+              IconButton(
+                tooltip: 'Registrar rostro (kiosco)',
+                icon: const Icon(Icons.face_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => PatientFaceRegisterPage(
+                      patientId: int.tryParse(patientId) ?? 0,
+                      patientName: patient.fullName,
+                    ),
+                  ),
+                ),
+              ),
             if (puedeRegistrar)
               IconButton(
                 tooltip: 'Nueva consulta',

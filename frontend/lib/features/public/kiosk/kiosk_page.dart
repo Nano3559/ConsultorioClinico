@@ -78,10 +78,16 @@ class _KioskPageState extends State<KioskPage> {
   }
 
   /// Reinicia el kiosco para recibir al siguiente paciente.
-  void _reiniciar() {
+  ///
+  /// Se hace `await` del `dispose()`: si no, la cámara anterior sigue
+  /// liberando el dispositivo mientras la nueva intenta inicializarse, y en
+  /// móvil eso produce `CameraException: Camera has been disposed` o deja la
+  /// pantalla en negro de forma intermitente entre pacientes.
+  Future<void> _reiniciar() async {
     _stopCountdown();
-    _camera.dispose();
-    _initCamera();
+    await _camera.dispose();
+    if (!mounted) return;
+    await _initCamera();
   }
 
   void _startCountdown() {
@@ -209,9 +215,10 @@ class _KioskPageState extends State<KioskPage> {
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              _reiniciar();
+              if (!mounted) return;
+              await _reiniciar();
             },
             child: const Text('Entendido'),
           ),
