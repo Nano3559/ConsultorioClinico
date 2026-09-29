@@ -6,8 +6,10 @@ services:
     name: consultorio-vision
     runtime: docker
     rootDir: backend/vision
-    dockerfilePath: backend/vision/Dockerfile
-    dockerContext: backend/vision
+    # OJO: con rootDir, estas rutas se resuelven RELATIVAS al rootDir
+    # (no a la raíz del repo): backend/vision/backend/vision/... no existe.
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
     region: ohio
     healthCheckPath: /health
