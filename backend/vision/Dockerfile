@@ -2,12 +2,15 @@
 # Python 3.11 OBLIGATORIO: insightface 0.7.3 no trae wheel para 3.12.
 FROM python:3.11-slim
 
-# Dependencias de sistema para OpenCV/MediaPipe (sin esto, import cv2 falla).
+# Dependencias de sistema para OpenCV/MediaPipe (sin esto, import cv2 falla)
+# y para COMPILAR insightface desde fuente (no trae wheel Linux): g++ es
+# obligatorio, el resto acelera/asegura el build de sus extensiones Cython.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
