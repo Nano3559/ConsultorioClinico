@@ -48,6 +48,7 @@ const registrarRostro = async (req, res) => {
         paciente_id: pacienteId,
         imagenes_guardadas: resultado.guardadas,
         por_pose: resultado.porPose,
+        rechazadas: resultado.rechazadas,
         carpeta: resultado.carpeta,
         rostro_registrado: resultado.rostro_registrado,
       },

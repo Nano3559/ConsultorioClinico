@@ -102,19 +102,31 @@ class PackRegistrado {
     required this.pacienteId,
     required this.guardadas,
     required this.registrado,
+    this.rechazadas = const {},
   });
 
   factory PackRegistrado.fromData(Map<String, dynamic> data) {
+    final rechazadas = <String, String>{};
+    final rawR = data['rechazadas'];
+    if (rawR is Map) {
+      rawR.forEach((k, v) {
+        rechazadas[k.toString()] = v.toString();
+      });
+    }
     return PackRegistrado(
       pacienteId: (data['paciente_id'] as num?)?.toInt() ?? 0,
       guardadas: (data['guardadas'] as num?)?.toInt() ?? 0,
       registrado: data['rostro_registrado'] == true,
+      rechazadas: rechazadas,
     );
   }
 
   final int pacienteId;
   final int guardadas;
   final bool registrado;
+
+  /// Poses rechazadas con su motivo.
+  final Map<String, String> rechazadas;
 }
 
 class RostroPackException implements Exception {

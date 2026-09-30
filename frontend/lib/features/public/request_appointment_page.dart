@@ -633,7 +633,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         muestras.add({'imagen': b64, 'pose': m.pose});
       }
       if (muestras.isEmpty) return;
-      await _packService.ingestarPaquete(
+      final pack = await _packService.ingestarPaquete(
         cedula: _ci.text.trim(),
         nombre: _name.text.trim(),
         apellido: _lastName.text.trim(),
@@ -643,6 +643,21 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
             '${_birthDate!.year.toString().padLeft(4, '0')}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
         muestras: muestras,
       );
+      // Si alguna pose fue rechazada (mala luz, rostro pequeño, no coincide),
+      // se avisa para repetirla en recepción en la próxima visita.
+      if (!mounted) return;
+      if (pack.rechazadas.isNotEmpty) {
+        final cuales = pack.rechazadas.keys.join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              pack.registrado
+                  ? 'Cita lista. Repite estas fotos en recepción: $cuales.'
+                  : 'Las fotos no alcanzaron calidad ($cuales). Pide registro facial en recepción.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
       // Se ignora: la cita ya quedó registrada; recepción completa el rostro.
     }

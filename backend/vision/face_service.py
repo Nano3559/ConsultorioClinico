@@ -237,12 +237,19 @@ class FaceService:
         alto = y2 - y1
         brillo = float(np.mean(gris))
         nitidez = float(cv2.Laplacian(gris, cv2.CV_64F).var())
+        # Tamaño RELATIVO al frame: un rostro real en selfie ocupa una
+        # fracción importante; un falso positivo pequeño (esquina, objeto)
+        # debe rechazarse aunque la foto sea nítida.
+        alto_relativo = alto / max(h_img, 1)
 
         puntaje = 100.0
         motivo = None
         if alto < 100:
             puntaje -= 45.0
             motivo = 'rostro_muy_lejos'
+        if alto_relativo < 0.20:
+            puntaje -= 40.0
+            motivo = motivo or 'rostro_muy_pequeno'
         if brillo < 40 or brillo > 220:
             puntaje -= 30.0
             motivo = motivo or 'mala_iluminacion'
@@ -336,7 +343,6 @@ class FaceService:
         por muestra. Guarda el recorte en dataset/paciente_{id}/ y devuelve el
         promedio normalizado (plantilla del paciente)."""
         resultados = []
-        embeddings = []
         directorio = os.path.join(DATASET_DIR, f'paciente_{paciente_id}')
         os.makedirs(directorio, exist_ok=True)
         for m in muestras or []:
@@ -365,13 +371,33 @@ class FaceService:
             ruta = os.path.join(directorio, f'{pose}.jpg')
             with open(ruta, 'wb') as fh:
                 fh.write(base64.b64decode(foto))
-            embeddings.append(np.asarray(emb, dtype=np.float64))
             resultados.append({
                 'pose': pose, 'guardada': True, 'calidad': q['puntaje'],
                 'foto': foto, 'embedding': emb,
             })
         plantilla = None
-        if embeddings:
+        # Consistencia: todas las muestras deben ser la MISMA persona. Con 3+
+        # muestras se expulsa a la que no se parezca al resto (foto ajena,
+        # falso positivo, cara tapada). Umbral 0.35: muy por encima del azar
+        # (~0.0) y por debajo del umbral de reconocimiento (0.5).
+        validas = [r for r in resultados if r.get('guardada')]
+        if len(validas) >= 3:
+            for r in validas:
+                otras = [o['embedding'] for o in validas if o is not r]
+                mejor = max((self.similitud(r['embedding'], o) for o in otras), default=0.0)
+                if mejor < 0.35:
+                    r['guardada'] = False
+                    r['motivo'] = 'no_coincide'
+                    r.pop('foto', None)
+                    r.pop('embedding', None)
+        validas = [r for r in resultados if r.get('guardada')]
+        # Plantilla válida solo con frontal + al menos 3 poses: con menos no
+        # hay diversidad suficiente y una sola foto nunca registra.
+        tiene_frontal = any(r.get('pose') == 'frontal' for r in validas)
+        if validas and tiene_frontal and len(validas) >= 3:
+            embeddings = [
+                np.asarray(r['embedding'], dtype=np.float64) for r in validas
+            ]
             promedio = np.mean(np.stack(embeddings), axis=0)
             norma = np.linalg.norm(promedio)
             if norma > 0:

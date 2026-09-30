@@ -174,14 +174,18 @@ class _PatientFaceRegisterPageState extends State<PatientFaceRegisterPage> {
         token: token,
       );
       if (!mounted) return;
+      final rechazadas = resultado.rechazadas;
+      final detalleRechazo = rechazadas.isEmpty
+          ? ''
+          : ' Repetir poses: ${rechazadas.entries.map((e) => '${e.key} (${e.value})').join(', ')}.';
       setState(() {
         _enviando = false;
         _ok = resultado.registrado;
         _mensaje = resultado.registrado
             ? 'Rostro registrado: ${resultado.imagenesGuardadas} muestras '
-                'multi-pose guardadas en la nube.'
+                'multi-pose guardadas en la nube.$detalleRechazo'
             : 'Las muestras se recibieron, pero la calidad no alcanzó para '
-                'generar la plantilla. Repita las poses con mejor luz.';
+                'generar la plantilla. Repita las poses con mejor luz.$detalleRechazo';
       });
       await _consultarEstado();
     } on VisionException catch (e) {

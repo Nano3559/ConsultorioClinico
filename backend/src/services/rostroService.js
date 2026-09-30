@@ -185,6 +185,9 @@ const procesarPaquete = async (supabase, paciente, muestras) => {
   return {
     guardadas,
     porPose,
+    rechazadas: Object.fromEntries(
+      resultados.filter((r) => r && !r.guardada).map((r) => [r.pose || '?', r.motivo || 'rechazada'])
+    ),
     rostro_registrado: rostroRegistrado,
     carpeta: `${bucket}/${carpeta}/`,
   };

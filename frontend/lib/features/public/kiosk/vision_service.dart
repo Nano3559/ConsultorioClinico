@@ -40,6 +40,7 @@ class RostroRegistro {
     required this.imagenesGuardadas,
     required this.registrado,
     this.porPose = const {},
+    this.rechazadas = const {},
   });
 
   factory RostroRegistro.fromData(Map<String, dynamic> data) {
@@ -50,10 +51,18 @@ class RostroRegistro {
         if (v is num) porPose[k.toString()] = v.toDouble();
       });
     }
+    final rechazadas = <String, String>{};
+    final rawR = data['rechazadas'];
+    if (rawR is Map) {
+      rawR.forEach((k, v) {
+        rechazadas[k.toString()] = v.toString();
+      });
+    }
     return RostroRegistro(
       imagenesGuardadas: (data['imagenes_guardadas'] as num?)?.toInt() ?? 0,
       registrado: data['rostro_registrado'] == true,
       porPose: porPose,
+      rechazadas: rechazadas,
     );
   }
 
@@ -62,6 +71,9 @@ class RostroRegistro {
 
   /// Calidad por pose devuelta por el servidor (0-100).
   final Map<String, double> porPose;
+
+  /// Poses rechazadas con su motivo (repetir esas fotos).
+  final Map<String, String> rechazadas;
 }
 
 class VisionService {
@@ -69,7 +81,7 @@ class VisionService {
 
   final ApiClient _api;
 
-  /// Registra el pack multi-pose del paciente (InsightFace).
+  /// Registra el pack multi-pose del paciente (YuNet+SFace).
   ///
   /// [muestras] = [{imagen: base64 liviano, pose: frontal|izquierda|...}].
   /// Se envían en un solo lote (una llamada, un procesamiento).

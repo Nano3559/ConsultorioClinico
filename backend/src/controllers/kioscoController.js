@@ -477,6 +477,7 @@ const ingestarPaquete = async (req, res) => {
       paciente_id: paciente.id,
       guardadas: resultado.guardadas,
       por_pose: resultado.porPose,
+      rechazadas: resultado.rechazadas,
       rostro_registrado: resultado.rostro_registrado,
       rostro_vigente: true,
     }, 'Pack facial registrado');
