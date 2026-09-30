@@ -241,6 +241,11 @@ class FaceService:
         # fracción importante; un falso positivo pequeño (esquina, objeto)
         # debe rechazarse aunque la foto sea nítida.
         alto_relativo = alto / max(h_img, 1)
+        # Cobertura COMPLETA: el rostro no debe tocar los bordes del encuadre
+        # (mínimo 8% de margen por lado). Si sale cortado, la plantilla sale
+        # parcial y no sirve: se pide repetir centrando la cara en el óvalo.
+        margen_min = min(x1, y1, w_img - x2, h_img - y2)
+        margen_relativo = margen_min / max(min(h_img, w_img), 1)
 
         puntaje = 100.0
         motivo = None
@@ -250,6 +255,20 @@ class FaceService:
         if alto_relativo < 0.20:
             puntaje -= 40.0
             motivo = motivo or 'rostro_muy_pequeno'
+        if margen_relativo < 0.08:
+            puntaje -= 50.0
+            motivo = motivo or 'rostro_cortado'
+        # Cobertura FACIAL (no solo del recuadro): los 5 landmarks deben
+        # estar interiores con margen. En una cara cortada por el borde,
+        # YuNet igual encierra lo visible, pero los landmarks caen al filo
+        # o fuera -> se rechaza aunque el bbox parezca sano.
+        lms = caras[0].get('landmarks') or []
+        if len(lms) >= 5:
+            xs = [p[0] / max(w_img, 1) for p in lms[:5]]
+            ys = [p[1] / max(h_img, 1) for p in lms[:5]]
+            if min(xs) < 0.06 or max(xs) > 0.94 or min(ys) < 0.06 or max(ys) > 0.94:
+                puntaje -= 50.0
+                motivo = motivo or 'rostro_cortado'
         if brillo < 40 or brillo > 220:
             puntaje -= 30.0
             motivo = motivo or 'mala_iluminacion'
