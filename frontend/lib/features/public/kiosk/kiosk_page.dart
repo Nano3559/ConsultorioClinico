@@ -569,6 +569,15 @@ class _KioskPageState extends State<KioskPage> {
           if (_initializing) _loadingLayer(),
           if (_stage == _KioskStage.verifying) _verifyingLayer(),
           Positioned(top: 12, left: 12, right: 12, child: _statusChip()),
+          // Cambiar de cámara (frontal/trasera): si sale otra cosa que tu
+          // rostro (techo, pared), probablemente está activa la cámara
+          // equivocada. Requiere reiniciar la vista previa.
+          if (_photo == null && ready && !_extraBusy)
+            Positioned(
+              top: 56,
+              right: 12,
+              child: _botonCamara(),
+            ),
           if (_photo == null && ready && !_extraBusy)
             Positioned(
               bottom: 14,
@@ -586,6 +595,34 @@ class _KioskPageState extends State<KioskPage> {
               child: Center(child: _botonCapturaOverlap()),
             ),
         ],
+      ),
+    );
+  }
+
+  /// Botón para alternar frontal/trasera sobre el visor.
+  Widget _botonCamara() {
+    return GestureDetector(
+      onTap: () async {
+        try {
+          await _camera.switchCamera();
+          if (!mounted) return;
+          setState(() {});
+          _startCountdown();
+        } on KioskCameraException catch (e) {
+          if (!mounted) return;
+          setState(() => _error = e);
+        }
+      },
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.55),
+          border: Border.all(color: Colors.white70),
+        ),
+        child: const Icon(Icons.cameraswitch_outlined,
+            size: 22, color: Colors.white),
       ),
     );
   }
@@ -626,11 +663,19 @@ class _KioskPageState extends State<KioskPage> {
       return Image.memory(_photo!.bytes, fit: BoxFit.cover);
     }
     if (ready) {
+      final controller = _camera.controller;
+      // Aspecto REAL del sensor (sin recorte): lo que ves es lo que se
+      // captura. Antes el contenedor forzaba su propio aspecto y el preview
+      // recortaba los bordes (parecía "zoom" y cortaba el rostro).
       return Container(
         color: const Color(0xFF0B3B37),
-        child: _camera.controller == null
+        alignment: Alignment.center,
+        child: controller == null
             ? const SizedBox.shrink()
-            : CameraPreview(_camera.controller!),
+            : AspectRatio(
+                aspectRatio: controller.value.aspectRatio,
+                child: CameraPreview(controller),
+              ),
       );
     }
     // Sin cámara todavía o con error: fondo de marca.

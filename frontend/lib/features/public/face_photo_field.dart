@@ -309,8 +309,13 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
         const SizedBox(height: 10),
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
+          // Aspecto real del sensor (sin recorte): lo que ves es lo que se
+          // captura. Un aspecto fijo cortaba los bordes del rostro.
           child: AspectRatio(
-            aspectRatio: 4 / 3,
+            aspectRatio:
+                controller == null || !_camera.isInitialized
+                    ? 4 / 3
+                    : controller.value.aspectRatio,
             child: controller == null || !_camera.isInitialized
                 ? const ColoredBox(
                     color: AppColors.background,
