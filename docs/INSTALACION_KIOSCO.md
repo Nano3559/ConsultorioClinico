@@ -40,14 +40,18 @@ flutter build windows --release --dart-define=API_BASE_URL=https://consultorio-c
 
 ## PARTE B — Persona NO técnica (en cada PC del kiosco)
 
-1. Copia la carpeta del kiosco donde quieras (ej. `Documentos\Kiosco`).
-2. Haz **doble clic** en **`Iniciar-Kiosco.bat`**.
-3. Te pregunta dos cosas (responde S o N):
-   - *¿Crear acceso directo en el escritorio?* → **S** (así queda el ícono).
-   - *¿Abrir el kiosco solo al encender la PC?* → **S** (recomendado: la PC
-     del kiosco amanece sola en la pantalla del consultorio).
-4. Se abre la app en pantalla completa. Toca el botón **Kiosco**.
-5. Listo. Para salir: `F11` y cerrar la ventana.
+Opción 1 — Instalador (recomendada):
+1. Copia **`Setup_KioscoConsultorio.exe`** a la PC (pendrive, Drive, WhatsApp: pesa ~15 MB).
+2. Doble clic → **Siguiente, Siguiente, Instalar**. No pide permisos de
+   administrador (se instala en tu carpeta de usuario).
+3. Marca lo que quieras: acceso directo en escritorio y/o abrir solo al
+   encender la PC (recomendado).
+4. Al terminar marca **"Abrir el kiosco ahora"** → se abre directo en la
+   pantalla del auto-check-in. Listo.
+5. Para desinstalar: Panel de control → Programas (deja acceso limpio).
+
+Opción 2 — Carpeta portable: copia toda la carpeta `kiosco-dist` y doble
+clic a `Iniciar-Kiosco.bat` (misma app, sin instalar).
 
 ### Si algo sale mal
 | Qué ves | Qué hacer |
