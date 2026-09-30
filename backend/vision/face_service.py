@@ -281,20 +281,17 @@ class FaceService:
     # -- Foto liviana ----------------------------------------------------------
 
     @staticmethod
-    def foto_liviana(imagen, bbox=None):
-        """Recorta el rostro (margen 20%), limita al lado mayor y codifica
-        JPEG q80 en base64. Típico: 30-60 KB (poco peso por diseño)."""
+    def foto_liviana(imagen):
+        """Codifica la foto COMPLETA (sin recortes) a JPEG liviano en base64.
+
+        Decisión de diseño: lo que se guarda en Storage es EXACTAMENTE lo que
+        capturó la cámara (limitado a 640px q80, ~30-80 KB). El recorte por
+        bbox se eliminó: si el detector se equivoca de zona, el recorte
+        guardaba fragmentos irreconocibles y nadie podía auditar la captura
+        real. El embedding se sigue calculando con landmarks (sin cambios).
+        """
         if imagen is None:
             return None
-        h, w = imagen.shape[:2]
-        if bbox is not None:
-            x, y, wbox, hbox = [int(v) for v in bbox]
-            dx, dy = int(wbox * 0.2), int(hbox * 0.2)
-            x1, y1 = max(0, x - dx), max(0, y - dy)
-            x2, y2 = min(w, x + dx), min(h, y + dy)
-            imagen = imagen[y1:y2, x1:x2]
-            if imagen.size == 0:
-                return None
         h, w = imagen.shape[:2]
         mayor = max(h, w)
         if mayor > LADO_MAX_FOTO:
@@ -383,7 +380,7 @@ class FaceService:
             cara = caras[0]
             q = self.calidad(imagen, caras)
             emb = self._embedding_de_cara(imagen, cara)
-            foto = self.foto_liviana(imagen, cara['bbox'])
+            foto = self.foto_liviana(imagen)
             if emb is None or not q['ok'] or foto is None:
                 resultados.append({'pose': pose, 'guardada': False, 'motivo': q.get('motivo') or 'foto_invalida', 'calidad': q['puntaje']})
                 continue
