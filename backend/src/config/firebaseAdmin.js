@@ -7,31 +7,30 @@
  * que mail-service). Si no está configurada, verifyIdToken lanza un error
  * claro y el llamador decide (verifyFlexible responde 401).
  *
- * El require() va dentro de la función para no romper el arranque cuando la
- * dependencia o la credencial no existen (tests, entornos sin Firebase).
+ * Usa la API MODULAR de firebase-admin v14+ (initializeApp/getApps de
+ * 'firebase-admin/app', getAuth de 'firebase-admin/auth'): la forma vieja
+ * admin.apps / admin.auth() ya no existe. Los require() van dentro de las
+ * funciones para no romper el arranque cuando la dependencia o la
+ * credencial no existen (tests, entornos sin Firebase).
  */
 
-let admin = null;
-let intentado = false;
-
-function getAdmin() {
-  if (admin) return admin;
+function leerCredencial() {
   const credencial = process.env.FIREBASE_SERVICE_ACCOUNT || '';
   if (!credencial) {
     throw new Error('FIREBASE_SERVICE_ACCOUNT no configurada');
   }
-  const sdk = require('firebase-admin');
-  let parsed;
   try {
-    parsed = JSON.parse(credencial);
+    return JSON.parse(credencial);
   } catch (_err) {
     throw new Error('FIREBASE_SERVICE_ACCOUNT no es un JSON válido');
   }
-  if (sdk.apps.length === 0) {
-    sdk.initializeApp({ credential: sdk.credential.cert(parsed) });
-  }
-  admin = sdk;
-  return admin;
+}
+
+function getAdmin() {
+  const { initializeApp, getApps, cert } = require('firebase-admin/app');
+  const existentes = getApps();
+  if (existentes.length > 0) return existentes[0];
+  return initializeApp({ credential: cert(leerCredencial()) });
 }
 
 /**
@@ -39,8 +38,8 @@ function getAdmin() {
  * payload decodificado ({ uid, email, ... }).
  */
 async function verifyIdToken(token) {
-  const sdk = getAdmin();
-  return sdk.auth().verifyIdToken(token);
+  const { getAuth } = require('firebase-admin/auth');
+  return getAuth(getAdmin()).verifyIdToken(token);
 }
 
 module.exports = { getAdmin, verifyIdToken };
