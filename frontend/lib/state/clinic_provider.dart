@@ -17,10 +17,11 @@ import '../services/api_client.dart';
 
 /// Proveedor principal de la clínica.
 ///
-/// Fuente de verdad: Cloud Firestore. Al iniciar sesión, [FirebaseAuth]
-/// notifica el cambio y [loadAll] recarga las listas aplicando el alcance
-/// según el rol (RBAC): un `medico` solo ve sus propias citas, consultas,
-/// pagos y horarios; `admin`/`recepcion` ven todo.
+/// Fuentes de verdad (migración progresiva a Supabase):
+/// catálogo público + pacientes vía API Express; citas, consultas y pagos
+/// siguen en Cloud Firestore hasta las Fases 4-5. Al iniciar sesión,
+/// [FirebaseAuth] notifica el cambio y [loadAll] recarga las listas
+/// aplicando el alcance según el rol (RBAC).
 class ClinicProvider extends ChangeNotifier {
   ClinicProvider() {
     FirebaseAuth.instance.authStateChanges().listen((_) => loadAll());
@@ -39,6 +40,10 @@ class ClinicProvider extends ChangeNotifier {
 
   String? _uid;
   UserRole? _role;
+
+  /// Firebase ID token para los endpoints protegidos de la API
+  /// (pacientes, y en Fases 4-5: citas, consultas, pagos).
+  String? _apiToken;
   String? _error;
   bool _loading = false;
   bool _catalogLoaded = false;
@@ -81,6 +86,11 @@ class ClinicProvider extends ChangeNotifier {
             .doc(_uid)
             .get();
         if (u.exists) _role = UserRole.fromApi(u.data()!['rol']?.toString() ?? '');
+      }
+      try {
+        _apiToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+      } catch (_) {
+        _apiToken = null;
       }
 
       await _loadEspecialidades();
@@ -207,17 +217,34 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
+  /// Lista de pacientes. Fuente: API Supabase (requiere sesión del staff).
+  /// Sin sesión no hay lista (el lookup por CI de la reserva usa el
+  /// endpoint público /pacientes/buscar). El rol paciente conserva la
+  /// lectura acotada en Firestore (su ficha, por uid).
   Future<void> _loadPacientes() async {
-    // Fase 2: solo catálogo público migra a API. La lista de pacientes
-    // para usuarios logueados sigue en Firestore (se migra en Fase 3).
-    final data = await _fs.getList(
-      'pacientes',
-      scopeField: _isPaciente ? 'uid' : null,
-      scopeValue: _isPaciente ? _uid : null,
-    );
+    if (_uid == null || _apiToken == null || _isPaciente) {
+      if (_isPaciente) {
+        final data = await _fs.getList(
+          'pacientes',
+          scopeField: 'uid',
+          scopeValue: _uid,
+        );
+        _patients
+          ..clear()
+          ..addAll(data.map(Patient.fromApi));
+      } else {
+        _patients.clear();
+      }
+      return;
+    }
+    final res = await _api.getJson('/pacientes', token: _apiToken);
+    if (!res.isSuccess) throw Exception(res.error);
+    final data = res.data?['data'];
     _patients
       ..clear()
-      ..addAll(data.map(Patient.fromApi));
+      ..addAll((data as List? ?? [])
+          .whereType<Map>()
+          .map((e) => Patient.fromApi(Map<String, dynamic>.from(e))));
   }
 
   // Un médico solo debe ver los pacientes que tienen citas o consultas a su nombre.
@@ -425,11 +452,29 @@ class ClinicProvider extends ChangeNotifier {
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  // ---- Mutaciones (persisten en Firestore) -------------------------------
+  // ---- Mutaciones (pacientes: API Supabase; resto: Firestore hasta Fases 4-5) --
+  /// Cuerpo para POST/PUT /pacientes: el backend usa `contacto_emergencia`
+  /// (`observaciones` es solo el campo equivalente en Firestore).
+  Map<String, dynamic> _patientApiBody(Patient p) {
+    final body = p.toApiJson();
+    if (p.observaciones.isNotEmpty) {
+      body['contacto_emergencia'] = p.observaciones;
+    }
+    return body;
+  }
+
   Future<Patient?> addPatient(Patient p) async {
     try {
-      final id = await _fs.add('pacientes', p.toApiJson());
-      final created = Patient.fromApi({...p.toApiJson(), 'id': id});
+      if (_apiToken == null) throw Exception('Sin sesión');
+      final res = await _api.postJson(
+        '/pacientes',
+        _patientApiBody(p),
+        token: _apiToken,
+      );
+      if (!res.isSuccess) throw Exception(res.error);
+      final created = Patient.fromApi(
+        Map<String, dynamic>.from(res.data?['data'] as Map),
+      );
       _patients.add(created);
       notifyListeners();
       return created;
@@ -442,9 +487,18 @@ class ClinicProvider extends ChangeNotifier {
 
   Future<String?> updatePatient(Patient p) async {
     try {
-      await _fs.update('pacientes', p.id, p.toApiJson());
+      if (_apiToken == null) throw Exception('Sin sesión');
+      final res = await _api.putJson(
+        '/pacientes/${p.id}',
+        _patientApiBody(p),
+        token: _apiToken,
+      );
+      if (!res.isSuccess) throw Exception(res.error);
+      final updated = Patient.fromApi(
+        Map<String, dynamic>.from(res.data?['data'] as Map),
+      );
       final i = _patients.indexWhere((x) => x.id == p.id);
-      if (i >= 0) _patients[i] = p;
+      if (i >= 0) _patients[i] = updated;
       notifyListeners();
       return null;
     } catch (e) {
@@ -454,8 +508,9 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
-  /// Guarda la foto del rostro en base64 (capturada al agendar, sin procesar;
-  /// el kiosco la descarga para el reconocimiento local).
+  /// Guarda la foto del rostro en base64 en Firestore (puente legacy para el
+  /// kiosco; Fase 3 no lo migra porque el flujo nuevo usa el pack facial
+  /// del backend y PUT /pacientes no acepta `foto_base64`).
   Future<String?> setPatientFace(String patientId, String base64) async {
     try {
       await _fs.update('pacientes', patientId, {'foto_base64': base64});

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { getAll, getById, buscarPorCedula, create, update, remove } = require('../controllers/pacienteController');
-const { verifyToken } = require('../middleware/auth');
+const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { checkRole } = require('../middleware/roles');
 const { rateLimit } = require('../middleware/rateLimiter');
 const { validate, sanitizarTexto, buscarCedulaValidation } = require('../middleware/validation');
@@ -29,7 +29,7 @@ const pacienteUpdateValidation = [
 // Rutas protegidas: los datos de pacientes son datos clínicos sensibles.
 // - Listar: admin, recepcion, medico
 // - Ver uno: además el propio paciente puede ver su ficha
-router.get('/', verifyToken, checkRole('admin', 'recepcion', 'medico'), getAll);
+router.get('/', verifyFlexible, checkRole('admin', 'recepcion', 'medico'), getAll);
 // Búsqueda pública por cédula (ANTES de /:id para que no la capture):
 // autocompletado de la reserva online. Rate limit 20/15min + respuesta
 // mínima (sin historial clínico) para mitigar enumeración.
@@ -44,11 +44,11 @@ router.get(
   validate,
   buscarPorCedula
 );
-router.get('/:id', verifyToken, checkRole('admin', 'recepcion', 'medico', 'paciente'), getById);
+router.get('/:id', verifyFlexible, checkRole('admin', 'recepcion', 'medico', 'paciente'), getById);
 
 // Escritura
-router.post('/', verifyToken, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
-router.put('/:id', verifyToken, checkRole('admin', 'recepcion'), pacienteUpdateValidation, validate, update);
-router.delete('/:id', verifyToken, checkRole('admin'), remove);
+router.post('/', verifyFlexible, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
+router.put('/:id', verifyFlexible, checkRole('admin', 'recepcion'), pacienteUpdateValidation, validate, update);
+router.delete('/:id', verifyFlexible, checkRole('admin'), remove);
 
 module.exports = router;
