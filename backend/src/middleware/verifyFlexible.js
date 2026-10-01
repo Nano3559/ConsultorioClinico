@@ -51,10 +51,43 @@ const verifyFlexible = async (req, res, next) => {
     if (usuario.activo === false) {
       return sendError(res, 'Usuario desactivado', 403);
     }
+    // Perfil asociado (igual que en el login JWT): permite /mis-citas y
+    // crear citas propias con Firebase ID token. Mejor esfuerzo: un perfil
+    // ausente no rompe la autenticación.
+    let perfilTipo = null;
+    let perfilId = null;
+    try {
+      if (usuario.rol === 'medico') {
+        const { data: perf } = await supabase
+          .from('medicos')
+          .select('id')
+          .eq('usuario_id', usuario.id)
+          .limit(1);
+        if (perf && perf[0]) {
+          perfilTipo = 'medico';
+          perfilId = perf[0].id;
+        }
+      }
+      if (usuario.rol === 'paciente') {
+        const { data: perf } = await supabase
+          .from('pacientes')
+          .select('id')
+          .eq('usuario_id', usuario.id)
+          .limit(1);
+        if (perf && perf[0]) {
+          perfilTipo = 'paciente';
+          perfilId = perf[0].id;
+        }
+      }
+    } catch (_e) {
+      /* perfil ausente no rompe la auth */
+    }
     req.user = {
       id: usuario.id,
       email: usuario.email,
       rol: usuario.rol,
+      perfilTipo,
+      perfilId,
       firebaseUid: decoded.uid,
       authTipo: 'firebase',
     };

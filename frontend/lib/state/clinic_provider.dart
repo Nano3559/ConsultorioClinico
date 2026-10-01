@@ -18,8 +18,8 @@ import '../services/api_client.dart';
 /// Proveedor principal de la clínica.
 ///
 /// Fuentes de verdad (migración progresiva a Supabase):
-/// catálogo público + pacientes vía API Express; citas, consultas y pagos
-/// siguen en Cloud Firestore hasta las Fases 4-5. Al iniciar sesión,
+/// catálogo público + pacientes + citas vía API Express; consultas y pagos
+/// siguen en Cloud Firestore hasta la Fase 5. Al iniciar sesión,
 /// [FirebaseAuth] notifica el cambio y [loadAll] recarga las listas
 /// aplicando el alcance según el rol (RBAC).
 class ClinicProvider extends ChangeNotifier {
@@ -256,7 +256,41 @@ class ClinicProvider extends ChangeNotifier {
     _patients.removeWhere((p) => !mine.contains(p.id));
   }
 
+  /// Token fresco para la API (usa el cacheado o lo pide a Firebase).
+  Future<String?> _token() async {
+    if (_apiToken != null) return _apiToken;
+    try {
+      _apiToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    } catch (_) {
+      _apiToken = null;
+    }
+    return _apiToken;
+  }
+
+  /// 401/403 = el backend no reconoce al usuario (aún no vinculado):
+  /// se conserva el camino legacy en Firestore en vez de fallar.
+  bool _esAuthError(ApiResult res) =>
+      res.statusCode == 401 || res.statusCode == 403;
+
+  /// Lista de citas desde la API. El staff ve todo; médico/paciente ven
+  /// lo suyo vía /mis-citas (el backend resuelve el perfil desde el token).
   Future<void> _loadCitas() async {
+    final token = await _token();
+    if (_uid != null && token != null) {
+      final path = (!_isMedico && !_isPaciente) ? '/citas' : '/citas/mis-citas';
+      final res = await _api.getJson(path, token: token);
+      if (res.isSuccess) {
+        final data = res.data?['data'];
+        final list = (data is Map ? data['citas'] : null) ?? data;
+        _appointments
+          ..clear()
+          ..addAll((list as List? ?? [])
+              .whereType<Map>()
+              .map((e) => Appointment.fromApi(Map<String, dynamic>.from(e))));
+        return;
+      }
+      if (!_esAuthError(res)) throw Exception(res.error);
+    }
     final data = await _fs.getList(
       'citas',
       scopeField: _isMedico
@@ -452,7 +486,8 @@ class ClinicProvider extends ChangeNotifier {
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  // ---- Mutaciones (pacientes: API Supabase; resto: Firestore hasta Fases 4-5) --
+  // ---- Mutaciones (pacientes y citas: API Supabase con fallback Firestore
+  // ante 401/403; resto: Firestore hasta Fase 5) --
   /// Cuerpo para POST/PUT /pacientes: el backend usa `contacto_emergencia`
   /// (`observaciones` es solo el campo equivalente en Firestore).
   Map<String, dynamic> _patientApiBody(Patient p) {
@@ -611,6 +646,37 @@ class ClinicProvider extends ChangeNotifier {
   }) async {
     final medicoId = _isMedico ? (_uid ?? doctorId) : doctorId;
     final fecha = _fmt(date);
+    // Vía API (el servidor valida horario, evita duplicados con la BD y
+    // fuerza el estado inicial). Sin sesión o sin vínculo en el backend
+    // (401/403) se conserva el camino legacy en Firestore.
+    final token = await _token();
+    if (token != null) {
+      final res = await _api.postJson(
+        '/citas',
+        {
+          'paciente_id': patientId,
+          'medico_id': medicoId,
+          'fecha': fecha,
+          'hora': time,
+          'motivo': reason,
+        },
+        token: token,
+      );
+      if (res.isSuccess) {
+        final cita = Appointment.fromApi(
+          Map<String, dynamic>.from(res.data?['data'] as Map),
+        );
+        _appointments.add(cita);
+        _occupied.add(_occKey(cita.doctorId, fecha, cita.time));
+        notifyListeners();
+        return null;
+      }
+      if (!_esAuthError(res)) {
+        _error = res.error.toString();
+        notifyListeners();
+        return _error;
+      }
+    }
     final body = {
       'paciente_id': patientId,
       'medico_id': medicoId,
@@ -646,6 +712,28 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> setAppointmentStatus(String id, AppointmentStatus status) async {
+    final token = await _token();
+    if (token != null) {
+      final res = await _api.patchJson(
+        '/citas/$id/estado',
+        {'estado': status.toApi()},
+        token: token,
+      );
+      if (res.isSuccess) {
+        final updated = Appointment.fromApi(
+          Map<String, dynamic>.from(res.data?['data'] as Map),
+        );
+        final i = _appointments.indexWhere((a) => a.id == id);
+        if (i >= 0) _appointments[i] = updated;
+        notifyListeners();
+        return null;
+      }
+      if (!_esAuthError(res)) {
+        _error = res.error.toString();
+        notifyListeners();
+        return _error;
+      }
+    }
     try {
       await _fs.update('citas', id, {'estado': status.toApi()});
       final i = _appointments.indexWhere((a) => a.id == id);
@@ -662,6 +750,28 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> cancelAppointment(String id) async {
+    final token = await _token();
+    if (token != null) {
+      final res = await _api.deleteJson('/citas/$id', token: token);
+      if (res.isSuccess) {
+        final updated = Appointment.fromApi(
+          Map<String, dynamic>.from(res.data?['data'] as Map),
+        );
+        final i = _appointments.indexWhere((a) => a.id == id);
+        if (i >= 0) {
+          _occupied.remove(
+              _occKey(updated.doctorId, _fmt(updated.date), updated.time));
+          _appointments[i] = updated;
+        }
+        notifyListeners();
+        return null;
+      }
+      if (!_esAuthError(res)) {
+        _error = res.error.toString();
+        notifyListeners();
+        return _error;
+      }
+    }
     final i = _appointments.indexWhere((a) => a.id == id);
     final old = i >= 0 ? _appointments[i] : null;
     try {
@@ -693,6 +803,35 @@ class ClinicProvider extends ChangeNotifier {
     final old = i >= 0 ? _appointments[i] : null;
     final medicoId = old?.doctorId ?? _uid ?? '';
     final nuevaFecha = _fmt(date);
+    // Vía API (valida disponibilidad; si la cita estaba confirmada vuelve
+    // a programada en el servidor, igual que abajo).
+    final token = await _token();
+    if (token != null) {
+      final res = await _api.putJson(
+        '/citas/$id',
+        {'fecha': nuevaFecha, 'hora': time},
+        token: token,
+      );
+      if (res.isSuccess) {
+        final updated = Appointment.fromApi(
+          Map<String, dynamic>.from(res.data?['data'] as Map),
+        );
+        if (old != null) {
+          _occupied.remove(
+              _occKey(old.doctorId, _fmt(old.date), old.time));
+        }
+        _occupied.add(
+            _occKey(updated.doctorId, _fmt(updated.date), updated.time));
+        if (i >= 0) _appointments[i] = updated;
+        notifyListeners();
+        return null;
+      }
+      if (!_esAuthError(res)) {
+        _error = res.error.toString();
+        notifyListeners();
+        return _error;
+      }
+    }
     try {
       final fs = FirebaseFirestore.instance;
       final batch = fs.batch();
