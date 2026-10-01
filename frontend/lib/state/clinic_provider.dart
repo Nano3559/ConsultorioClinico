@@ -21,7 +21,7 @@ import '../services/api_client.dart';
 /// vía API Express (Supabase). Puentes Firestore que quedan (Fase 6):
 /// doc de rol en `usuarios`, registro/login público de pacientes y
 /// lecturas de respaldo ante 401/403. Apagados: overlay `disponibilidad`
-/// y `foto_base64`. Admin de médicos sigue en Firestore (pendiente).
+/// y `foto_base64`.
 /// [FirebaseAuth] notifica el cambio y [loadAll] recarga las listas
 /// aplicando el alcance según el rol (RBAC).
 class ClinicProvider extends ChangeNotifier {
@@ -588,24 +588,85 @@ class ClinicProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Nombre largo del día para la API (horarios.dia_semana).
+  static String _diaLargo(String short) => const {
+        'Lun': 'Lunes',
+        'Mar': 'Martes',
+        'Mié': 'Miércoles',
+        'Jue': 'Jueves',
+        'Vie': 'Viernes',
+        'Sáb': 'Sábado',
+        'Dom': 'Domingo',
+      }[short] ?? short;
+
+  /// Suma 30 min a un 'HH:mm' (para cerrar el rango del último slot).
+  static String _mas30(String t) {
+    final p = t.split(':');
+    final total = (int.tryParse(p[0]) ?? 0) * 60 + (int.tryParse(p[1]) ?? 0) + 30;
+    return '${((total ~/ 60) % 24).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
+  }
+
+  /// Reemplaza los horarios del médico en el backend (borra los vigentes y
+  /// crea uno por día con atención). Devuelve mensaje de error o null.
+  Future<String?> _reemplazarHorariosApi(
+      String medicoId, DoctorSchedule schedule, String token) async {
+    final actual = await _api.getJson('/medicos/$medicoId/horarios', token: token);
+    if (!actual.isSuccess) return actual.error.toString();
+    for (final h in (actual.data?['data'] as List? ?? [])) {
+      if (h is! Map) continue;
+      final hid = (h['id'] ?? '').toString();
+      if (hid.isEmpty) continue;
+      final del = await _api.deleteJson('/horarios/$hid', token: token);
+      if (!del.isSuccess) return del.error.toString();
+    }
+    for (final entry in schedule.byDay.entries) {
+      final slots = entry.value;
+      if (slots.isEmpty) continue;
+      final ins = await _api.postJson(
+        '/medicos/$medicoId/horarios',
+        {
+          'dia_semana': _diaLargo(entry.key),
+          'hora_inicio': slots.first,
+          'hora_fin': _mas30(slots.last),
+        },
+        token: token,
+      );
+      if (!ins.isSuccess) return ins.error.toString();
+    }
+    return null;
+  }
+
+  /// Nombres separados para la API (el backend exige nombre y apellido).
+  static List<String> _nombreApellido(String full) {
+    final partes = full.trim().split(RegExp(r'\s+'));
+    if (partes.length < 2) return [full.trim(), full.trim()];
+    return [partes.first, partes.sublist(1).join(' ')];
+  }
+
   Future<Doctor?> addDoctor(Doctor d) async {
-    final data = {
-      'nombre': d.name.split(' ').first,
-      'apellido': d.name.split(' ').skip(1).join(' '),
-      'especialidad_id': d.specialtyId,
-      'activo': d.active,
-    };
     try {
-      final id = await _fs.add('medicos', data);
-      final created = Doctor(
-        id: id,
-        name: d.name,
-        specialtyId: d.specialtyId,
-        description: d.description,
-        yearsExperience: d.yearsExperience,
+      final token = await _token();
+      if (token == null) throw Exception('Sin sesión');
+      final na = _nombreApellido(d.name);
+      final res = await _api.postJson(
+        '/medicos',
+        {
+          ...d.toApiJson(especialidad: specialtyById(d.specialtyId).name),
+          'nombre': na[0],
+          'apellido': na[1],
+        },
+        token: token,
+      );
+      if (!res.isSuccess) throw Exception(res.error);
+      final row = Map<String, dynamic>.from(res.data?['data'] as Map);
+      final id = row['id'].toString();
+      final herr = await _reemplazarHorariosApi(id, d.schedule, token);
+      if (herr != null) throw Exception(herr);
+      final created = Doctor.fromApi(
+        row,
+        specialtyId:
+            (row['especialidad_id'] ?? d.specialtyId).toString(),
         schedule: d.schedule,
-        active: d.active,
-        title: d.title,
       );
       _doctors.add(created);
       notifyListeners();
@@ -618,25 +679,42 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> updateDoctor(Doctor d) async {
-    final data = {
-      'nombre': d.name.split(' ').first,
-      'apellido': d.name.split(' ').skip(1).join(' '),
-      'especialidad_id': d.specialtyId,
-      'activo': d.active,
-    };
     try {
-      await _fs.update('medicos', d.id, data);
+      final token = await _token();
+      if (token == null) throw Exception('Sin sesión');
+      final na = _nombreApellido(d.name);
+      final res = await _api.putJson(
+        '/medicos/${d.id}',
+        {
+          'nombre': na[0],
+          'apellido': na[1],
+          'especialidad': specialtyById(d.specialtyId).name,
+          'titulo': d.title,
+          'descripcion': d.description,
+          'anios_experiencia': d.yearsExperience,
+        },
+        token: token,
+      );
+      if (!res.isSuccess) throw Exception(res.error);
+      var row = Map<String, dynamic>.from(res.data?['data'] as Map);
+      // El formulario también edita el flag activo (PUT no lo toca):
+      // si difiere, se invierte una vez vía PATCH.
+      final quiereActivo = d.active;
+      final quedoActivo = row['activo'] ?? true;
+      if ((quedoActivo == true) != quiereActivo) {
+        final tog = await _api.patchJson('/medicos/${d.id}/estado', {}, token: token);
+        if (!tog.isSuccess) throw Exception(tog.error);
+        row = Map<String, dynamic>.from(tog.data?['data'] as Map);
+      }
+      final herr = await _reemplazarHorariosApi(d.id, d.schedule, token);
+      if (herr != null) throw Exception(herr);
       final i = _doctors.indexWhere((x) => x.id == d.id);
       if (i >= 0) {
-        _doctors[i] = Doctor(
-          id: d.id,
-          name: d.name,
-          specialtyId: d.specialtyId,
-          description: d.description,
-          yearsExperience: d.yearsExperience,
+        _doctors[i] = Doctor.fromApi(
+          row,
+          specialtyId:
+              (row['especialidad_id'] ?? d.specialtyId).toString(),
           schedule: d.schedule,
-          active: d.active,
-          title: d.title,
         );
       }
       notifyListeners();
@@ -650,11 +728,20 @@ class ClinicProvider extends ChangeNotifier {
 
   Future<String?> toggleDoctorActive(String id) async {
     try {
-      final target = doctorById(id);
-      await _fs.update('medicos', id, {'activo': !target.active});
+      final token = await _token();
+      if (token == null) throw Exception('Sin sesión');
+      final res =
+          await _api.patchJson('/medicos/$id/estado', {}, token: token);
+      if (!res.isSuccess) throw Exception(res.error);
+      final row = Map<String, dynamic>.from(res.data?['data'] as Map);
       final i = _doctors.indexWhere((x) => x.id == id);
       if (i >= 0) {
-        _doctors[i] = _doctors[i].copyWith(active: !_doctors[i].active);
+        final current = _doctors[i];
+        _doctors[i] = Doctor.fromApi(
+          row,
+          specialtyId: current.specialtyId,
+          schedule: current.schedule,
+        );
       }
       notifyListeners();
       return null;

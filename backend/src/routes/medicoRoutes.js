@@ -3,7 +3,8 @@ const router = express.Router();
 const { body } = require('express-validator');
 const { getAll, getById, create, update, toggleEstado, remove, getHorarios, createHorario } = require('../controllers/medicoController');
 const { getEspecialidadesByMedico } = require('../controllers/especialidadController');
-const { verifyToken, optionalAuth } = require('../middleware/auth');
+const { verifyFlexible } = require('../middleware/verifyFlexible');
+const { optionalAuth } = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
 const {
   validate,
@@ -23,14 +24,14 @@ const medicoValidation = [
 // Rutas públicas (lectura); optionalAuth permite exponer más campos al staff
 router.get('/', optionalAuth, getAll);
 router.get('/:id', optionalAuth, idParamValidation, validate, getById);
-router.get('/:id/horarios', verifyToken, idParamValidation, validate, getHorarios);
-router.post('/:id/horarios', verifyToken, checkRole('admin'), idParamValidation, validate, createHorario);
+router.get('/:id/horarios', verifyFlexible, idParamValidation, validate, getHorarios);
+router.post('/:id/horarios', verifyFlexible, checkRole('admin'), idParamValidation, validate, createHorario);
 router.get('/:medicoId/especialidades', medicoIdParamValidation, validate, getEspecialidadesByMedico);
 
 // Rutas protegidas (solo admin)
-router.post('/', verifyToken, checkRole('admin'), medicoValidation, validate, create);
-router.put('/:id', verifyToken, checkRole('admin'), idParamValidation, validate, update);
-router.patch('/:id/estado', verifyToken, checkRole('admin'), idParamValidation, validate, toggleEstado);
-router.delete('/:id', verifyToken, checkRole('admin'), idParamValidation, validate, remove);
+router.post('/', verifyFlexible, checkRole('admin'), medicoValidation, validate, create);
+router.put('/:id', verifyFlexible, checkRole('admin'), idParamValidation, validate, update);
+router.patch('/:id/estado', verifyFlexible, checkRole('admin'), idParamValidation, validate, toggleEstado);
+router.delete('/:id', verifyFlexible, checkRole('admin'), idParamValidation, validate, remove);
 
 module.exports = router;

@@ -8,7 +8,7 @@ const {
   update,
   remove,
 } = require('../controllers/horarioController');
-const { verifyToken } = require('../middleware/auth');
+const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { checkRole } = require('../middleware/roles');
 const {
   validate,
@@ -24,8 +24,8 @@ router.get('/disponibles', getDisponibles);
 router.get('/medico/:medicoId', medicoIdParamValidation, validate, getByMedico);
 
 // Rutas protegidas (solo admin)
-router.post('/', verifyToken, checkRole('admin'), horarioValidation, validate, create);
-router.put('/:id', verifyToken, checkRole('admin'), idParamValidation, horarioUpdateValidation, validate, update);
-router.delete('/:id', verifyToken, checkRole('admin'), idParamValidation, validate, remove);
+router.post('/', verifyFlexible, checkRole('admin'), horarioValidation, validate, create);
+router.put('/:id', verifyFlexible, checkRole('admin'), idParamValidation, horarioUpdateValidation, validate, update);
+router.delete('/:id', verifyFlexible, checkRole('admin'), idParamValidation, validate, remove);
 
 module.exports = router;
