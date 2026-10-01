@@ -18,8 +18,9 @@ import '../services/api_client.dart';
 /// Proveedor principal de la clínica.
 ///
 /// Fuentes de verdad (migración progresiva a Supabase):
-/// catálogo público + pacientes + citas vía API Express; consultas y pagos
-/// siguen en Cloud Firestore hasta la Fase 5. Al iniciar sesión,
+/// catálogo público + pacientes + citas + consultas + pagos vía API
+/// Express. En Firestore quedan solo puentes legacy (foto del rostro,
+/// registro de pacientes sin cuenta, doc de rol) hasta la Fase 6.
 /// [FirebaseAuth] notifica el cambio y [loadAll] recarga las listas
 /// aplicando el alcance según el rol (RBAC).
 class ClinicProvider extends ChangeNotifier {
@@ -304,7 +305,22 @@ class ClinicProvider extends ChangeNotifier {
       ..addAll(data.map(Appointment.fromApi));
   }
 
+  /// Historial clínico desde la API (el servidor acota al médico a lo suyo).
   Future<void> _loadConsultas() async {
+    final token = await _token();
+    if (_uid != null && token != null) {
+      final res = await _api.getJson('/consultas', token: token);
+      if (res.isSuccess) {
+        final data = res.data?['data'];
+        _consults
+          ..clear()
+          ..addAll((data as List? ?? [])
+              .whereType<Map>()
+              .map((e) => ConsultRecord.fromApi(Map<String, dynamic>.from(e))));
+        return;
+      }
+      if (!_esAuthError(res)) throw Exception(res.error);
+    }
     final data = await _fs.getList(
       'consultas',
       scopeField: _isMedico
@@ -318,7 +334,28 @@ class ClinicProvider extends ChangeNotifier {
       ..addAll(data.map(ConsultRecord.fromApi));
   }
 
+  /// Pagos desde la API. `pagos` no tiene columna de médico: se enriquece
+  /// el doctorId vía la cita vinculada (lo usa la pantalla de pagos).
   Future<void> _loadPagos() async {
+    final token = await _token();
+    if (_uid != null && token != null) {
+      final res = await _api.getJson('/pagos', token: token);
+      if (res.isSuccess) {
+        final data = res.data?['data'];
+        final medicoDeCita = {for (final a in _appointments) a.id: a.doctorId};
+        _payments
+          ..clear()
+          ..addAll((data as List? ?? []).whereType<Map>().map((e) {
+            final p = Payment.fromApi(Map<String, dynamic>.from(e));
+            final d = medicoDeCita[p.appointmentId];
+            return (d == null || d.isEmpty)
+                ? p
+                : p.copyWith(doctorId: d);
+          }));
+        return;
+      }
+      if (!_esAuthError(res)) throw Exception(res.error);
+    }
     final data = await _fs.getList(
       'pagos',
       scopeField: _isMedico
@@ -486,8 +523,8 @@ class ClinicProvider extends ChangeNotifier {
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  // ---- Mutaciones (pacientes y citas: API Supabase con fallback Firestore
-  // ante 401/403; resto: Firestore hasta Fase 5) --
+  // ---- Mutaciones (pacientes, citas, consultas y pagos: API Supabase con
+  // fallback Firestore ante 401/403; ver puentes legacy) --
   /// Cuerpo para POST/PUT /pacientes: el backend usa `contacto_emergencia`
   /// (`observaciones` es solo el campo equivalente en Firestore).
   Map<String, dynamic> _patientApiBody(Patient p) {
@@ -869,6 +906,23 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> addConsult(ConsultRecord c) async {
+    // Vía API (un médico archiva bajo su perfil en el servidor).
+    final token = await _token();
+    if (token != null) {
+      final res = await _api.postJson('/consultas', c.toApiJson(), token: token);
+      if (res.isSuccess) {
+        _consults.add(ConsultRecord.fromApi(
+          Map<String, dynamic>.from(res.data?['data'] as Map),
+        ));
+        notifyListeners();
+        return null;
+      }
+      if (!_esAuthError(res)) {
+        _error = res.error.toString();
+        notifyListeners();
+        return _error;
+      }
+    }
     try {
       final data = {...c.toApiJson()};
       if (_isMedico) data['medico_id'] = _uid;
@@ -884,6 +938,40 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> addPayment(Payment p) async {
+    // Vía API (el servidor fuerza estado pagado y fecha actual; `pagos`
+    // no tiene columna de médico: el doctorId se deriva de la cita).
+    final token = await _token();
+    if (token != null) {
+      final res = await _api.postJson(
+        '/pagos',
+        {
+          'paciente_id': p.patientId,
+          'cita_id': p.appointmentId.isEmpty ? null : p.appointmentId,
+          'monto': p.amount,
+          'metodo_pago': p.method.toApi(),
+        },
+        token: token,
+      );
+      if (res.isSuccess) {
+        var created = Payment.fromApi(
+          Map<String, dynamic>.from(res.data?['data'] as Map),
+        );
+        for (final a in _appointments) {
+          if (a.id == created.appointmentId && a.doctorId.isNotEmpty) {
+            created = created.copyWith(doctorId: a.doctorId);
+            break;
+          }
+        }
+        _payments.add(created);
+        notifyListeners();
+        return null;
+      }
+      if (!_esAuthError(res)) {
+        _error = res.error.toString();
+        notifyListeners();
+        return _error;
+      }
+    }
     final body = {
       'paciente_id': p.patientId,
       'cita_id': p.appointmentId,
@@ -906,6 +994,32 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<String?> setPaymentStatus(String id, PaymentStatus status) async {
+    final token = await _token();
+    if (token != null) {
+      final res = await _api.patchJson(
+        '/pagos/$id/estado',
+        {'estado': status.toApi()},
+        token: token,
+      );
+      if (res.isSuccess) {
+        final updated = Payment.fromApi(
+          Map<String, dynamic>.from(res.data?['data'] as Map),
+        );
+        final i = _payments.indexWhere((x) => x.id == id);
+        if (i >= 0) {
+          final d = _payments[i].doctorId;
+          _payments[i] =
+              (d.isEmpty) ? updated : updated.copyWith(doctorId: d);
+        }
+        notifyListeners();
+        return null;
+      }
+      if (!_esAuthError(res)) {
+        _error = res.error.toString();
+        notifyListeners();
+        return _error;
+      }
+    }
     try {
       await _fs.update('pagos', id, {'estado': status.toApi()});
       final i = _payments.indexWhere((x) => x.id == id);

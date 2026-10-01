@@ -16,6 +16,14 @@ const getAll = async (req, res) => {
     if (req.query.paciente_id) {
       query = query.eq('paciente_id', req.query.paciente_id);
     }
+    // Un médico solo lista sus propias consultas (paridad con las reglas
+    // de la app; admin/recepción ven todo).
+    if (req.user && req.user.rol === 'medico') {
+      if (!req.user.perfilId) {
+        return sendError(res, 'Perfil de médico no encontrado. Contacte al administrador', 403);
+      }
+      query = query.eq('medico_id', req.user.perfilId);
+    }
 
     const { data, error } = await query;
     if (error) throw error;
@@ -90,6 +98,19 @@ const create = async (req, res) => {
     const { cita_id, paciente_id, medico_id, motivo, diagnostico, tratamiento, notas_clinicas, signos_vitales, proximo_control } = req.body;
     const supabase = getSupabase();
 
+    // Un médico archiva siempre bajo su propio perfil (el cliente no
+    // conoce su ID numérico; el resto de roles debe enviar medico_id).
+    let medicoId = medico_id;
+    if (req.user && req.user.rol === 'medico') {
+      if (!req.user.perfilId) {
+        return sendError(res, 'Perfil de médico no encontrado. Contacte al administrador', 403);
+      }
+      medicoId = req.user.perfilId;
+    }
+    if (medicoId === undefined || medicoId === null || medicoId === '') {
+      return sendError(res, 'El ID del médico es obligatorio', 400);
+    }
+
     // Verificar que el paciente exista
     const { data: pacientes } = await supabase
       .from('pacientes')
@@ -104,7 +125,7 @@ const create = async (req, res) => {
     const { data: medicos } = await supabase
       .from('medicos')
       .select('id')
-      .eq('id', medico_id)
+      .eq('id', medicoId)
       .limit(1);
     if (!medicos || medicos.length === 0) {
       return sendError(res, 'Médico no encontrado', 404);
@@ -127,7 +148,7 @@ const create = async (req, res) => {
       .insert({
         cita_id: cita_id ? parseInt(cita_id) : null,
         paciente_id,
-        medico_id,
+        medico_id: medicoId,
         motivo: motivo || '',
         diagnostico,
         tratamiento,

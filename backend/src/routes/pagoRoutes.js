@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { getAll, create, getByPaciente, updateEstado } = require('../controllers/pagoController');
-const { verifyToken } = require('../middleware/auth');
+const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { checkRole } = require('../middleware/roles');
 const { validate } = require('../middleware/validation');
 const { METODOS_PAGO, ESTADOS_PAGO } = require('../utils/constants');
@@ -23,10 +23,10 @@ const pagoEstadoValidation = [
     .withMessage(`Estado inválido. Valores permitidos: ${Object.values(ESTADOS_PAGO).join(', ')}`),
 ];
 
-// Todas las rutas requieren autenticación
-router.use(verifyToken);
+// Todas las rutas requieren autenticación (JWT propio o Firebase ID token)
+router.use(verifyFlexible);
 
-router.get('/', checkRole('admin', 'recepcion'), getAll);
+router.get('/', checkRole('admin', 'recepcion', 'medico'), getAll);
 router.post('/', checkRole('admin', 'recepcion'), pagoValidation, validate, create);
 router.get('/paciente/:id', checkRole('admin', 'recepcion', 'medico'), getByPaciente);
 router.patch('/:id/estado', checkRole('admin', 'recepcion'), pagoEstadoValidation, validate, updateEstado);
