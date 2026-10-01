@@ -13,6 +13,7 @@ import '../data/mock/mock_data.dart';
 import '../core/constants/app_constants.dart';
 import '../core/widgets/app_status_badge.dart';
 import '../services/firestore_service.dart';
+import '../services/api_client.dart';
 
 /// Proveedor principal de la clínica.
 ///
@@ -27,6 +28,7 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   final FirestoreService _fs = FirestoreService();
+  final ApiClient _api = ApiClient();
 
   final List<Specialty> _specialties = [];
   final List<Doctor> _doctors = [];
@@ -106,7 +108,9 @@ class ClinicProvider extends ChangeNotifier {
   bool get _isPaciente => _role == UserRole.paciente && _uid != null;
 
   /// Carga el catálogo público (especialidades, horarios y médicos activos)
-  /// sin requerir sesión. No lee colecciones con datos de paciente.
+  /// sin requerir sesión. Fuente: API Express (Supabase).
+  /// No incluye pacientes: el endpoint exige auth y la reserva usa el
+  /// lookup por CI contra el backend.
   Future<void> loadPublicCatalog() async {
     if (_catalogLoaded) return;
     _catalogLoaded = true;
@@ -116,7 +120,6 @@ class ClinicProvider extends ChangeNotifier {
       await _loadEspecialidades();
       await _loadHorarios();
       await _loadMedicos();
-      await _loadPacientes();
     } catch (e) {
       _error = 'No se pudo cargar el catálogo. Revisa tu conexión.';
     } finally {
@@ -125,20 +128,26 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
-  /// Carga los turnos ocupados de un médico en una fecha (colección pública
-  /// `disponibilidad`). Es mejor-esfuerzo: si falla, la regla de Firestore
-  /// sigue impidiendo la doble reserva al intentar guardar.
+  /// Carga los turnos ocupados de un médico en una fecha (API Supabase).
+  /// Es mejor-esfuerzo: si falla, la regla de Firestore sigue impidiendo
+  /// la doble reserva al intentar guardar.
   Future<void> loadAvailability(String medicoId, DateTime date) async {
     try {
       final f = _fmt(date);
-      final snap = await FirebaseFirestore.instance
-          .collection('disponibilidad')
-          .where('medico_id', isEqualTo: medicoId)
-          .where('fecha', isEqualTo: f)
-          .get();
-      for (final d in snap.docs) {
-        final h = (d.data()['hora'] ?? '').toString();
-        if (h.isNotEmpty) _occupied.add(_occKey(medicoId, f, h));
+      final res = await _api.getJson(
+        '/horarios/disponibles',
+        query: {'medico_id': medicoId, 'fecha': f},
+      );
+      if (res.isSuccess) {
+        final data = res.data?['data'];
+        if (data is List) {
+          for (final d in data) {
+            if (d is Map) {
+              final h = (d['hora'] ?? '').toString();
+              if (h.isNotEmpty) _occupied.add(_occKey(medicoId, f, h));
+            }
+          }
+        }
       }
       notifyListeners();
     } catch (_) {
@@ -150,20 +159,23 @@ class ClinicProvider extends ChangeNotifier {
   bool _isOccupied(String m, String f, String h) => _occupied.contains(_occKey(m, f, h));
 
   Future<void> _loadEspecialidades() async {
-    final data = await _fs.getList('especialidades');
+    final res = await _api.getJson('/especialidades');
+    if (!res.isSuccess) throw Exception(res.error);
+    final data = res.data?['data'];
     _specialties
       ..clear()
-      ..addAll(data.map(Specialty.fromApi));
+      ..addAll((data as List? ?? [])
+          .whereType<Map>()
+          .map((e) => Specialty.fromApi(Map<String, dynamic>.from(e))));
   }
 
   Future<void> _loadHorarios() async {
-    final data = await _fs.getList(
-      'horarios',
-      scopeField: _isMedico ? 'medico_id' : null,
-      scopeValue: _isMedico ? _uid : null,
-    );
+    final res = await _api.getJson('/horarios');
+    if (!res.isSuccess) throw Exception(res.error);
+    final data = res.data?['data'];
     final byDoctor = <String, Map<String, List<String>>>{};
-    for (final h in data) {
+    for (final h in (data as List? ?? [])) {
+      if (h is! Map) continue;
       final med = (h['medico_id'] ?? '').toString();
       final dia = _shortDay((h['dia_semana'] ?? '').toString());
       final slots = _expandSlots(
@@ -179,19 +191,25 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   Future<void> _loadMedicos() async {
-    final data = await _fs.getList('medicos');
+    final res = await _api.getJson('/medicos');
+    if (!res.isSuccess) throw Exception(res.error);
+    final data = res.data?['data'];
     _doctors.clear();
-    for (final m in data) {
-      final sid = (m['especialidad_id'] ?? '').toString();
+    for (final m in (data as List? ?? [])) {
+      if (m is! Map) continue;
+      final mm = Map<String, dynamic>.from(m);
+      final sid = (mm['especialidad_id'] ?? '').toString();
       _doctors.add(Doctor.fromApi(
-        m,
+        mm,
         specialtyId: sid,
-        schedule: _schedules[m['id'].toString()] ?? const DoctorSchedule({}),
+        schedule: _schedules[mm['id'].toString()] ?? const DoctorSchedule({}),
       ));
     }
   }
 
   Future<void> _loadPacientes() async {
+    // Fase 2: solo catálogo público migra a API. La lista de pacientes
+    // para usuarios logueados sigue en Firestore (se migra en Fase 3).
     final data = await _fs.getList(
       'pacientes',
       scopeField: _isPaciente ? 'uid' : null,
