@@ -29,6 +29,7 @@ npm run db:seed:ficticio    # datos demo vía API
 
 ## Autenticación y roles
 - JWT con `jti` ligado a la tabla `sesiones` (logout revoca). Middleware `verifyToken` + middleware de roles.
+- **Puente Firebase (Fase 1)**: `verifyFlexible` acepta JWT propio O Firebase ID Token (verificado con Admin SDK vía `FIREBASE_SERVICE_ACCOUNT`, rol leído de Supabase). Las rutas de `vision/` ya lo usan — repara el 401 de recepción (la app envía token Firebase).
 - Roles: `admin`, `medico`, `recepcion`, `paciente`. Si añades una ruta protegida, mira cómo lo hacen `routes/auth.js` y `routes/pacientes.js` y copia el patrón.
 - Rate limiting en memoria (`middleware/rateLimiter.js`): login 10/15min, register 5/h.
 

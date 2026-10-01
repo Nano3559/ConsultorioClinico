@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/auth');
+const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { checkRole } = require('../middleware/roles');
 const { registrarRostro, consultarRostro } = require('../controllers/visionController');
 const {
@@ -9,11 +9,12 @@ const {
   registrarRostroValidation,
 } = require('../middleware/validation');
 
-// Autenticados: endpoint de registro/consulta del rostro. Solo admin o
-// recepción pueden operar sobre los descriptores faciales (KIO-20).
+// Autenticación flexible (Fase 1): JWT propio o Firebase ID token.
+// Repara el 401 de recepción: la app envía el token de Firebase Auth.
+// Solo admin o recepción pueden operar sobre descriptores faciales.
 router.post(
   '/registrar-rostro/:pacienteId',
-  verifyToken,
+  verifyFlexible,
   checkRole('admin', 'recepcion'),
   pacienteIdParamValidation,
   registrarRostroValidation,
@@ -23,7 +24,7 @@ router.post(
 
 router.get(
   '/rostro/:pacienteId',
-  verifyToken,
+  verifyFlexible,
   checkRole('admin', 'recepcion', 'medico'),
   pacienteIdParamValidation,
   validate,
