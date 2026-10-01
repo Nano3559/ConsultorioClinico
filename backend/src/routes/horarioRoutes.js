@@ -9,7 +9,7 @@ const {
   remove,
 } = require('../controllers/horarioController');
 const { verifyFlexible } = require('../middleware/verifyFlexible');
-const { checkRole } = require('../middleware/roles');
+const { checkRole, checkAdminOrOwnHorario } = require('../middleware/roles');
 const {
   validate,
   idParamValidation,
@@ -23,9 +23,9 @@ router.get('/', getAll);
 router.get('/disponibles', getDisponibles);
 router.get('/medico/:medicoId', medicoIdParamValidation, validate, getByMedico);
 
-// Rutas protegidas (solo admin)
+// Escrituras: admin siempre; el médico solo sobre sus propios horarios.
 router.post('/', verifyFlexible, checkRole('admin'), horarioValidation, validate, create);
 router.put('/:id', verifyFlexible, checkRole('admin'), idParamValidation, horarioUpdateValidation, validate, update);
-router.delete('/:id', verifyFlexible, checkRole('admin'), idParamValidation, validate, remove);
+router.delete('/:id', verifyFlexible, checkAdminOrOwnHorario, idParamValidation, validate, remove);
 
 module.exports = router;

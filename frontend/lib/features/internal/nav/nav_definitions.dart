@@ -10,6 +10,7 @@ import '../payments/payments_page.dart';
 import '../reports/reports_page.dart';
 import '../settings_page.dart';
 import '../doctor_panel_page.dart';
+import '../my_schedule_page.dart';
 import '../patient_my_appointments_page.dart';
 
 /// Módulo de navegación del sistema interno. Cada módulo pertenece a un grupo
@@ -63,6 +64,7 @@ List<NavModule> navModulesFor(UserRole role) {
         NavModule('panel', 'Mi panel', Icons.medical_services_outlined, kGroupPrincipal, _panel),
         NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
         NavModule('miagenda', 'Mi agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
+        NavModule('mishorarios', 'Mis horarios', Icons.schedule_outlined, kGroupClinico, _misHorarios),
         NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
       ];
     case UserRole.paciente:
@@ -87,4 +89,5 @@ Widget _pagos(BuildContext _) => const PaymentsPage();
 Widget _reportes(BuildContext _) => const ReportsPage();
 Widget _settings(BuildContext _) => const SettingsPage();
 Widget _panel(BuildContext _) => const DoctorPanelPage();
+Widget _misHorarios(BuildContext _) => const MySchedulePage();
 Widget _myAppointments(BuildContext _) => const PatientMyAppointmentsPage();

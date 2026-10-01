@@ -5,7 +5,7 @@ const { getAll, getById, create, update, toggleEstado, remove, getHorarios, crea
 const { getEspecialidadesByMedico } = require('../controllers/especialidadController');
 const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { optionalAuth } = require('../middleware/auth');
-const { checkRole } = require('../middleware/roles');
+const { checkRole, checkAdminOrSelfMedico } = require('../middleware/roles');
 const {
   validate,
   idParamValidation,
@@ -25,7 +25,8 @@ const medicoValidation = [
 router.get('/', optionalAuth, getAll);
 router.get('/:id', optionalAuth, idParamValidation, validate, getById);
 router.get('/:id/horarios', verifyFlexible, idParamValidation, validate, getHorarios);
-router.post('/:id/horarios', verifyFlexible, checkRole('admin'), idParamValidation, validate, createHorario);
+// Horarios: el admin gestiona los de cualquier médico; el médico los suyos.
+router.post('/:id/horarios', verifyFlexible, checkAdminOrSelfMedico('id'), idParamValidation, validate, createHorario);
 router.get('/:medicoId/especialidades', medicoIdParamValidation, validate, getEspecialidadesByMedico);
 
 // Rutas protegidas (solo admin)

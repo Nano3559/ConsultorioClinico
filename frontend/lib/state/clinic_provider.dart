@@ -752,6 +752,26 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
+  /// El médico reemplaza sus propios horarios (días y franjas) vía API.
+  /// Devuelve null en éxito o el mensaje de error.
+  Future<String?> updateMySchedule(String medicoId, DoctorSchedule schedule) async {
+    try {
+      final token = await _token();
+      if (token == null) throw Exception('Sin sesión');
+      final herr = await _reemplazarHorariosApi(medicoId, schedule, token);
+      if (herr != null) throw Exception(herr);
+      _schedules[medicoId] = schedule;
+      final i = _doctors.indexWhere((x) => x.id == medicoId);
+      if (i >= 0) _doctors[i] = _doctors[i].copyWith(schedule: schedule);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return _error.toString();
+    }
+  }
+
   Future<String?> bookAppointment({
     required String patientId,
     required String doctorId,

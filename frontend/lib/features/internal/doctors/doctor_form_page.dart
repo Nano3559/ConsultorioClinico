@@ -5,6 +5,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_validators.dart';
 import '../../../data/models/doctor.dart';
 import '../../../state/clinic_provider.dart';
+import 'schedule_range_row.dart';
 
 /// Formulario de registro/edición de médicos con horarios de atención.
 class DoctorFormPage extends StatefulWidget {
@@ -43,7 +44,15 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     final initial = widget.doctor?.schedule.byDay;
     for (final day in kDays) {
       final slots = initial?[day] ?? const [];
-      _ranges[day] = slots.isEmpty ? ['08:00', '12:00'] : [slots.first, slots.last];
+      if (slots.isNotEmpty) {
+        _ranges[day] = [slots.first, slots.last];
+      } else if (initial == null || initial.isEmpty) {
+        // Médico sin horario cargado (nuevo o legacy): día por defecto.
+        _ranges[day] = ['08:00', '12:00'];
+      } else {
+        // El médico ya tiene horario y ese día no está: sin atención.
+        _ranges[day] = ['--', '--'];
+      }
     }
   }
 
@@ -74,8 +83,9 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         if (_ranges[day]![1] != '--') day: _slotsBetween(_ranges[day]![0], _ranges[day]![1]),
     });
     final clinic = context.read<ClinicProvider>();
+    String? error;
     if (_isEdit) {
-      await clinic.updateDoctor(widget.doctor!.copyWith(
+      error = await clinic.updateDoctor(widget.doctor!.copyWith(
         name: _name.text.trim(),
         title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),
         specialtyId: _specialtyId,
@@ -85,7 +95,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         active: _active,
       ));
     } else {
-      await clinic.addDoctor(Doctor(
+      final created = await clinic.addDoctor(Doctor(
         id: 'd${DateTime.now().millisecondsSinceEpoch}',
         name: _name.text.trim(),
         title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),
@@ -95,8 +105,15 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         schedule: schedule,
         active: _active,
       ));
+      if (created == null) error = clinic.error ?? 'No se pudo guardar';
     }
     if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo guardar: $error')),
+      );
+      return;
+    }
     Navigator.of(context).pop();
   }
 
@@ -162,8 +179,8 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
                   const SizedBox(height: 8),
                   const Text('Desactiva el día seleccionando "Sin atención".', style: TextStyle(color: AppColors.muted, fontSize: 13)),
                   const SizedBox(height: 12),
-                  for (final day in kDays)
-                    _DayScheduleRow(
+                for (final day in kDays)
+                  DayScheduleRow(
                       day: day,
                       range: _ranges[day]!,
                       onChanged: (r) => setState(() => _ranges[day] = r),
@@ -187,62 +204,5 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
 
   Widget _field(TextEditingController c, String label, String? Function(String?)? validator) {
     return TextFormField(controller: c, decoration: InputDecoration(labelText: label), validator: validator);
-  }
-}
-
-class _DayScheduleRow extends StatefulWidget {
-  const _DayScheduleRow({required this.day, required this.range, required this.onChanged});
-
-  final String day;
-  final List<String> range;
-  final ValueChanged<List<String>> onChanged;
-
-  @override
-  State<_DayScheduleRow> createState() => _DayScheduleRowState();
-}
-
-class _DayScheduleRowState extends State<_DayScheduleRow> {
-  @override
-  Widget build(BuildContext context) {
-    final start = widget.range[0];
-    final end = widget.range[1];
-    final disabled = end == '--';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          SizedBox(width: 44, child: Text(widget.day, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark))),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: disabled ? null : start,
-              hint: const Text('Inicio'),
-              isDense: true,
-              items: [
-                for (final t in kTimeSlots) DropdownMenuItem(value: t, child: Text(t)),
-              ],
-              onChanged: disabled
-                  ? null
-                  : (v) {
-                      widget.onChanged([v!, end == '--' ? v : end]);
-                    },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: end == '--' ? null : end,
-              hint: const Text('Fin / sin atención'),
-              isDense: true,
-              items: [
-                for (final t in kTimeSlots) DropdownMenuItem(value: t, child: Text(t)),
-                const DropdownMenuItem(value: '--', child: Text('Sin atención')),
-              ],
-              onChanged: (v) => widget.onChanged([start, v!]),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
