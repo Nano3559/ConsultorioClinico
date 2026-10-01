@@ -8,7 +8,7 @@ REM    Compilar-Instalador.bat [API_URL] [KIOSK_API_KEY]
 REM  Ejemplo:
 REM    Compilar-Instalador.bat https://consultorio-clinico-brayan.vercel.app/api MI_CLAVE
 REM
-RE aclaración de qué NECESITA (pregunta frecuente):
+REM  Aclaración de qué NECESITA (pregunta frecuente):
 REM    1. Flutter SDK 3.47+ instalado (https://docs.flutter.dev)
 REM    2. Visual Studio 2022+ con "Desktop development with C++"
 REM       (incluye MSBuild + CMake + compilador C++)
@@ -27,7 +27,7 @@ if "%~2"=="" (
   echo    Compilar-Instalador.bat https://consultorio-clinico-brayan.vercel.app/api MI_CLAVE
   echo.
   echo  La KIOSK_API_KEY sale de tu Vercel - Settings - Environment Variables.
-  echo  (NUNCA la escribas directo en este archivo: viajaria al git.)
+  echo  NUNCA la escribas directo en este archivo: viajaria al git.
   exit /b 1
 )
 
