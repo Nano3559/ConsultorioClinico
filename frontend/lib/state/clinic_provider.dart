@@ -17,10 +17,11 @@ import '../services/api_client.dart';
 
 /// Proveedor principal de la clínica.
 ///
-/// Fuentes de verdad (migración progresiva a Supabase):
-/// catálogo público + pacientes + citas + consultas + pagos vía API
-/// Express. En Firestore quedan solo puentes legacy (foto del rostro,
-/// registro de pacientes sin cuenta, doc de rol) hasta la Fase 6.
+/// Fuentes de verdad: catálogo + pacientes + citas + consultas + pagos
+/// vía API Express (Supabase). Puentes Firestore que quedan (Fase 6):
+/// doc de rol en `usuarios`, registro/login público de pacientes y
+/// lecturas de respaldo ante 401/403. Apagados: overlay `disponibilidad`
+/// y `foto_base64`. Admin de médicos sigue en Firestore (pendiente).
 /// [FirebaseAuth] notifica el cambio y [loadAll] recarga las listas
 /// aplicando el alcance según el rol (RBAC).
 class ClinicProvider extends ChangeNotifier {
@@ -49,9 +50,9 @@ class ClinicProvider extends ChangeNotifier {
   bool _loading = false;
   bool _catalogLoaded = false;
 
-  /// Turnos ocupados (medico_id|fecha|hora). Fuente publica: coleccion
-  /// `disponibilidad`. Permite calcular la disponibilidad sin leer las citas
-  /// (que contienen datos de paciente y estan restringidas).
+  /// Turnos ocupados en memoria (medico_id|fecha|hora), calculados de la
+  /// lista local de citas. El overlay `disponibilidad` de Firestore quedó
+  /// sin lectores y ya no se escribe (Fase 6).
   final Set<String> _occupied = {};
 
   // ---- Getters inmutables ------------------------------------------------
@@ -580,21 +581,11 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
-  /// Guarda la foto del rostro en base64 en Firestore (puente legacy para el
-  /// kiosco; Fase 3 no lo migra porque el flujo nuevo usa el pack facial
-  /// del backend y PUT /pacientes no acepta `foto_base64`).
+  /// Puente legacy APAGADO (Fase 6): la foto del rostro ya viaja por el
+  /// pack facial del backend (`_subirPackBackend`); nada lee `foto_base64`
+  /// de Firestore. Se conserva la firma para no tocar al llamador.
   Future<String?> setPatientFace(String patientId, String base64) async {
-    try {
-      await _fs.update('pacientes', patientId, {'foto_base64': base64});
-      final i = _patients.indexWhere((x) => x.id == patientId);
-      if (i >= 0) _patients[i] = _patients[i].copyWith(faceBase64: base64);
-      notifyListeners();
-      return null;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return _error.toString();
-    }
+    return null;
   }
 
   Future<Doctor?> addDoctor(Doctor d) async {
@@ -723,20 +714,12 @@ class ClinicProvider extends ChangeNotifier {
       'estado': AppointmentStatus.pendiente.toApi(),
     };
     try {
-      final fs = FirebaseFirestore.instance;
-      final batch = fs.batch();
-      final citaRef = fs.collection('citas').doc();
+      // Camino legacy (reserva pública sin sesión o usuario aún no
+      // vinculado en el backend). Solo escribe la cita: el overlay
+      // `disponibilidad` ya no lo lee nadie (Fase 6).
+      final citaRef = FirebaseFirestore.instance.collection('citas').doc();
       final citaId = citaRef.id;
-      batch.set(citaRef, {...body, 'id': citaId});
-      // Turno ocupado (id deterministico). La regla impide duplicados.
-      final dispId = '${medicoId}__${fecha}__$time';
-      batch.set(fs.collection('disponibilidad').doc(dispId), {
-        'medico_id': medicoId,
-        'fecha': fecha,
-        'hora': time,
-        'cita_id': citaId,
-      });
-      await batch.commit();
+      await citaRef.set({...body, 'id': citaId});
       _appointments.add(Appointment.fromApi({...body, 'id': citaId}));
       _occupied.add(_occKey(medicoId, fecha, time));
       notifyListeners();
@@ -814,12 +797,6 @@ class ClinicProvider extends ChangeNotifier {
     try {
       await _fs.update('citas', id, {'estado': AppointmentStatus.cancelada.toApi()});
       if (old != null) {
-        final dispId = '${old.doctorId}__${_fmt(old.date)}__${old.time}';
-        await FirebaseFirestore.instance
-            .collection('disponibilidad')
-            .doc(dispId)
-            .delete()
-            .catchError((_) {});
         _occupied.remove(_occKey(old.doctorId, _fmt(old.date), old.time));
       }
       if (i >= 0) {
@@ -870,24 +847,11 @@ class ClinicProvider extends ChangeNotifier {
       }
     }
     try {
-      final fs = FirebaseFirestore.instance;
-      final batch = fs.batch();
-      batch.update(fs.collection('citas').doc(id), {
+      await FirebaseFirestore.instance.collection('citas').doc(id).update({
         'fecha': nuevaFecha,
         'hora': time,
         'estado': AppointmentStatus.pendiente.toApi(),
       });
-      if (old != null) {
-        batch.delete(fs.collection('disponibilidad')
-            .doc('${old.doctorId}__${_fmt(old.date)}__${old.time}'));
-      }
-      batch.set(fs.collection('disponibilidad').doc('${medicoId}__${nuevaFecha}__$time'), {
-        'medico_id': medicoId,
-        'fecha': nuevaFecha,
-        'hora': time,
-        'cita_id': id,
-      });
-      await batch.commit();
       if (old != null) {
         _occupied.remove(_occKey(old.doctorId, _fmt(old.date), old.time));
       }
