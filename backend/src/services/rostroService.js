@@ -182,12 +182,18 @@ const procesarPaquete = async (supabase, paciente, muestras) => {
     rostroRegistrado = true;
   }
 
+  // Log de rechazadas (diagnóstico vía logs; sin imágenes, solo poses/motivos).
+  const rechazadas = Object.fromEntries(
+    resultados.filter((r) => r && !r.guardada).map((r) => [r.pose || '?', r.motivo || 'rechazada'])
+  );
+  if (Object.keys(rechazadas).length > 0) {
+    console.log(`[rostro] paciente=${paciente.id} rechazadas=${JSON.stringify(rechazadas)}`);
+  }
+
   return {
     guardadas,
     porPose,
-    rechazadas: Object.fromEntries(
-      resultados.filter((r) => r && !r.guardada).map((r) => [r.pose || '?', r.motivo || 'rechazada'])
-    ),
+    rechazadas,
     rostro_registrado: rostroRegistrado,
     carpeta: `${bucket}/${carpeta}/`,
   };

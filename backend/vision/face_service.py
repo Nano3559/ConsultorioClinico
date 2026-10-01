@@ -392,16 +392,20 @@ class FaceService:
                 'foto': foto, 'embedding': emb,
             })
         plantilla = None
-        # Consistencia: todas las muestras deben ser la MISMA persona. Con 3+
-        # muestras se expulsa a la que no se parezca al resto (foto ajena,
-        # falso positivo, cara tapada). Umbral 0.35: muy por encima del azar
-        # (~0.0) y por debajo del umbral de reconocimiento (0.5).
+        # Consistencia: todas las muestras deben ser la MISMA persona. Cada
+        # pose se compara contra la FRONTAL (ancla) con umbral 0.30: una vista
+        # de perfil legítima se parece menos al frontal (0.3-0.5) que dos
+        # frontales entre sí, así que exigir cercanía "al resto" expulsaba
+        # perfiles válidos. 0.30 sigue muy por encima del azar (~0.0).
+        # Sin frontal válido no hay ancla: no se genera plantilla.
         validas = [r for r in resultados if r.get('guardada')]
-        if len(validas) >= 3:
+        frontal = next((r for r in validas if r.get('pose') == 'frontal'), None)
+        if frontal is not None:
+            emb_frontal = frontal['embedding']
             for r in validas:
-                otras = [o['embedding'] for o in validas if o is not r]
-                mejor = max((self.similitud(r['embedding'], o) for o in otras), default=0.0)
-                if mejor < 0.35:
+                if r is frontal:
+                    continue
+                if self.similitud(r['embedding'], emb_frontal) < 0.30:
                     r['guardada'] = False
                     r['motivo'] = 'no_coincide'
                     r.pop('foto', None)
