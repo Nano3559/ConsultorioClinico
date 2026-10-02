@@ -347,6 +347,10 @@ const createHorario = async (req, res) => {
     if (error) throw error;
     return sendSuccess(res, data, 'Horario agregado exitosamente', 201);
   } catch (error) {
+    // Exclusion constraint excl_horarios_solapamiento: rango ya cubierto.
+    if (error && error.code === '23P01') {
+      return sendError(res, 'Ya existe un horario que se solapa en ese día', 409);
+    }
     console.error('medicos.createHorario:', error);
     return sendError(res, 'Error al agregar horario', 500);
   }

@@ -33,8 +33,10 @@ class _MySchedulePageState extends State<MySchedulePage> {
     final clinic = context.read<ClinicProvider>();
     final id = auth.currentUser?.doctorId;
     if (id == null || clinic.doctors.isEmpty) return;
-    _medicoId = id;
-    final initial = clinic.doctorById(id).schedule.byDay;
+    final doctor = clinic.doctorById(id);
+    // Id real de la fila en la BD: perfilId legacy puede ser el uid de Firebase.
+    _medicoId = doctor.id;
+    final initial = doctor.schedule.byDay;
     for (final day in kDays) {
       final slots = initial[day] ?? const [];
       if (slots.isNotEmpty) {

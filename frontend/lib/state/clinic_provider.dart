@@ -606,22 +606,30 @@ class ClinicProvider extends ChangeNotifier {
     return '${((total ~/ 60) % 24).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
   }
 
-  /// Reemplaza los horarios del médico en el backend (borra los vigentes y
-  /// crea uno por día con atención). Devuelve mensaje de error o null.
+  /// Reemplaza los horarios del médico en el backend, día por día: cada día
+  /// se borra y se inserta de inmediato, y los días marcados "Sin atención"
+  /// se eliminan al final. Si algo falla a mitad, los días no tocados
+  /// conservan su horario (nunca se pierde todo el horario del médico).
+  /// Devuelve mensaje de error o null.
   Future<String?> _reemplazarHorariosApi(
       String medicoId, DoctorSchedule schedule, String token) async {
     final actual = await _api.getJson('/medicos/$medicoId/horarios', token: token);
     if (!actual.isSuccess) return actual.error.toString();
+    final existentes = <String, List<String>>{}; // dia corto -> ids de horarios
     for (final h in (actual.data?['data'] as List? ?? [])) {
       if (h is! Map) continue;
       final hid = (h['id'] ?? '').toString();
       if (hid.isEmpty) continue;
-      final del = await _api.deleteJson('/horarios/$hid', token: token);
-      if (!del.isSuccess) return del.error.toString();
+      final dia = _shortDay((h['dia_semana'] ?? '').toString());
+      (existentes[dia] ??= []).add(hid);
     }
     for (final entry in schedule.byDay.entries) {
       final slots = entry.value;
       if (slots.isEmpty) continue;
+      for (final previo in existentes.remove(entry.key) ?? const <String>[]) {
+        final del = await _api.deleteJson('/horarios/$previo', token: token);
+        if (!del.isSuccess) return del.error.toString();
+      }
       final ins = await _api.postJson(
         '/medicos/$medicoId/horarios',
         {
@@ -632,6 +640,13 @@ class ClinicProvider extends ChangeNotifier {
         token: token,
       );
       if (!ins.isSuccess) return ins.error.toString();
+    }
+    // Días que quedaron sin atención (no están en el nuevo horario).
+    for (final ids in existentes.values) {
+      for (final hid in ids) {
+        final del = await _api.deleteJson('/horarios/$hid', token: token);
+        if (!del.isSuccess) return del.error.toString();
+      }
     }
     return null;
   }
