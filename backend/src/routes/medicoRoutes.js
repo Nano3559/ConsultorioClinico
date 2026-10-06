@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { getAll, getById, create, update, toggleEstado, remove, getHorarios, createHorario } = require('../controllers/medicoController');
+const { getAll, getById, create, invitar, update, toggleEstado, remove, getHorarios, createHorario } = require('../controllers/medicoController');
 const { getEspecialidadesByMedico } = require('../controllers/especialidadController');
 const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { optionalAuth } = require('../middleware/auth');
@@ -31,6 +31,13 @@ router.get('/:medicoId/especialidades', medicoIdParamValidation, validate, getEs
 
 // Rutas protegidas (solo admin)
 router.post('/', verifyFlexible, checkRole('admin'), medicoValidation, validate, create);
+// Invitación: crea usuarios (médico) + medicos vinculado + cuenta Firebase.
+const invitarValidation = [
+  ...medicoValidation,
+  body('email').trim().toLowerCase().isEmail().withMessage('Email inválido'),
+  body('password').isLength({ min: 6 }).withMessage('La contraseña temporal debe tener al menos 6 caracteres'),
+];
+router.post('/invitar', verifyFlexible, checkRole('admin'), invitarValidation, validate, invitar);
 router.put('/:id', verifyFlexible, checkRole('admin'), idParamValidation, validate, update);
 router.patch('/:id/estado', verifyFlexible, checkRole('admin'), idParamValidation, validate, toggleEstado);
 router.delete('/:id', verifyFlexible, checkRole('admin'), idParamValidation, validate, remove);

@@ -50,16 +50,20 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
     setState(() => _sending = true);
     final auth = context.read<AuthProvider>();
     final clinic = context.read<ClinicProvider>();
+    final espNombre = clinic.specialties
+        .firstWhere((s) => s.id == _especialidadId,
+            orElse: () => clinic.specialties.first)
+        .name;
     final medicoData = {
       'nombre': _nombre.text.trim(),
       'apellido': _apellido.text.trim(),
       'cedula': _ci.text.trim(),
-      'especialidad_id': _especialidadId,
+      'especialidad': espNombre,
       'telefono': _telefono.text.trim(),
       'descripcion': _descripcion.text.trim(),
       'anios_experiencia': int.tryParse(_anios.text.trim()) ?? 0,
     };
-    final (error, tempPassword) = await auth.registerDoctor(
+    final (error, tempPassword, existed) = await auth.registerDoctor(
       email: _email.text.trim(),
       nombre: '${_nombre.text.trim()} ${_apellido.text.trim()}',
       medicoData: medicoData,
@@ -73,10 +77,10 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
     await clinic.loadAll();
     if (!mounted) return;
     Navigator.of(context).pop();
-    _showSuccess(tempPassword ?? '');
+    _showSuccess(tempPassword ?? '', existed);
   }
 
-  void _showSuccess(String tempPassword) {
+  void _showSuccess(String tempPassword, bool existed) {
     final email = _email.text.trim();
     showDialog<void>(
       context: context,
@@ -92,12 +96,15 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Se envió un correo de confirmación a\n$email\ncon el enlace para fijar su contraseña.',
+                existed
+                    ? 'Ese correo ya estaba registrado.\nSe reenvió el correo de confirmación a\n$email'
+                    : 'Se envió un correo de confirmación a\n$email\ncon el enlace para fijar su contraseña.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(height: 1.5),
               ),
-              const SizedBox(height: 16),
-              Container(
+              if (!existed) ...[
+                const SizedBox(height: 16),
+                Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -140,6 +147,7 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
                   ),
                 ],
               ),
+              ],
               const SizedBox(height: 6),
               const Text(
                 'El correo llega de noreply@consultorioclinico-2026.firebaseapp.com.\n'

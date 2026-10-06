@@ -1,7 +1,10 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { getSupabase } = require('../config/supabase');
 const { sendSuccess, sendError, formatDate, normalizarTexto, horaAMinutos } = require('../utils/helpers');
 const { ESTADOS_CITA } = require('../utils/constants');
+
+const normalizarEmail = (email) => String(email || '').trim().toLowerCase();
 
 /**
  * Resuelve especialidad_id a partir del nombre (normalizado), buscando en la
@@ -172,6 +175,170 @@ const getById = async (req, res) => {
   } catch (error) {
     console.error('medicos.create ERROR:', JSON.stringify(error, null, 2));
     return sendError(res, `Error al crear médico: ${error.message || 'desconocido'}`, 500);
+  }
+};
+
+/**
+ * POST /api/medicos/invitar (solo admin)
+ * Alta completa de médico para el flujo de invitación: crea la fila en
+ * `usuarios` (rol médico, contraseña temporal hasheada), la fila en
+ * `medicos` vinculada y la cuenta en Firebase Auth. Es idempotente por
+ * email: si el médico ya existe (o quedó a medias), completa lo que falte
+ * y devuelve sus ids en vez de fallar. Si algo falla, revierte lo creado
+ * en ESTE request para permitir reintentar limpio.
+ */
+const invitar = async (req, res) => {
+  const supabase = getSupabase();
+  let usuarioCreado = null;
+  let medicoCreado = null;
+  try {
+    const { nombre, apellido, cedula, especialidad, telefono, email, consulorio, tarifa_consulta, titulo, descripcion, anios_experiencia, password } = req.body;
+    const emailNorm = normalizarEmail(email);
+
+    // 1) Idempotencia: usuario + médico ya vinculados → completar Firebase.
+    const { data: usuExist } = await supabase
+      .from('usuarios')
+      .select('id, rol')
+      .eq('email', emailNorm)
+      .limit(1);
+    let usuarioId = null;
+    let medico = null;
+    let existed = false;
+    if (usuExist && usuExist.length > 0) {
+      if (usuExist[0].rol !== 'medico') {
+        return sendError(res, 'Ese correo ya pertenece a una cuenta de otro rol', 409);
+      }
+      usuarioId = usuExist[0].id;
+      const { data: medExist } = await supabase
+        .from('medicos')
+        .select('*')
+        .eq('usuario_id', usuarioId)
+        .limit(1);
+      if (medExist && medExist.length > 0) {
+        medico = medExist[0];
+        existed = true;
+      }
+    }
+
+    if (!existed) {
+      // Cédula duplicada (misma regla que create).
+      const cedulaFinal = cedula && String(cedula).trim()
+        ? String(cedula).trim()
+        : `M${Date.now().toString().slice(-8)}${crypto.randomBytes(2).toString('hex')}`;
+      const { data: cedExist } = await supabase
+        .from('medicos')
+        .select('id')
+        .eq('cedula', cedulaFinal)
+        .limit(1);
+      if (cedExist && cedExist.length > 0) {
+        return sendError(res, 'Ya existe un médico con esa cédula', 400);
+      }
+
+      // Fila en usuarios (rol médico).
+      if (!usuarioId) {
+        const hash = await bcrypt.hash(password, 10);
+        const { data: nuevoUsuario, error: errUsu } = await supabase
+          .from('usuarios')
+          .insert({
+            nombre: `${nombre || ''} ${apellido || ''}`.trim(),
+            email: emailNorm,
+            password: hash,
+            rol: 'medico',
+            activo: true,
+          })
+          .select('id')
+          .single();
+        if (errUsu) {
+          if (errUsu.code === '23505') {
+            return sendError(res, 'Ya existe un usuario con ese correo', 409);
+          }
+          throw errUsu;
+        }
+        usuarioId = nuevoUsuario.id;
+        usuarioCreado = usuarioId;
+      }
+
+      // Fila en medicos vinculada (misma construcción que create).
+      const esp = await resolverEspecialidad(supabase, especialidad);
+      const filaMedico = {
+        usuario_id: usuarioId,
+        nombre,
+        apellido,
+        cedula: cedulaFinal,
+        especialidad: esp.nombre,
+        telefono,
+        email: emailNorm,
+        consulorio,
+        tarifa_consulta: parseFloat(tarifa_consulta) || 0,
+        titulo: (titulo && String(titulo).trim()) ? String(titulo).trim() : 'Dr./Dra.',
+        descripcion: descripcion || '',
+        anios_experiencia: parseInt(anios_experiencia, 10) || 0,
+      };
+      if (esp.id) filaMedico.especialidad_id = esp.id;
+      let ins = await supabase.from('medicos').insert(filaMedico).select('*').single();
+      if (ins.error && /especialidad_id/.test(ins.error.message || '')) {
+        delete filaMedico.especialidad_id;
+        ins = await supabase.from('medicos').insert(filaMedico).select('*').single();
+      }
+      if (ins.error) {
+        if (ins.error.code === '23505') {
+          await revertirInvitacion(supabase, null, usuarioCreado);
+          return sendError(res, 'Ya existe un médico con esa cédula', 400);
+        }
+        throw ins.error;
+      }
+      medico = ins.data;
+      medicoCreado = medico.id;
+    }
+
+    // 2) Cuenta en Firebase Auth (crear o reutilizar).
+    let firebaseUid = null;
+    try {
+      const { getAuth } = require('firebase-admin/auth');
+      const { getAdmin } = require('../config/firebaseAdmin');
+      const auth = getAuth(getAdmin());
+      let fbUser = null;
+      try {
+        fbUser = await auth.getUserByEmail(emailNorm);
+      } catch (e) {
+        if (!e || e.code !== 'auth/user-not-found') throw e;
+      }
+      if (!fbUser) {
+        fbUser = await auth.createUser({
+          email: emailNorm,
+          password,
+          displayName: `${nombre || ''} ${apellido || ''}`.trim() || undefined,
+        });
+      }
+      firebaseUid = fbUser.uid;
+    } catch (e) {
+      await revertirInvitacion(supabase, medicoCreado, usuarioCreado);
+      console.error('medicos.invitar FIREBASE ERROR:', e && e.message);
+      return sendError(res, 'No se pudo crear la cuenta de acceso del médico, intenta de nuevo', 503);
+    }
+
+    return sendSuccess(
+      res,
+      { usuario_id: usuarioId, medico_id: medico.id, medico, firebase_uid: firebaseUid, existed },
+      existed ? 'El médico ya estaba registrado' : 'Médico invitado exitosamente',
+      existed ? 200 : 201
+    );
+  } catch (error) {
+    await revertirInvitacion(supabase, medicoCreado, usuarioCreado);
+    console.error('medicos.invitar ERROR:', JSON.stringify(error, null, 2));
+    return sendError(res, `Error al invitar médico: ${error.message || 'desconocido'}`, 500);
+  }
+};
+
+/**
+ * Borra las filas creadas por un intento de invitación (mejor esfuerzo).
+ */
+const revertirInvitacion = async (supabase, medicoId, usuarioId) => {
+  try {
+    if (medicoId) await supabase.from('medicos').delete().eq('id', medicoId);
+    if (usuarioId) await supabase.from('usuarios').delete().eq('id', usuarioId);
+  } catch (_) {
+    // Mejor esfuerzo: no bloquear la respuesta de error original.
   }
 };
 
@@ -402,6 +569,7 @@ module.exports = {
   getAll,
   getById,
   create,
+  invitar,
   update,
   toggleEstado,
   remove,
