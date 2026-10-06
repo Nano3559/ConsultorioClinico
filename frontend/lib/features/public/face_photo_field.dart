@@ -176,6 +176,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   DateTime _poseDesde = DateTime.now();
   bool _manual = false;
 
+  /// Última evaluación (para la checklist en vivo).
+  EvaluacionFoto? _ultEv;
+
   /// Si el auto no lo logra en este tiempo, se ofrece captura manual.
   static const _limiteManual = Duration(seconds: 25);
 
@@ -220,6 +223,7 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     setState(() {
       _mensajeGuia = 'Ubica tu rostro dentro del óvalo';
       _manual = false;
+      _ultEv = null;
     });
     _sonda = Timer.periodic(const Duration(milliseconds: 900), (_) {
       _sondear();
@@ -244,6 +248,7 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
       final ev = _auto.evaluar(photo.bytes, pose: pose);
       setState(() {
         _mensajeGuia = ev.mensaje;
+        _ultEv = ev;
         _manual =
             DateTime.now().difference(_poseDesde) > _limiteManual;
       });
@@ -451,6 +456,21 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
           ],
         ),
         const SizedBox(height: 10),
+        if (!_completo && _ultEv != null)
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _checkChip('Rostro', _ultEv!.tieneRostro),
+              _checkChip('Centro', _ultEv!.centrado),
+              _checkChip('Luz', _ultEv!.iluminacionOk),
+              _checkChip('Nitidez', _ultEv!.nitida),
+              if (_poseActual != 'frontal')
+                _checkChip('Giro', _ultEv!.gestoOk),
+            ],
+          ),
+        if (!_completo && _ultEv != null) const SizedBox(height: 8),
         if (!_completo)
           Container(
             width: double.infinity,
@@ -506,6 +526,41 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
       ],
     );
   }
+}
+
+/// Pastilla de la checklist en vivo: verde cuando el requisito se cumple.
+Widget _checkChip(String texto, bool ok) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: ok
+          ? AppColors.success.withValues(alpha: 0.14)
+          : AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: ok ? AppColors.success : AppColors.muted.withValues(alpha: 0.4),
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          ok ? Icons.check_circle : Icons.radio_button_unchecked,
+          size: 14,
+          color: ok ? AppColors.success : AppColors.muted,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          texto,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: ok ? AppColors.success : AppColors.muted,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Óvalo guía estilo Binance sobre la vista previa.

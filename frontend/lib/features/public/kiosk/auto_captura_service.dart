@@ -135,10 +135,16 @@ class AutoCapturaService {
       mensaje = 'Quietito… capturando';
     } else {
       // Encuadre óptimo: verificar que el gesto pedido se ejecutó de
-      // verdad (diferencial contra la frontal). Sin referencia (frontal
-      // manual antigua) se aprueba: el servidor igual lo verifica.
+      // verdad (diferencial contra la frontal). Sin referencia se aprueba:
+      // el servidor igual lo verifica por pose.
       gestoOk = _verificarGesto(pose, actual);
-      mensaje = gestoOk ? '¡Perfecto!' : _mensajeGesto(pose);
+      if (gestoOk) {
+        mensaje = '¡Perfecto!';
+      } else if (_giroContrario(pose, actual)) {
+        mensaje = _mensajeLadoContrario(pose);
+      } else {
+        mensaje = _mensajeGesto(pose);
+      }
     }
     return EvaluacionFoto(
       tieneRostro: actual.tieneRostro,
@@ -152,8 +158,8 @@ class AutoCapturaService {
   }
 
   /// Compara la geometría actual contra la frontal: el giro debe verse.
-  /// Umbrales: giro lateral estrecha >6% + desplaza >2%; cabeceo desplaza
-  /// el centroide vertical >2.5% (la vertical nunca se espeja).
+  /// Giros suaves (~12-15°) ya pasan: el que no se movió da ~1.0/~0 y
+  /// queda fuera por ambos lados.
   bool _verificarGesto(String pose, _Medicion actual) {
     final ref = _referencia;
     if (ref == null) return true;
@@ -166,15 +172,35 @@ class AutoCapturaService {
     final dy = actual.centroideY - ref.cy;
     switch (repouse) {
       case 'izquierda': // su izquierda = derecha de la imagen sin espejar
-        return razonAncho < 0.94 && dx > 0.02;
+        return razonAncho < 0.98 && dx > 0.015;
       case 'derecha':
-        return razonAncho < 0.94 && dx < -0.02;
+        return razonAncho < 0.98 && dx < -0.015;
       case 'arriba': // mentón arriba: el centroide baja en la imagen
-        return dy > 0.025;
+        return dy > 0.022;
       case 'abajo':
-        return dy < -0.025;
+        return dy < -0.022;
       default:
         return true;
+    }
+  }
+
+  /// Detecta giro CLARO al lado contrario (para guiar, no para aprobar).
+  bool _giroContrario(String pose, _Medicion actual) {
+    final ref = _referencia;
+    if (ref == null) return false;
+    final dx = actual.centroideX - ref.cx;
+    final dy = actual.centroideY - ref.cy;
+    switch (pose.trim().toLowerCase()) {
+      case 'izquierda':
+        return dx < -0.03;
+      case 'derecha':
+        return dx > 0.03;
+      case 'arriba':
+        return dy < -0.03;
+      case 'abajo':
+        return dy > 0.03;
+      default:
+        return false;
     }
   }
 
@@ -190,6 +216,21 @@ class AutoCapturaService {
         return 'Baja más el mentón';
       default:
         return 'Quietito… capturando';
+    }
+  }
+
+  String _mensajeLadoContrario(String pose) {
+    switch (pose.trim().toLowerCase()) {
+      case 'izquierda':
+        return '¡Es al otro lado! Gira a tu IZQUIERDA';
+      case 'derecha':
+        return '¡Es al otro lado! Gira a tu DERECHA';
+      case 'arriba':
+        return '¡Al revés! Levanta el MENTÓN';
+      case 'abajo':
+        return '¡Al revés! Baja el MENTÓN';
+      default:
+        return '¡Al revés! Baja el MENTÓN';
     }
   }
 
@@ -382,3 +423,4 @@ class _Medicion {
   final double minY;
   final double maxY;
 }
+

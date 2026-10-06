@@ -129,7 +129,7 @@ def health():
 @app.get('/api/vision/version')
 def version():
     """Versión del servicio (para verificar despliegues)."""
-    return {'version': '1.1.0', 'pose_check': True, 'model': MODEL_PACK}
+    return {'version': '1.1.1', 'pose_check': True, 'model': MODEL_PACK}
 
 
 @app.post('/api/kiosco/verificar-rostro')

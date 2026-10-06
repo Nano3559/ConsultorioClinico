@@ -126,7 +126,21 @@ void main() {
       expect(ev.lista, isTrue);
     });
 
-    test('giro al lado contrario no pasa', () {
+    test('giro suave también pasa (no solo giros grandes)', () {
+      final svc = AutoCapturaService();
+      final frontal = fotoSintetica();
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.fijarReferenciaFrontal(frontal);
+      // Giro suave: apenas más angosto y poco corrido.
+      final suave = fotoSintetica(escalaX: 0.95, desplazarX: 8);
+      svc.evaluar(suave, pose: 'izquierda');
+      final ev = svc.evaluar(suave, pose: 'izquierda');
+      expect(ev.gestoOk, isTrue);
+      expect(ev.lista, isTrue);
+    });
+
+    test('lado contrario avisa explícitamente', () {
       final svc = AutoCapturaService();
       final frontal = fotoSintetica();
       svc.evaluar(frontal, pose: 'frontal');
@@ -136,7 +150,7 @@ void main() {
       svc.evaluar(giroDer, pose: 'izquierda');
       final ev = svc.evaluar(giroDer, pose: 'izquierda');
       expect(ev.gestoOk, isFalse);
-      expect(ev.lista, isFalse);
+      expect(ev.mensaje, contains('otro lado'));
     });
 
     test('arriba con centroide abajo: dispara; abajo no', () {

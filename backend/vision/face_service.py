@@ -73,14 +73,13 @@ UMBRAL_YAW_CAMBIO = 0.25
 # independientes del orden dentro de cada par):
 #   yaw   = (nariz_x - medio_ojos_x) / dist_ojos   (+ = nariz a la derecha
 #           de la imagen = giro a SU izquierda; archivos sin espejar)
-#   pitch = (medio_boca_y - medio_ojos_y) / dist_ojos (se compara contra el
-#           frontal del MISMO pack: subir el mentón lo aumenta, bajarlo lo
-#           reduce; la dirección vertical nunca se espeja).
-# Umbrales deliberately conservadores: un giro claro da |yaw| ~0.2-0.5 y un
-# frontal ~0-0.08. Todo es env-tunable (VISION_POSE_*).
+#   pitch = (medio_boca_y - medio_ojos_y) / dist_ojos, contra el frontal
+#           del MISMO pack (la vertical nunca se espeja).
+# Umbrales lenientes a propósito: el cliente (más estricto) ya filtró;
+# aquí solo se rechaza lo claramente quieto o al revés. Todo env-tunable.
 POSE_YAW_FRONTAL = float(os.getenv('VISION_POSE_YAW_FRONTAL', '0.10'))
-POSE_YAW_MIN = float(os.getenv('VISION_POSE_YAW_MIN', '0.12'))
-POSE_PITCH_DELTA = float(os.getenv('VISION_POSE_PITCH_DELTA', '0.07'))
+POSE_YAW_MIN = float(os.getenv('VISION_POSE_YAW_MIN', '0.10'))
+POSE_PITCH_DELTA = float(os.getenv('VISION_POSE_PITCH_DELTA', '0.06'))
 
 # Landmarks MediaPipe (ojos para EAR, mejillas/nariz para yaw).
 OJO_IZQ = [33, 160, 158, 133, 153, 144]
