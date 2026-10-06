@@ -74,7 +74,7 @@ class AutoCapturaService {
   /// Ancho al que se reduce el frame para analizar (rapidez).
   final int anchoAnalisis;
 
-  _Medicion? _anterior;
+  _Racha? _anterior;
 
   /// Ancla frontal para medir el gesto (se fija al capturar la frontal).
   ReferenciaRostro? _referencia;
@@ -93,7 +93,13 @@ class AutoCapturaService {
   /// la foto frontal, sea automática o manual).
   void fijarReferenciaFrontal(Uint8List jpegBytes) {
     final m = _analizar(jpegBytes);
-    _anterior = m;
+    _anterior = _Racha(
+      hayRostro: m.tieneRostro,
+      desplazamientoX: m.desplazamientoX,
+      desplazamientoY: m.desplazamientoY,
+      fraccionPiel: m.fraccionPiel,
+      lumaMedia: m.lumaMedia,
+    );
     if (!m.tieneRostro) return;
     _referencia = ReferenciaRostro(
       ancho: (m.maxX - m.minX).clamp(0.01, 1.0),
@@ -105,31 +111,52 @@ class AutoCapturaService {
 
   EvaluacionFoto evaluar(Uint8List jpegBytes, {String pose = 'frontal'}) {
     final actual = _analizar(jpegBytes);
+    // En poses de giro la cara ocupa menos óvalo y media queda en sombra:
+    // la presencia se relaja (el gesto se verifica aparte contra la
+    // frontal). El estable usa esta misma presencia relajada.
+    final esGiro = pose.trim().toLowerCase() != 'frontal';
+    final hayRostro =
+        esGiro ? actual.fraccionPiel > 0.12 : actual.tieneRostro;
     final previo = _anterior;
     final estable = previo != null &&
-        previo.tieneRostro &&
-        actual.tieneRostro &&
+        previo.hayRostro &&
+        hayRostro &&
         (previo.desplazamientoX - actual.desplazamientoX).abs() < 0.05 &&
         (previo.desplazamientoY - actual.desplazamientoY).abs() < 0.05 &&
         (previo.fraccionPiel - actual.fraccionPiel).abs() < 0.08 &&
         (previo.lumaMedia - actual.lumaMedia).abs() < 15;
-    _anterior = actual;
+    _anterior = _Racha(
+        hayRostro: hayRostro,
+        desplazamientoX: actual.desplazamientoX,
+        desplazamientoY: actual.desplazamientoY,
+        fraccionPiel: actual.fraccionPiel,
+        lumaMedia: actual.lumaMedia);
+    final tieneRostro = hayRostro;
+    final centrado = esGiro
+        ? actual.desplazamientoX.abs() < 0.20 &&
+            actual.desplazamientoY.abs() < 0.20
+        : actual.centrado;
+    final iluminacionOk = esGiro
+        ? actual.lumaPiel >= 50 && actual.lumaPiel <= 215
+        : actual.iluminacionOk;
+    final nitida =
+        esGiro ? actual.varLapPiel > 8 : actual.nitida;
 
     final String mensaje;
     var gestoOk = true;
-    if (!actual.tieneRostro) {
+    if (!tieneRostro) {
       mensaje = 'Ubica tu rostro dentro del óvalo';
-    } else if (!actual.centrado) {
+    } else if (!centrado) {
       mensaje = actual.desplazamientoX < -0.02
           ? 'Muévete un poco a tu derecha'
           : actual.desplazamientoX > 0.02
               ? 'Muévete un poco a tu izquierda'
               : 'Centra tu rostro en el óvalo';
-    } else if (!actual.iluminacionOk) {
-      mensaje = actual.lumaMedia < 55
+    } else if (!iluminacionOk) {
+      mensaje = actual.lumaPiel < 50
           ? 'Hay poca luz: acércate a una luz'
           : 'Hay demasiada luz detrás: muévete';
-    } else if (!actual.nitida) {
+    } else if (!nitida) {
       mensaje = 'Quédate quieto…';
     } else if (!estable) {
       mensaje = 'Quietito… capturando';
@@ -147,10 +174,10 @@ class AutoCapturaService {
       }
     }
     return EvaluacionFoto(
-      tieneRostro: actual.tieneRostro,
-      centrado: actual.centrado,
-      iluminacionOk: actual.iluminacionOk,
-      nitida: actual.nitida,
+      tieneRostro: tieneRostro,
+      centrado: centrado,
+      iluminacionOk: iluminacionOk,
+      nitida: nitida,
       estable: estable,
       gestoOk: gestoOk,
       mensaje: mensaje,
@@ -244,6 +271,8 @@ class AutoCapturaService {
         nitida: false,
         fraccionPiel: 0,
         lumaMedia: 0,
+        lumaPiel: 0,
+        varLapPiel: 0,
         desplazamientoX: 0,
         desplazamientoY: 0,
         centroideX: 0.5,
@@ -267,6 +296,7 @@ class AutoCapturaService {
     var sumaLuma = 0.0;
     var nOvalo = 0;
     var nPiel = 0;
+    var sumaLumaPiel = 0.0;
     var sumaPielX = 0.0;
     var sumaPielY = 0.0;
     var minPX = w.toDouble();
@@ -290,6 +320,7 @@ class AutoCapturaService {
         sumaLuma += luma;
         if (_esPiel(r, g, b)) {
           nPiel++;
+          sumaLumaPiel += luma;
           sumaPielX += x;
           sumaPielY += y;
           if (x < minPX) minPX = x.toDouble();
@@ -307,6 +338,8 @@ class AutoCapturaService {
         nitida: false,
         fraccionPiel: 0,
         lumaMedia: 0,
+        lumaPiel: 0,
+        varLapPiel: 0,
         desplazamientoX: 0,
         desplazamientoY: 0,
         centroideX: 0.5,
@@ -329,10 +362,14 @@ class AutoCapturaService {
     final centrado = tieneRostro && dxN.abs() < 0.10 && dyN.abs() < 0.12;
     final iluminacionOk = lumaMedia >= 55 && lumaMedia <= 205;
 
-    // Nitidez: varianza del Laplaciano sobre el óvalo (muestreo grueso).
+    // Nitidez: varianza del Laplaciano sobre el óvalo (muestreo grueso),
+    // más versión SOLO-piel (para giros con fondo/sombra).
     var sumaLap = 0.0;
     var sumaLap2 = 0.0;
     var nLap = 0;
+    var sumaLapP = 0.0;
+    var sumaLap2P = 0.0;
+    var nLapP = 0;
     for (var y = 2; y < h - 2; y += 4) {
       for (var x = 2; x < w - 2; x += 4) {
         final dx = (x - cx) / rx;
@@ -348,6 +385,12 @@ class AutoCapturaService {
         sumaLap += lap;
         sumaLap2 += lap * lap;
         nLap++;
+        final px2 = trabajo.getPixel(x, y);
+        if (_esPiel(px2.r.toInt(), px2.g.toInt(), px2.b.toInt())) {
+          sumaLapP += lap;
+          sumaLap2P += lap * lap;
+          nLapP++;
+        }
       }
     }
     var nitida = false;
@@ -355,6 +398,11 @@ class AutoCapturaService {
       final media = sumaLap / nLap;
       final varianza = sumaLap2 / nLap - media * media;
       nitida = varianza > 12;
+    }
+    var varLapPiel = 0.0;
+    if (nLapP > 0) {
+      final mediaP = sumaLapP / nLapP;
+      varLapPiel = sumaLap2P / nLapP - mediaP * mediaP;
     }
 
     return _Medicion(
@@ -364,6 +412,8 @@ class AutoCapturaService {
       nitida: nitida,
       fraccionPiel: fraccionPiel,
       lumaMedia: lumaMedia,
+      lumaPiel: nPiel > 0 ? sumaLumaPiel / nPiel : 0,
+      varLapPiel: varLapPiel,
       desplazamientoX: dxN,
       desplazamientoY: dyN,
       centroideX: nPiel > 0 ? (sumaPielX / nPiel) / w : 0.5,
@@ -387,6 +437,23 @@ class AutoCapturaService {
   }
 }
 
+/// Foto instantánea para la racha de estabilidad (interna).
+class _Racha {
+  const _Racha({
+    required this.hayRostro,
+    required this.desplazamientoX,
+    required this.desplazamientoY,
+    required this.fraccionPiel,
+    required this.lumaMedia,
+  });
+
+  final bool hayRostro;
+  final double desplazamientoX;
+  final double desplazamientoY;
+  final double fraccionPiel;
+  final double lumaMedia;
+}
+
 /// Medición cruda de un frame (interna; la racha la lleva el servicio).
 class _Medicion {
   const _Medicion({
@@ -396,6 +463,8 @@ class _Medicion {
     required this.nitida,
     required this.fraccionPiel,
     required this.lumaMedia,
+    required this.lumaPiel,
+    required this.varLapPiel,
     required this.desplazamientoX,
     required this.desplazamientoY,
     required this.centroideX,
@@ -412,6 +481,11 @@ class _Medicion {
   final bool nitida;
   final double fraccionPiel;
   final double lumaMedia;
+
+  /// Luz y nitidez medidas SOLO sobre piel (robustas en giros con sombra).
+  final double lumaPiel;
+  final double varLapPiel;
+
   final double desplazamientoX;
   final double desplazamientoY;
 

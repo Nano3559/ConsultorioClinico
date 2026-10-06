@@ -14,6 +14,7 @@ Uint8List fotoSintetica({
   double desplazarY = 0,
   double escalaX = 1,
   bool ruido = true,
+  bool sombraIzquierda = false,
 }) {
   const w = 200;
   const h = 200;
@@ -23,6 +24,10 @@ Uint8List fotoSintetica({
       final dx = (x - (w / 2 + desplazarX)) / (w * 0.26 * escalaX);
       final dy = (y - (h / 2 + desplazarY)) / (h * 0.36);
       if (dx * dx + dy * dy <= 1) {
+        if (sombraIzquierda && x < w / 2) {
+          imagen.setPixelRgb(x, y, 60, 45, 35);
+          continue;
+        }
         var r = 200;
         var g = 150;
         var b = 120;
@@ -167,6 +172,22 @@ void main() {
       expect(evArr.lista, isTrue);
       final evAba = svc.evaluar(sube, pose: 'abajo');
       expect(evAba.gestoOk, isFalse);
+    });
+
+    test('giro con media cara en sombra igual dispara', () {
+      final svc = AutoCapturaService();
+      final frontal = fotoSintetica();
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.fijarReferenciaFrontal(frontal);
+      // Giro a la izquierda con sombra a la izquierda: la mitad útil
+      // sigue alcanzando para detectar, medir luz/nitidez y el gesto.
+      final giro = fotoSintetica(
+          escalaX: 0.8, desplazarX: 15, sombraIzquierda: true);
+      final ev1 = svc.evaluar(giro, pose: 'izquierda');
+      expect(ev1.tieneRostro, isTrue);
+      final ev2 = svc.evaluar(giro, pose: 'izquierda');
+      expect(ev2.lista, isTrue);
     });
 
     test('sin referencia frontal se aprueba el gesto (lo verifica el servidor)', () {
