@@ -66,6 +66,19 @@ class RegistrarRostroRequest(BaseModel):
     espejado: bool = False
 
 
+class EvaluarGestoRequest(BaseModel):
+    # Un frame de la vista previa (JPEG liviano) para guía en vivo.
+    imagen: str = ''
+    # Pose que el paciente intenta (frontal|izquierda|derecha|arriba|abajo).
+    pose: str = 'frontal'
+    # Ancla frontal (yaw/pitch medidos al capturar la frontal); sin ancla
+    # el pitch de arriba/abajo no se puede comparar y se aprueba.
+    yaw_ref: Optional[float] = None
+    pitch_ref: Optional[float] = None
+    # True si el frame viene espejado (web): se invierte el yaw.
+    espejado: bool = False
+
+
 def _cliente_supabase():
     if not SUPABASE_URL or not SUPABASE_KEY:
         return None
@@ -132,7 +145,77 @@ def health():
 @app.get('/api/vision/version')
 def version():
     """Versión del servicio (para verificar despliegues)."""
-    return {'version': '1.1.2', 'pose_check': True, 'model': MODEL_PACK}
+    return {'version': '1.1.3', 'pose_check': True, 'model': MODEL_PACK}
+
+
+@app.post('/api/vision/evaluar-gesto')
+def evaluar_gesto(payload: EvaluarGestoRequest):
+    """Guía en vivo para la captura automática (estilo Binance): evalúa UN
+    frame de la vista previa SIN registrar nada (sin writes, sin paciente).
+
+    El cliente envía frames solo con encuadre decente; el servidor decide
+    con landmarks reales (YuNet) si el gesto pedido se ejecutó. Los
+    umbrales viven aquí (env VISION_POSE_*): se afinan sin actualizar apps.
+    """
+
+    pose = (payload.pose or 'frontal').strip().lower()
+    imagen = _decodificar_imagen(payload.imagen) if payload.imagen else None
+    if imagen is None:
+        return {
+            'success': False,
+            'message': 'No se pudo decodificar la imagen',
+            'data': {'tiene_rostro': False, 'gesto_ok': False},
+        }
+    try:
+        caras = face_service.detectar(imagen)
+    except Exception as exc:
+        return {
+            'success': False,
+            'message': f'Detector no disponible: {exc}',
+            'data': {'tiene_rostro': False, 'gesto_ok': False},
+        }
+    if len(caras) != 1:
+        return {
+            'success': True,
+            'message': 'Ubica tu rostro dentro del óvalo',
+            'data': {'tiene_rostro': False, 'gesto_ok': False},
+        }
+    mets = face_service.metricas_pose(caras[0].get('landmarks'))
+    q = face_service.calidad(imagen, caras)
+    gesto = face_service.verificar_gesto(
+        pose, mets, None, payload.pitch_ref, payload.espejado)
+    # El ancla de yaw no se necesita (el yaw es absoluto); el pitch sí se
+    # compara contra la frontal enviada por el cliente.
+    ok = bool(q['ok']) and gesto is True
+    if not q['ok']:
+        mensaje = {
+            'rostro_muy_lejos': 'Acércate más a la cámara',
+            'rostro_muy_pequeno': 'Acércate más a la cámara',
+            'rostro_cortado': 'Centra tu rostro en el óvalo',
+            'mala_iluminacion': 'Busca mejor luz',
+            'foto_borrosa': 'Quédate quieto…',
+        }.get(q.get('motivo') or '', 'Ajusta el encuadre')
+    elif gesto is not True:
+        mensaje = {
+            'frontal': 'Mira de frente a la cámara',
+            'izquierda': 'Gira más tu cara a tu izquierda',
+            'derecha': 'Gira más tu cara a tu derecha',
+            'arriba': 'Levanta más el mentón',
+            'abajo': 'Baja más el mentón',
+        }.get(pose, 'Mantén la posición')
+    else:
+        mensaje = '¡Perfecto!'
+    return {
+        'success': True,
+        'message': mensaje,
+        'data': {
+            'tiene_rostro': True,
+            'yaw': (mets or {}).get('yaw'),
+            'pitch': (mets or {}).get('pitch'),
+            'calidad': q['puntaje'],
+            'gesto_ok': ok,
+        },
+    }
 
 
 @app.post('/api/kiosco/verificar-rostro')

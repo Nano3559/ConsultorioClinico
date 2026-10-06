@@ -2,6 +2,7 @@ const config = require('../config/config');
 const { getSupabase } = require('../config/supabase');
 const { sendSuccess, sendError } = require('../utils/helpers');
 const { procesarPaquete, rostroVigente, parseEmbedding } = require('../services/rostroService');
+const { llamarVision } = require('../services/visionService');
 
 /**
  * POST /api/vision/registrar-rostro/:pacienteId
@@ -109,4 +110,52 @@ const consultarRostro = async (req, res) => {
   }
 };
 
-module.exports = { registrarRostro, consultarRostro };
+/**
+ * POST /api/vision/evaluar-gesto (público con rate limit)
+ * Guía en vivo para la captura automática: evalúa UN frame SIN registrar
+ * nada (sin writes, sin paciente). Puro passthrough al microservicio
+ * Python (YuNet): el servidor decide con landmarks reales.
+ *
+ * Body: { imagen (base64), pose?, yaw_ref?, pitch_ref?, espejado? }
+ * Respuesta: { success, data: { tiene_rostro, yaw, pitch, calidad,
+ *   gesto_ok }, message }
+ */
+const evaluarGesto = async (req, res) => {
+  try {
+    if (!config.vision.enabled) {
+      return sendError(res, 'El servicio de visión está deshabilitado', 503);
+    }
+    const { imagen, pose, yaw_ref, pitch_ref, espejado } = req.body;
+    const respuesta = await llamarVision('/api/vision/evaluar-gesto', {
+      imagen,
+      pose: pose || 'frontal',
+      yaw_ref: yaw_ref ?? null,
+      pitch_ref: pitch_ref ?? null,
+      espejado: espejado === true,
+    });
+    let dato;
+    try {
+      dato = await respuesta.json();
+    } catch (err) {
+      dato = {};
+    }
+    if (!respuesta.ok) {
+      return sendError(res, dato.message || 'Error del microservicio de visión', respuesta.status);
+    }
+    const body = { success: dato.success !== false };
+    if (dato.data !== undefined) body.data = dato.data;
+    body.message = dato.message || 'Frame evaluado';
+    return res.status(200).json(body);
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      return sendError(res, 'El servicio de visión tardó demasiado en responder', 504);
+    }
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    console.error('vision.evaluarGesto:', error.message);
+    return sendError(res, 'No se pudo conectar con el servicio de visión', 502);
+  }
+};
+
+module.exports = { registrarRostro, consultarRostro, evaluarGesto };

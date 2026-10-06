@@ -179,6 +179,25 @@ const paqueteRostroValidation = [
   body('espejado').optional().isBoolean().withMessage('espejado debe ser booleano'),
 ];
 
+// Guía en vivo (un frame): imagen liviana + pose opcional + ancla frontal
+// opcional + espejado opcional. Sin writes: el rate limit la protege.
+const evaluarGestoValidation = [
+  body('imagen')
+    .isString()
+    .withMessage('La imagen debe ser una cadena base64')
+    .notEmpty()
+    .withMessage('La imagen es obligatoria')
+    .isLength({ max: 500000 })
+    .withMessage('La imagen no puede superar 500 KB (envíe JPEG liviano)'),
+  body('pose')
+    .optional()
+    .isIn(['frontal', 'izquierda', 'derecha', 'arriba', 'abajo'])
+    .withMessage('Pose inválida'),
+  body('yaw_ref').optional().isFloat().withMessage('yaw_ref debe ser número'),
+  body('pitch_ref').optional().isFloat().withMessage('pitch_ref debe ser número'),
+  body('espejado').optional().isBoolean().withMessage('espejado debe ser booleano'),
+];
+
 // Búsqueda pública por cédula (autocompletado de la reserva online).
 const buscarCedulaValidation = [
   query('cedula')
@@ -207,5 +226,6 @@ module.exports = {
   kioscoConfirmarCitaValidation,
   registrarRostroValidation,
   paqueteRostroValidation,
+  evaluarGestoValidation,
   buscarCedulaValidation,
 };

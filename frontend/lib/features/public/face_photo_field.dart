@@ -5,7 +5,9 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/foto_utils.dart';
 import 'kiosk/auto_captura_service.dart';
+import 'kiosk/gesto_assessment_service.dart';
 import 'kiosk/kiosk_camera_service.dart';
 
 /// Una foto del pack facial con su pose.
@@ -162,12 +164,22 @@ class _GuiaCapturaDialog extends StatefulWidget {
 class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   final _camera = KioskCameraService(frontPreference: true);
   final _auto = AutoCapturaService();
+  final _asesor = GestoAssessmentService();
   final List<MuestraFacial> _muestras = [];
 
   bool _initializing = true;
   bool _ocupado = false;
   bool _enviando = false;
   KioskCameraException? _error;
+
+  /// Veredicto del servidor (landmarks reales): autoritativo cuando
+  /// responde; si tarda o falla dos veces seguidas se sigue solo local.
+  bool _serverOk = true;
+  bool _serverBusy = false;
+  int _serverFails = 0;
+  DateTime _ultimaServer = DateTime.fromMillisecondsSinceEpoch(0);
+  double? _refYaw;
+  double? _refPitch;
 
   /// Sondeo automático estilo Binance: cada ~1s se prueba el encuadre y la
   /// foto se toma sola cuando es óptima (sin botón Capturar).
@@ -230,8 +242,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     });
   }
 
-  /// Un intento de captura automática: si el encuadre es óptimo dos frames
-  /// seguidos, esos mismos bytes quedan como muestra de la pose.
+  /// Un intento de captura automática: encuadre local decente + veredicto
+  /// del servidor (landmarks reales). Si el servidor no responde, decide
+  /// la heurística local. Los bytes evaluados quedan como muestra.
   Future<void> _sondear() async {
     if (!mounted ||
         _initializing ||
@@ -252,18 +265,63 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
         _manual =
             DateTime.now().difference(_poseDesde) > _limiteManual;
       });
+      if (!ev.encuadreOk) return;
+
+      // Encuadre decente: veredicto del servidor (máx 1 en vuelo, mín
+      // 1.5s entre llamadas). Autoritativo cuando responde.
+      final ahora = DateTime.now();
+      final puedeServer = _serverOk &&
+          !_serverBusy &&
+          ahora.difference(_ultimaServer) > const Duration(milliseconds: 1500);
+      if (puedeServer) {
+        _serverBusy = true;
+        _ultimaServer = ahora;
+        final liviana =
+            FotoUtils.aBase64Liviano(photo.bytes, maxLado: 480) ?? '';
+        final veredicto = liviana.isEmpty
+            ? null
+            : await _asesor.evaluar(
+                base64Jpeg: liviana,
+                pose: pose,
+                yawRef: _refYaw,
+                pitchRef: _refPitch,
+              );
+        _serverBusy = false;
+        if (!mounted || _completo) return;
+        if (veredicto == null) {
+          _serverFails++;
+          if (_serverFails >= 2 && _serverOk) {
+            _serverOk = false;
+            if (!mounted) return;
+            setState(() {
+              _mensajeGuia = 'Modo local: mantén el gesto, ya casi';
+            });
+          }
+        } else {
+          _serverFails = 0;
+          if (pose == 'frontal') {
+            _refYaw = veredicto.yaw;
+            _refPitch = veredicto.pitch;
+          }
+          if (veredicto.gestoOk) {
+            _agregarMuestra(photo.bytes, pose);
+            return;
+          }
+          if (!mounted) return;
+          setState(() {
+            _mensajeGuia = veredicto.mensaje.isNotEmpty
+                ? veredicto.mensaje
+                : ev.mensaje;
+            _ultEv = ev;
+          });
+          return;
+        }
+      }
+
+      // Sin veredicto del servidor: decide la heurística local.
       if (!ev.lista) return;
       if (!mounted) return;
-      if (pose == 'frontal') _auto.fijarReferenciaFrontal(photo.bytes);
-      setState(() {
-        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: pose));
-        _ocupado = false;
-      });
-      if (_completo) {
-        _sonda?.cancel();
-        return;
-      }
-      _iniciarSonda();
+      _agregarMuestra(photo.bytes, pose);
     } on KioskCameraException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -273,6 +331,21 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     } finally {
       _ocupado = false;
     }
+  }
+
+  /// Guarda la muestra y avanza (fija referencia si es la frontal).
+  void _agregarMuestra(Uint8List bytes, String pose) {
+    if (pose == 'frontal') _auto.fijarReferenciaFrontal(bytes);
+    if (!mounted) return;
+    setState(() {
+      _muestras.add(MuestraFacial(bytes: bytes, pose: pose));
+      _ocupado = false;
+    });
+    if (_completo) {
+      _sonda?.cancel();
+      return;
+    }
+    _iniciarSonda();
   }
 
   /// Respaldo manual (solo aparece si el auto no lo logra): conserva el

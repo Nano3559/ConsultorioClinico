@@ -49,6 +49,12 @@ class EvaluacionFoto {
   /// El giro/inclinación pedido se midió de verdad (vs referencia frontal).
   final bool gestoOk;
 
+  /// Encuadre decente (sin contar el gesto): con esto ya vale enviar el
+  /// frame al servidor para veredicto. El gesto lo decide el servidor o,
+  /// en modo local, `gestoOk`.
+  bool get encuadreOk =>
+      tieneRostro && centrado && iluminacionOk && nitida && estable;
+
   /// Guía corta para mostrar bajo la instrucción ("Acércate al óvalo"…).
   final String mensaje;
 }
