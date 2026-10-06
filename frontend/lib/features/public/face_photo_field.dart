@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import 'kiosk/auto_captura_service.dart';
 import 'kiosk/kiosk_camera_service.dart';
 
 /// Una foto del pack facial con su pose.
@@ -159,12 +161,23 @@ class _GuiaCapturaDialog extends StatefulWidget {
 
 class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   final _camera = KioskCameraService(frontPreference: true);
+  final _auto = AutoCapturaService();
   final List<MuestraFacial> _muestras = [];
 
   bool _initializing = true;
-  bool _capturing = false;
+  bool _ocupado = false;
   bool _enviando = false;
   KioskCameraException? _error;
+
+  /// Sondeo automático estilo Binance: cada ~1s se prueba el encuadre y la
+  /// foto se toma sola cuando es óptima (sin botón Capturar).
+  Timer? _sonda;
+  String _mensajeGuia = 'Ubica tu rostro dentro del óvalo';
+  DateTime _poseDesde = DateTime.now();
+  bool _manual = false;
+
+  /// Si el auto no lo logra en este tiempo, se ofrece captura manual.
+  static const _limiteManual = Duration(seconds: 25);
 
   @override
   void initState() {
@@ -174,6 +187,7 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
 
   @override
   void dispose() {
+    _sonda?.cancel();
     _camera.dispose();
     super.dispose();
   }
@@ -195,33 +209,98 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     }
     if (!mounted) return;
     setState(() => _initializing = false);
+    _iniciarSonda();
+  }
+
+  /// (Re)inicia el sondeo para la pose actual.
+  void _iniciarSonda() {
+    _sonda?.cancel();
+    _auto.reiniciar();
+    _poseDesde = DateTime.now();
+    setState(() {
+      _mensajeGuia = 'Ubica tu rostro dentro del óvalo';
+      _manual = false;
+    });
+    _sonda = Timer.periodic(const Duration(milliseconds: 900), (_) {
+      _sondear();
+    });
+  }
+
+  /// Un intento de captura automática: si el encuadre es óptimo dos frames
+  /// seguidos, esos mismos bytes quedan como muestra de la pose.
+  Future<void> _sondear() async {
+    if (!mounted ||
+        _initializing ||
+        _error != null ||
+        _completo ||
+        _ocupado) {
+      return;
+    }
+    _ocupado = true;
+    try {
+      final photo = await _camera.capture();
+      if (!mounted || _completo) return;
+      final ev = _auto.evaluar(photo.bytes);
+      setState(() {
+        _mensajeGuia = ev.mensaje;
+        _manual =
+            DateTime.now().difference(_poseDesde) > _limiteManual;
+      });
+      if (!ev.lista) return;
+      if (!mounted) return;
+      setState(() {
+        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: _poseActual));
+        _ocupado = false;
+      });
+      if (_completo) {
+        _sonda?.cancel();
+        return;
+      }
+      _iniciarSonda();
+    } on KioskCameraException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _mensajeGuia = e.message;
+        _manual = true;
+      });
+    } finally {
+      _ocupado = false;
+    }
+  }
+
+  /// Respaldo manual (solo aparece si el auto no lo logra): conserva el
+  /// gesto pedido pero lo dispara el paciente.
+  Future<void> _capturaManual() async {
+    if (_ocupado || _completo) return;
+    _ocupado = true;
+    try {
+      final photo = await _camera.capture();
+      if (!mounted) return;
+      setState(() {
+        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: _poseActual));
+      });
+      if (_completo) {
+        _sonda?.cancel();
+        return;
+      }
+      _iniciarSonda();
+    } on KioskCameraException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      _ocupado = false;
+    }
   }
 
   String get _poseActual => _poses.keys.elementAt(_muestras.length);
   String get _instruccion => _poses.values.elementAt(_muestras.length);
   bool get _completo => _muestras.length >= _poses.length;
 
-  Future<void> _capturar() async {
-    if (_capturing || _completo) return;
-    setState(() => _capturing = true);
-    try {
-      final photo = await _camera.capture();
-      if (!mounted) return;
-      setState(() {
-        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: _poseActual));
-        _capturing = false;
-      });
-    } on KioskCameraException catch (e) {
-      if (!mounted) return;
-      setState(() => _capturing = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
   void _quitarUltima() {
     if (_muestras.isEmpty) return;
     setState(() => _muestras.removeLast());
+    _iniciarSonda();
   }
 
   @override
@@ -298,13 +377,13 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            _completo
-                ? 'Pack completo. Revisa y confirma.'
-                : 'Foto ${_muestras.length + 1}/${_poses.length}: $_instruccion',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
+            child: Text(
+              _completo
+                  ? 'Pack completo. Revisa y confirma.'
+                  : 'Foto ${_muestras.length + 1}/${_poses.length}: $_instruccion\n(Mantén la posición: la foto se toma sola)',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
         ),
         const SizedBox(height: 10),
         ClipRRect(
@@ -366,17 +445,40 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
         ),
         const SizedBox(height: 10),
         if (!_completo)
-          FilledButton.icon(
-            onPressed: _capturing ? null : _capturar,
-            icon: _capturing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child:
-                        CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.camera_alt_outlined),
-            label: Text(_capturing ? 'Capturando...' : 'Capturar'),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _mensajeGuia,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        // Respaldo manual: solo aparece si el auto no lo logra en ~25s
+        // (mala luz, cámara lenta). En el flujo normal nunca se ve.
+        if (!_completo && _manual)
+          TextButton.icon(
+            onPressed: _ocupado ? null : _capturaManual,
+            icon: const Icon(Icons.camera_alt_outlined, size: 18),
+            label: const Text('Capturar manualmente'),
           ),
         if (_muestras.isNotEmpty) ...[
           const SizedBox(height: 8),
