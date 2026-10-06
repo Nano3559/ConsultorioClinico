@@ -215,7 +215,7 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   /// (Re)inicia el sondeo para la pose actual.
   void _iniciarSonda() {
     _sonda?.cancel();
-    _auto.reiniciar();
+    _auto.nuevaPose();
     _poseDesde = DateTime.now();
     setState(() {
       _mensajeGuia = 'Ubica tu rostro dentro del óvalo';
@@ -240,7 +240,8 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     try {
       final photo = await _camera.capture();
       if (!mounted || _completo) return;
-      final ev = _auto.evaluar(photo.bytes);
+      final pose = _poseActual;
+      final ev = _auto.evaluar(photo.bytes, pose: pose);
       setState(() {
         _mensajeGuia = ev.mensaje;
         _manual =
@@ -248,8 +249,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
       });
       if (!ev.lista) return;
       if (!mounted) return;
+      if (pose == 'frontal') _auto.fijarReferenciaFrontal(photo.bytes);
       setState(() {
-        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: _poseActual));
+        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: pose));
         _ocupado = false;
       });
       if (_completo) {
@@ -276,8 +278,10 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     try {
       final photo = await _camera.capture();
       if (!mounted) return;
+      final pose = _poseActual;
+      if (pose == 'frontal') _auto.fijarReferenciaFrontal(photo.bytes);
       setState(() {
-        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: _poseActual));
+        _muestras.add(MuestraFacial(bytes: photo.bytes, pose: pose));
       });
       if (_completo) {
         _sonda?.cancel();
@@ -300,6 +304,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   void _quitarUltima() {
     if (_muestras.isEmpty) return;
     setState(() => _muestras.removeLast());
+    if (_muestras.isEmpty) {
+      _auto.reiniciar();
+    }
     _iniciarSonda();
   }
 

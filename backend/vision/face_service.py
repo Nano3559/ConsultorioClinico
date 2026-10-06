@@ -67,6 +67,21 @@ UMBRAL_EAR_PARPADEO = 0.21
 # Giro de cabeza: el yaw debe variar al menos esto entre frames.
 UMBRAL_YAW_CAMBIO = 0.25
 
+# Gesto por pose en el registro (anti "no me moví"): el cliente ya guía y
+# pre-filtra, pero el servidor es el que decide. Métricas desde landmarks
+# YuNet (orden: ojo, ojo, nariz, boca, boca; los puntos medios son
+# independientes del orden dentro de cada par):
+#   yaw   = (nariz_x - medio_ojos_x) / dist_ojos   (+ = nariz a la derecha
+#           de la imagen = giro a SU izquierda; archivos sin espejar)
+#   pitch = (medio_boca_y - medio_ojos_y) / dist_ojos (se compara contra el
+#           frontal del MISMO pack: subir el mentón lo aumenta, bajarlo lo
+#           reduce; la dirección vertical nunca se espeja).
+# Umbrales deliberately conservadores: un giro claro da |yaw| ~0.2-0.5 y un
+# frontal ~0-0.08. Todo es env-tunable (VISION_POSE_*).
+POSE_YAW_FRONTAL = float(os.getenv('VISION_POSE_YAW_FRONTAL', '0.10'))
+POSE_YAW_MIN = float(os.getenv('VISION_POSE_YAW_MIN', '0.12'))
+POSE_PITCH_DELTA = float(os.getenv('VISION_POSE_PITCH_DELTA', '0.07'))
+
 # Landmarks MediaPipe (ojos para EAR, mejillas/nariz para yaw).
 OJO_IZQ = [33, 160, 158, 133, 153, 144]
 OJO_DER = [362, 385, 387, 263, 373, 380]
@@ -352,6 +367,63 @@ class FaceService:
             return {'ok': True, 'metodo': metodo, 'detalle': 'vida_confirmada'}
         return {'ok': False, 'metodo': 'sin_movimiento', 'detalle': 'no_se_detecto_parpadeo_ni_giro'}
 
+    # -- Gesto por pose ------------------------------------------------------
+
+    @staticmethod
+    def metricas_pose(landmarks):
+        """Devuelve {'yaw', 'pitch'} desde landmarks YuNet, o None si no se
+        puede medir. No distingue ojos izq/der (usa puntos medios)."""
+        try:
+            if not landmarks or len(landmarks) < 5:
+                return None
+            (ex1, ey1), (ex2, ey2) = landmarks[0], landmarks[1]
+            (nx, ny) = landmarks[2]
+            (m1x, m1y), (m2x, m2y) = landmarks[3], landmarks[4]
+            ojo_mx, ojo_my = (ex1 + ex2) / 2.0, (ey1 + ey2) / 2.0
+            boca_mx, boca_my = (m1x + m2x) / 2.0, (m1y + m2y) / 2.0
+            dist_ojos = float(np.hypot(ex1 - ex2, ey1 - ey2))
+            if dist_ojos < 1e-6:
+                return None
+            yaw = (nx - ojo_mx) / dist_ojos
+            pitch = (boca_my - ojo_my) / dist_ojos
+            return {'yaw': float(yaw), 'pitch': float(pitch)}
+        except Exception:
+            return None
+
+    @staticmethod
+    def verificar_gesto(pose, mets, yaw_frontal=None, pitch_frontal=None):
+        """True si el gesto corresponde a la pose pedida, o el motivo de
+        rechazo ('gesto_incorrecto'). Ante cualquier duda de medición se
+        APRUEBA (el cliente ya pre-filtra): esto nunca debe bloquear por un
+        error de cálculo, solo por un rostro claramente quieto o al revés."""
+        try:
+            pose = (pose or 'frontal').strip().lower()
+            if pose not in ('frontal', 'izquierda', 'derecha', 'arriba', 'abajo'):
+                return True
+            if not mets:
+                return True
+            yaw = mets.get('yaw')
+            if yaw is None:
+                return True
+            if pose == 'frontal':
+                return True if abs(yaw) <= POSE_YAW_FRONTAL else 'gesto_incorrecto'
+            if pose == 'izquierda':
+                return True if yaw >= POSE_YAW_MIN else 'gesto_incorrecto'
+            if pose == 'derecha':
+                return True if yaw <= -POSE_YAW_MIN else 'gesto_incorrecto'
+            # arriba/abajo: cambio vertical claro contra el frontal del pack.
+            if pitch_frontal is None:
+                return True
+            pitch = mets.get('pitch')
+            if pitch is None:
+                return True
+            delta = pitch - pitch_frontal
+            if pose == 'arriba':
+                return True if delta >= POSE_PITCH_DELTA else 'gesto_incorrecto'
+            return True if delta <= -POSE_PITCH_DELTA else 'gesto_incorrecto'
+        except Exception:
+            return True
+
     # -- Registro multi-pose ----------------------------------------------------
 
     def registrar(self, paciente_id, muestras):
@@ -361,7 +433,31 @@ class FaceService:
         resultados = []
         directorio = os.path.join(DATASET_DIR, f'paciente_{paciente_id}')
         os.makedirs(directorio, exist_ok=True)
-        for m in muestras or []:
+        # Pre-pase de gestos: métricas de cada muestra + ancla frontal del
+        # pack (para el pitch de arriba/abajo). Barato y NUNCA bloquea por
+        # error: ante la duda se aprueba.
+        mets_por_muestra = []
+        yaw_frontal = pitch_frontal = None
+        try:
+            for m in muestras or []:
+                img0 = m.get('imagen') if isinstance(m, dict) else m
+                mets = None
+                try:
+                    c0 = self.detectar(img0) if img0 is not None else []
+                    if len(c0) == 1:
+                        mets = self.metricas_pose(c0[0].get('landmarks'))
+                except Exception:
+                    mets = None
+                mets_por_muestra.append(mets)
+            for m, mets in zip(muestras or [], mets_por_muestra):
+                pose0 = (m.get('pose', 'frontal') if isinstance(m, dict) else 'frontal')
+                if (pose0 or '').strip().lower() == 'frontal' and mets:
+                    yaw_frontal = mets.get('yaw')
+                    pitch_frontal = mets.get('pitch')
+                    break
+        except Exception:
+            mets_por_muestra = [None] * len(muestras or [])
+        for idx, m in enumerate(muestras or []):
             imagen = m.get('imagen') if isinstance(m, dict) else m
             pose = m.get('pose', 'frontal') if isinstance(m, dict) else 'frontal'
             if imagen is None:
@@ -383,6 +479,18 @@ class FaceService:
             foto = self.foto_liviana(imagen)
             if emb is None or not q['ok'] or foto is None:
                 resultados.append({'pose': pose, 'guardada': False, 'motivo': q.get('motivo') or 'foto_invalida', 'calidad': q['puntaje']})
+                continue
+            # Gesto: la pose pedida debe haberse ejecutado de verdad (anti
+            # "no me moví"). Solo rechaza con medición clara en contra.
+            mets = mets_por_muestra[idx] if idx < len(mets_por_muestra) else None
+            if mets is None:
+                try:
+                    mets = self.metricas_pose(cara.get('landmarks'))
+                except Exception:
+                    mets = None
+            gesto = self.verificar_gesto(pose, mets, yaw_frontal, pitch_frontal)
+            if gesto is not True:
+                resultados.append({'pose': pose, 'guardada': False, 'motivo': gesto, 'calidad': q['puntaje']})
                 continue
             ruta = os.path.join(directorio, f'{pose}.jpg')
             with open(ruta, 'wb') as fh:

@@ -9,9 +9,13 @@ import 'package:image/image.dart' as img;
 /// Todo el análisis es local (sin red) sobre una copia de ~160 px: es
 /// una GUÍA de encuadre, no una verificación biométrica. El control de
 /// calidad real sigue siendo el pipeline del backend al enviar el pack
-/// (rechaza por pose con motivos). Los umbrales son conservadores a
-/// propósito: ante la duda se pide otro frame, y el diálogo ofrece
+/// (calidad + gesto + identidad por pose). Los umbrales son conservadores
+/// a propósito: ante la duda se pide otro frame, y el diálogo ofrece
 /// captura manual si el auto no lo logra en un tiempo prudente.
+///
+/// SUPUESTO de espejo: los archivos capturados NO están espejados (la
+/// vista previa sí puede estarlo). Con archivos sin espejar, la derecha
+/// de la imagen es la izquierda de la persona.
 class EvaluacionFoto {
   const EvaluacionFoto({
     required this.tieneRostro,
@@ -19,13 +23,20 @@ class EvaluacionFoto {
     required this.iluminacionOk,
     required this.nitida,
     required this.estable,
+    required this.gestoOk,
     required this.mensaje,
   });
 
-  /// Rostro presente + centrado + bien iluminado + nítido + quieto.
+  /// Rostro presente + centrado + bien iluminado + nítido + quieto +
+  /// gesto de la pose ejecutado (para frontal no hay gesto que verificar).
   /// `estable` exige 2 frames buenos seguidos (nunca dispara al primero).
   bool get lista =>
-      tieneRostro && centrado && iluminacionOk && nitida && estable;
+      tieneRostro &&
+      centrado &&
+      iluminacionOk &&
+      nitida &&
+      estable &&
+      gestoOk;
 
   final bool tieneRostro;
   final bool centrado;
@@ -33,8 +44,27 @@ class EvaluacionFoto {
   final bool nitida;
   final bool estable;
 
+  /// El giro/inclinación pedido se midió de verdad (vs referencia frontal).
+  final bool gestoOk;
+
   /// Guía corta para mostrar bajo la instrucción ("Acércate al óvalo"…).
   final String mensaje;
+}
+
+/// Geometría del rostro frontal (ancla para medir el gesto de las demás
+/// poses). Todo normalizado 0-1 contra el tamaño del frame analizado.
+class ReferenciaRostro {
+  const ReferenciaRostro({
+    required this.ancho,
+    required this.alto,
+    required this.cx,
+    required this.cy,
+  });
+
+  final double ancho;
+  final double alto;
+  final double cx;
+  final double cy;
 }
 
 /// Servicio sin estado de UI: evalúa frames JPEG y decide si disparar.
@@ -46,10 +76,34 @@ class AutoCapturaService {
 
   _Medicion? _anterior;
 
-  /// Llamar al cambiar de pose: la estabilidad exige racha nueva.
-  void reiniciar() => _anterior = null;
+  /// Ancla frontal para medir el gesto (se fija al capturar la frontal).
+  ReferenciaRostro? _referencia;
 
-  EvaluacionFoto evaluar(Uint8List jpegBytes) {
+  /// Llamar al cambiar de pose: la estabilidad exige racha nueva (la
+  /// referencia frontal se conserva).
+  void nuevaPose() => _anterior = null;
+
+  /// Reinicio total (al abrir/cerrar el diálogo).
+  void reiniciar() {
+    _anterior = null;
+    _referencia = null;
+  }
+
+  /// Fija la geometría frontal a partir de sus bytes (se llama al aceptar
+  /// la foto frontal, sea automática o manual).
+  void fijarReferenciaFrontal(Uint8List jpegBytes) {
+    final m = _analizar(jpegBytes);
+    _anterior = m;
+    if (!m.tieneRostro) return;
+    _referencia = ReferenciaRostro(
+      ancho: (m.maxX - m.minX).clamp(0.01, 1.0),
+      alto: (m.maxY - m.minY).clamp(0.01, 1.0),
+      cx: m.centroideX,
+      cy: m.centroideY,
+    );
+  }
+
+  EvaluacionFoto evaluar(Uint8List jpegBytes, {String pose = 'frontal'}) {
     final actual = _analizar(jpegBytes);
     final previo = _anterior;
     final estable = previo != null &&
@@ -62,6 +116,7 @@ class AutoCapturaService {
     _anterior = actual;
 
     final String mensaje;
+    var gestoOk = true;
     if (!actual.tieneRostro) {
       mensaje = 'Ubica tu rostro dentro del óvalo';
     } else if (!actual.centrado) {
@@ -79,7 +134,11 @@ class AutoCapturaService {
     } else if (!estable) {
       mensaje = 'Quietito… capturando';
     } else {
-      mensaje = '¡Perfecto!';
+      // Encuadre óptimo: verificar que el gesto pedido se ejecutó de
+      // verdad (diferencial contra la frontal). Sin referencia (frontal
+      // manual antigua) se aprueba: el servidor igual lo verifica.
+      gestoOk = _verificarGesto(pose, actual);
+      mensaje = gestoOk ? '¡Perfecto!' : _mensajeGesto(pose);
     }
     return EvaluacionFoto(
       tieneRostro: actual.tieneRostro,
@@ -87,8 +146,51 @@ class AutoCapturaService {
       iluminacionOk: actual.iluminacionOk,
       nitida: actual.nitida,
       estable: estable,
+      gestoOk: gestoOk,
       mensaje: mensaje,
     );
+  }
+
+  /// Compara la geometría actual contra la frontal: el giro debe verse.
+  /// Umbrales: giro lateral estrecha >6% + desplaza >2%; cabeceo desplaza
+  /// el centroide vertical >2.5% (la vertical nunca se espeja).
+  bool _verificarGesto(String pose, _Medicion actual) {
+    final ref = _referencia;
+    if (ref == null) return true;
+    final repouse = pose.trim().toLowerCase();
+    if (repouse == 'frontal') return true;
+    final ancho =
+        (actual.maxX - actual.minX).clamp(0.01, 1.0);
+    final razonAncho = ancho / ref.ancho;
+    final dx = actual.centroideX - ref.cx;
+    final dy = actual.centroideY - ref.cy;
+    switch (repouse) {
+      case 'izquierda': // su izquierda = derecha de la imagen sin espejar
+        return razonAncho < 0.94 && dx > 0.02;
+      case 'derecha':
+        return razonAncho < 0.94 && dx < -0.02;
+      case 'arriba': // mentón arriba: el centroide baja en la imagen
+        return dy > 0.025;
+      case 'abajo':
+        return dy < -0.025;
+      default:
+        return true;
+    }
+  }
+
+  String _mensajeGesto(String pose) {
+    switch (pose.trim().toLowerCase()) {
+      case 'izquierda':
+        return 'Gira más tu cara a tu izquierda';
+      case 'derecha':
+        return 'Gira más tu cara a tu derecha';
+      case 'arriba':
+        return 'Levanta más el mentón';
+      case 'abajo':
+        return 'Baja más el mentón';
+      default:
+        return 'Quietito… capturando';
+    }
   }
 
   _Medicion _analizar(Uint8List jpegBytes) {
@@ -103,6 +205,12 @@ class AutoCapturaService {
         lumaMedia: 0,
         desplazamientoX: 0,
         desplazamientoY: 0,
+        centroideX: 0.5,
+        centroideY: 0.5,
+        minX: 0,
+        maxX: 0,
+        minY: 0,
+        maxY: 0,
       );
     }
     final trabajo = img.copyResize(decoded, width: anchoAnalisis);
@@ -120,6 +228,10 @@ class AutoCapturaService {
     var nPiel = 0;
     var sumaPielX = 0.0;
     var sumaPielY = 0.0;
+    var minPX = w.toDouble();
+    var maxPX = -1.0;
+    var minPY = h.toDouble();
+    var maxPY = -1.0;
     // Grises para nitidez (Laplaciano) en pasada posterior.
     final grises = List<int>.filled(w * h, 0);
     for (var y = 0; y < h; y += 2) {
@@ -139,6 +251,10 @@ class AutoCapturaService {
           nPiel++;
           sumaPielX += x;
           sumaPielY += y;
+          if (x < minPX) minPX = x.toDouble();
+          if (x > maxPX) maxPX = x.toDouble();
+          if (y < minPY) minPY = y.toDouble();
+          if (y > maxPY) maxPY = y.toDouble();
         }
       }
     }
@@ -152,6 +268,12 @@ class AutoCapturaService {
         lumaMedia: 0,
         desplazamientoX: 0,
         desplazamientoY: 0,
+        centroideX: 0.5,
+        centroideY: 0.5,
+        minX: 0,
+        maxX: 0,
+        minY: 0,
+        maxY: 0,
       );
     }
     final fraccionPiel = nPiel / nOvalo;
@@ -203,6 +325,12 @@ class AutoCapturaService {
       lumaMedia: lumaMedia,
       desplazamientoX: dxN,
       desplazamientoY: dyN,
+      centroideX: nPiel > 0 ? (sumaPielX / nPiel) / w : 0.5,
+      centroideY: nPiel > 0 ? (sumaPielY / nPiel) / h : 0.5,
+      minX: nPiel > 0 ? minPX / w : 0,
+      maxX: nPiel > 0 ? maxPX / w : 0,
+      minY: nPiel > 0 ? minPY / h : 0,
+      maxY: nPiel > 0 ? maxPY / h : 0,
     );
   }
 
@@ -229,6 +357,12 @@ class _Medicion {
     required this.lumaMedia,
     required this.desplazamientoX,
     required this.desplazamientoY,
+    required this.centroideX,
+    required this.centroideY,
+    required this.minX,
+    required this.maxX,
+    required this.minY,
+    required this.maxY,
   });
 
   final bool tieneRostro;
@@ -239,4 +373,12 @@ class _Medicion {
   final double lumaMedia;
   final double desplazamientoX;
   final double desplazamientoY;
+
+  /// Centroide y caja de la máscara de piel, normalizados 0-1.
+  final double centroideX;
+  final double centroideY;
+  final double minX;
+  final double maxX;
+  final double minY;
+  final double maxY;
 }

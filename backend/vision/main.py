@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title='Vision Service - Consultorio Clínico',
-    version='0.3.0',
+    version='0.4.0',
     lifespan=lifespan,
 )
 
@@ -124,6 +124,12 @@ def _cita_del_dia(supabase, paciente_id):
 @app.get('/health')
 def health():
     return {'status': 'OK'}
+
+
+@app.get('/api/vision/version')
+def version():
+    """Versión del servicio (para verificar despliegues)."""
+    return {'version': '1.1.0', 'pose_check': True, 'model': MODEL_PACK}
 
 
 @app.post('/api/kiosco/verificar-rostro')
