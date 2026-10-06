@@ -210,7 +210,20 @@ class ClinicProvider extends ChangeNotifier {
     for (final m in (data as List? ?? [])) {
       if (m is! Map) continue;
       final mm = Map<String, dynamic>.from(m);
-      final sid = (mm['especialidad_id'] ?? '').toString();
+      var sid = (mm['especialidad_id'] ?? '').toString();
+      if (sid.isEmpty) {
+        // Respaldo por nombre para filas sin FK (creadas antes de la
+        // migración 004): si no se resuelve, el médico sería invisible al
+        // filtrar por especialidad.
+        final nombreEsp =
+            (mm['especialidad'] ?? '').toString().trim().toLowerCase();
+        for (final s in _specialties) {
+          if (s.name.trim().toLowerCase() == nombreEsp) {
+            sid = s.id;
+            break;
+          }
+        }
+      }
       _doctors.add(Doctor.fromApi(
         mm,
         specialtyId: sid,
