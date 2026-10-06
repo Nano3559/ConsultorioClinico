@@ -23,7 +23,7 @@ const registrarRostro = async (req, res) => {
     }
 
     const pacienteId = parseInt(req.params.pacienteId, 10);
-    const { imagenes = [] } = req.body;
+    const { imagenes = [], espejado } = req.body;
     const supabase = getSupabase();
 
     // Verificamos que el paciente exista para no registrar un rostro huérfano
@@ -40,7 +40,7 @@ const registrarRostro = async (req, res) => {
 
     // Pipeline compartido: Python (YuNet+SFace + calidad) -> Storage privado
     // -> rostro_muestras + plantilla 128-d + vigencia.
-    const resultado = await procesarPaquete(supabase, pacientes[0], imagenes);
+    const resultado = await procesarPaquete(supabase, pacientes[0], imagenes, espejado === true);
 
     const body = {
       success: true,

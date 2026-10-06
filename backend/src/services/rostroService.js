@@ -109,9 +109,10 @@ const rostroVigente = (paciente, dias = config.kiosco.reenrollDias) => {
  * @param {object} supabase Cliente Supabase (service_role).
  * @param {object} paciente  { id, cedula, nombre, apellido }.
  * @param {Array}  muestras  [{ imagen, pose }] en base64.
+ * @param {boolean} espejado Fotos espejadas (web): el Python invierte el yaw.
  * @returns {object} { guardadas, porPose, rostro_registrado, calidades, carpeta }
  */
-const procesarPaquete = async (supabase, paciente, muestras) => {
+const procesarPaquete = async (supabase, paciente, muestras, espejado = false) => {
   const normalizadas = normalizarMuestras(muestras);
   if (normalizadas.length === 0) {
     const error = new Error('Debe enviar al menos una imagen válida');
@@ -121,7 +122,7 @@ const procesarPaquete = async (supabase, paciente, muestras) => {
 
   const respuesta = await llamarVision(
     `/api/vision/registrar-rostro/${paciente.id}`,
-    { imagenes: normalizadas }
+    { imagenes: normalizadas, espejado: espejado === true }
   );
   let dato;
   try {

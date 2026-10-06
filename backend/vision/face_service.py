@@ -390,11 +390,16 @@ class FaceService:
             return None
 
     @staticmethod
-    def verificar_gesto(pose, mets, yaw_frontal=None, pitch_frontal=None):
+    def verificar_gesto(pose, mets, yaw_frontal=None, pitch_frontal=None, espejado=False):
         """True si el gesto corresponde a la pose pedida, o el motivo de
         rechazo ('gesto_incorrecto'). Ante cualquier duda de medición se
         APRUEBA (el cliente ya pre-filtra): esto nunca debe bloquear por un
-        error de cálculo, solo por un rostro claramente quieto o al revés."""
+        error de cálculo, solo por un rostro claramente quieto o al revés.
+
+        espejado=True (cámara web frontal: el plugin voltea la captura):
+        la nariz a la derecha de la imagen es SU derecha, se invierte el yaw.
+        La vertical y el frontal no se ven afectados.
+        """
         try:
             pose = (pose or 'frontal').strip().lower()
             if pose not in ('frontal', 'izquierda', 'derecha', 'arriba', 'abajo'):
@@ -404,6 +409,8 @@ class FaceService:
             yaw = mets.get('yaw')
             if yaw is None:
                 return True
+            if espejado:
+                yaw = -yaw
             if pose == 'frontal':
                 return True if abs(yaw) <= POSE_YAW_FRONTAL else 'gesto_incorrecto'
             if pose == 'izquierda':
@@ -425,10 +432,14 @@ class FaceService:
 
     # -- Registro multi-pose ----------------------------------------------------
 
-    def registrar(self, paciente_id, muestras):
-        """Procesa [{imagen, pose}]: calidad + embedding 128-d + foto liviana
-        por muestra. Guarda el recorte en dataset/paciente_{id}/ y devuelve el
-        promedio normalizado (plantilla del paciente)."""
+    def registrar(self, paciente_id, muestras, espejado=False):
+        """Procesa [{imagen, pose}]: calidad + gesto + embedding 128-d + foto
+        liviana por muestra. Guarda el recorte en dataset/paciente_{id}/ y
+        devuelve el promedio normalizado (plantilla del paciente).
+
+        espejado=True si las fotos vienen volteadas horizontalmente (web):
+        se invierte el signo del yaw al verificar izquierda/derecha.
+        """
         resultados = []
         directorio = os.path.join(DATASET_DIR, f'paciente_{paciente_id}')
         os.makedirs(directorio, exist_ok=True)
@@ -487,7 +498,7 @@ class FaceService:
                     mets = self.metricas_pose(cara.get('landmarks'))
                 except Exception:
                     mets = None
-            gesto = self.verificar_gesto(pose, mets, yaw_frontal, pitch_frontal)
+            gesto = self.verificar_gesto(pose, mets, yaw_frontal, pitch_frontal, espejado)
             if gesto is not True:
                 resultados.append({'pose': pose, 'guardada': False, 'motivo': gesto, 'calidad': q['puntaje']})
                 continue

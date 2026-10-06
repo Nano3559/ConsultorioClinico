@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import '../../../services/api_client.dart';
 
 /// Puente de la reserva online con el backend biométrico (Supabase).
@@ -49,6 +51,9 @@ class RostroPackService {
       if (fechaNacimiento != null && fechaNacimiento.isNotEmpty)
         'fecha_nacimiento': fechaNacimiento,
       'muestras': muestras,
+      // Avisa si las fotos vienen espejadas (web sí, móvil no) para que el
+      // servidor mida el giro al lado correcto.
+      'espejado': kIsWeb,
     });
     if (!res.isSuccess) {
       throw RostroPackException(res.error ?? 'No se pudo registrar el rostro.');

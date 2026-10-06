@@ -432,7 +432,7 @@ const obtenerModelo = async (req, res) =>
 const ingestarPaquete = async (req, res) => {
   const supabase = getSupabase();
   try {
-    const { cedula, nombre, apellido, telefono, email, fecha_nacimiento, muestras } = req.body;
+    const { cedula, nombre, apellido, telefono, email, fecha_nacimiento, muestras, espejado } = req.body;
 
     let paciente;
     const { data: existentes, error: errorBuscar } = await supabase
@@ -462,7 +462,7 @@ const ingestarPaquete = async (req, res) => {
       paciente = creado;
     }
 
-    const resultado = await procesarPaquete(supabase, paciente, muestras);
+    const resultado = await procesarPaquete(supabase, paciente, muestras, espejado === true);
 
     await registrarIntento(supabase, {
       tipo: 'kiosco_verificacion',

@@ -13,6 +13,7 @@ Uint8List fotoSintetica({
   double desplazarX = 0,
   double desplazarY = 0,
   double escalaX = 1,
+  double escalaY = 1,
   bool ruido = true,
   bool sombraIzquierda = false,
 }) {
@@ -22,7 +23,7 @@ Uint8List fotoSintetica({
   for (var y = 0; y < h; y++) {
     for (var x = 0; x < w; x++) {
       final dx = (x - (w / 2 + desplazarX)) / (w * 0.26 * escalaX);
-      final dy = (y - (h / 2 + desplazarY)) / (h * 0.36);
+      final dy = (y - (h / 2 + desplazarY)) / (h * 0.36 * escalaY);
       if (dx * dx + dy * dy <= 1) {
         if (sombraIzquierda && x < w / 2) {
           imagen.setPixelRgb(x, y, 60, 45, 35);
@@ -196,6 +197,42 @@ void main() {
       svc.evaluar(foto, pose: 'izquierda');
       final ev = svc.evaluar(foto, pose: 'izquierda');
       expect(ev.gestoOk, isTrue);
+    });
+
+    test('abajo con mentón encogido dispara; sin encoger no', () {
+      final svc = AutoCapturaService();
+      final frontal = fotoSintetica();
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.fijarReferenciaFrontal(frontal);
+      // Mentón abajo: la máscara se acorta en alto sin angostarse.
+      final tuck = fotoSintetica(escalaY: 0.85);
+      svc.evaluar(tuck, pose: 'abajo');
+      final ev = svc.evaluar(tuck, pose: 'abajo');
+      expect(ev.gestoOk, isTrue);
+      expect(ev.lista, isTrue);
+      // Sin encoger (igual que frontal): no dispara.
+      svc.evaluar(frontal, pose: 'abajo');
+      final evQ = svc.evaluar(frontal, pose: 'abajo');
+      expect(evQ.gestoOk, isFalse);
+      expect(evQ.lista, isFalse);
+    });
+
+    test('modo espejado invierte izquierda/derecha', () {
+      final svc = AutoCapturaService(espejado: true);
+      final frontal = fotoSintetica();
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.evaluar(frontal, pose: 'frontal');
+      svc.fijarReferenciaFrontal(frontal);
+      // Espejado: girar a SU izquierda se ve corrido a la izquierda.
+      final giroIzq = fotoSintetica(escalaX: 0.8, desplazarX: -15);
+      svc.evaluar(giroIzq, pose: 'izquierda');
+      final ev = svc.evaluar(giroIzq, pose: 'izquierda');
+      expect(ev.gestoOk, isTrue);
+      expect(ev.lista, isTrue);
+      // El mismo gesto NO pasa como derecha.
+      final evD = svc.evaluar(giroIzq, pose: 'derecha');
+      expect(evD.gestoOk, isFalse);
     });
   });
 }

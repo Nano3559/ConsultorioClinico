@@ -61,6 +61,9 @@ class VerificarRostroRequest(BaseModel):
 class RegistrarRostroRequest(BaseModel):
     # Acepta [{ imagen, pose }] y, por compatibilidad, [base64, ...].
     imagenes: list = []
+    # True si las fotos vienen espejadas (cámara frontal web): se invierte
+    # el yaw al verificar izquierda/derecha.
+    espejado: bool = False
 
 
 def _cliente_supabase():
@@ -129,7 +132,7 @@ def health():
 @app.get('/api/vision/version')
 def version():
     """Versión del servicio (para verificar despliegues)."""
-    return {'version': '1.1.1', 'pose_check': True, 'model': MODEL_PACK}
+    return {'version': '1.1.2', 'pose_check': True, 'model': MODEL_PACK}
 
 
 @app.post('/api/kiosco/verificar-rostro')
@@ -266,7 +269,7 @@ def registrar_rostro(paciente_id: int, payload: RegistrarRostroRequest):
             'data': None,
         }
 
-    resultado = face_service.registrar(paciente_id, muestras)
+    resultado = face_service.registrar(paciente_id, muestras, espejado=payload.espejado)
     if resultado.get('error'):
         return {
             'success': False,

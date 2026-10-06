@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image/image.dart' as img;
 
 /// Evaluación de un frame de prueba para la captura automática estilo
@@ -13,9 +14,10 @@ import 'package:image/image.dart' as img;
 /// a propósito: ante la duda se pide otro frame, y el diálogo ofrece
 /// captura manual si el auto no lo logra en un tiempo prudente.
 ///
-/// SUPUESTO de espejo: los archivos capturados NO están espejados (la
-/// vista previa sí puede estarlo). Con archivos sin espejar, la derecha
-/// de la imagen es la izquierda de la persona.
+/// SUPUESTO de espejo resuelto por plataforma: en web la cámara frontal
+/// entrega archivos espejados (lo voltea el propio plugin) y en móvil o
+/// Windows no. El flag `espejado` (por defecto según plataforma) invierte
+/// el signo horizontal para que "su izquierda" siempre sea su izquierda.
 class EvaluacionFoto {
   const EvaluacionFoto({
     required this.tieneRostro,
@@ -69,10 +71,17 @@ class ReferenciaRostro {
 
 /// Servicio sin estado de UI: evalúa frames JPEG y decide si disparar.
 class AutoCapturaService {
-  AutoCapturaService({this.anchoAnalisis = 160});
+  AutoCapturaService({this.anchoAnalisis = 160, bool? espejado})
+      : _espejado = espejado ?? kIsWeb;
 
   /// Ancho al que se reduce el frame para analizar (rapidez).
   final int anchoAnalisis;
+
+  /// En web la cámara frontal entrega archivos ESPEJADOS (camera_web voltea
+  /// las capturas no-traseras): la derecha de la imagen es la derecha de la
+  /// persona. En móvil/Windows no se espeja. Si alguna plataforma se comporta
+  /// distinto, se invierte solo este flag (los mensajes anatómicos no cambian).
+  final bool _espejado;
 
   _Racha? _anterior;
 
@@ -186,26 +195,32 @@ class AutoCapturaService {
 
   /// Compara la geometría actual contra la frontal: el giro debe verse.
   /// Giros suaves (~12-15°) ya pasan: el que no se movió da ~1.0/~0 y
-  /// queda fuera por ambos lados.
+  /// queda fuera por ambos lados. El signo horizontal se invierte si la
+  /// plataforma espeja (web); la vertical nunca se espeja.
   bool _verificarGesto(String pose, _Medicion actual) {
     final ref = _referencia;
     if (ref == null) return true;
     final repouse = pose.trim().toLowerCase();
     if (repouse == 'frontal') return true;
-    final ancho =
-        (actual.maxX - actual.minX).clamp(0.01, 1.0);
+    final ancho = (actual.maxX - actual.minX).clamp(0.01, 1.0);
+    final alto = (actual.maxY - actual.minY).clamp(0.01, 1.0);
     final razonAncho = ancho / ref.ancho;
-    final dx = actual.centroideX - ref.cx;
+    final razonAlto = alto / ref.alto;
+    // dx>0 = corrido a la derecha de la imagen. Sin espejar eso es SU
+    // izquierda; espejado (web) es SU derecha: se invierte el signo.
+    final dx = (actual.centroideX - ref.cx) * (_espejado ? -1 : 1);
     final dy = actual.centroideY - ref.cy;
     switch (repouse) {
-      case 'izquierda': // su izquierda = derecha de la imagen sin espejar
+      case 'izquierda': // su izquierda
         return razonAncho < 0.98 && dx > 0.015;
       case 'derecha':
         return razonAncho < 0.98 && dx < -0.015;
       case 'arriba': // mentón arriba: el centroide baja en la imagen
         return dy > 0.022;
-      case 'abajo':
-        return dy < -0.022;
+      case 'abajo': // mentón abajo (encoge): alto se acorta, ancho se
+        // mantiene y el centroide NO baja (eso sería deslizar la cara,
+        // no meter el mentón)
+        return razonAlto < 0.94 && razonAncho > 0.95 && dy < 0.01;
       default:
         return true;
     }
@@ -215,7 +230,7 @@ class AutoCapturaService {
   bool _giroContrario(String pose, _Medicion actual) {
     final ref = _referencia;
     if (ref == null) return false;
-    final dx = actual.centroideX - ref.cx;
+    final dx = (actual.centroideX - ref.cx) * (_espejado ? -1 : 1);
     final dy = actual.centroideY - ref.cy;
     switch (pose.trim().toLowerCase()) {
       case 'izquierda':

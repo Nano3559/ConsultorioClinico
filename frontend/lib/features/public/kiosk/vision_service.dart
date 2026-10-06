@@ -11,6 +11,8 @@
 // se toma de AuthProvider en cada llamada.
 // ============================================================================
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import '../../../services/api_client.dart';
 
 /// Estado del descriptor facial de un paciente (KIO-07).
@@ -92,7 +94,11 @@ class VisionService {
   }) async {
     final res = await _api.postJson(
       '/vision/registrar-rostro/$pacienteId',
-      {'imagenes': muestras},
+      {
+        'imagenes': muestras,
+        // La recepción también puede operar desde la web (espejada).
+        'espejado': kIsWeb,
+      },
       token: token,
     );
     if (!res.isSuccess) {

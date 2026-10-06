@@ -140,6 +140,8 @@ const registrarRostroValidation = [
     .optional()
     .isLength({ max: 20000000 })
     .withMessage('Una imagen no puede superar 20 MB'),
+  // La web espeja la frontal (camera_web): el servidor invierte el yaw.
+  body('espejado').optional().isBoolean().withMessage('espejado debe ser booleano'),
 ];
 
 // Ingesta pública del pack facial (reserva online): paciente mínimo + pack.
@@ -174,6 +176,7 @@ const paqueteRostroValidation = [
     .optional()
     .isLength({ max: 20000000 })
     .withMessage('Una imagen no puede superar 20 MB'),
+  body('espejado').optional().isBoolean().withMessage('espejado debe ser booleano'),
 ];
 
 // Búsqueda pública por cédula (autocompletado de la reserva online).
