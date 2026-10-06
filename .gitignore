@@ -73,13 +73,14 @@ desktop.ini
 $RECYCLE.BIN/
 
 # --- Kiosco distribuible -------------------------------------------------
-# Solo el .bat y la guía van al git; NUNCA los binarios compilados.
+# Solo el .bat y la gu��a van al git; NUNCA los binarios compilados.
 kiosco-dist/*.exe
 kiosco-dist/*.dll
 kiosco-dist/*.lib
 kiosco-dist/*.exp
 kiosco-dist/*.json
 kiosco-dist/data/
+kiosco-dist/Output/
 
 # --- Logs y temporales ------------------------------------------------
 *.log
