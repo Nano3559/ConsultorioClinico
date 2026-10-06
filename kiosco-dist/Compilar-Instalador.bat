@@ -48,7 +48,7 @@ if errorlevel 1 (
 
 echo  [1/3] Compilando .exe (esto tarda varios minutos)...
 pushd "%~dp0..\frontend"
-call flutter build windows --release --dart-define=API_BASE_URL=%API_URL% --dart-define=KIOSK_API_KEY=%KIOSK_KEY% --dart-define=RUTA_INICIAL=/kiosco
+call flutter build windows --release --dart-define=API_BASE_URL=%API_URL% --dart-define=KIOSK_API_KEY=%KIOSK_KEY% --dart-define=RUTA_INICIAL=/kiosco --dart-define=MAIL_API_URL=https://consultorio-clinico.vercel.app
 if errorlevel 1 (
   echo  [ERROR] Fallo la compilacion Flutter.
   popd
