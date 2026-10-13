@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
+import 'package:web/web.dart' as web;
 
 /// Motivo por el que la cámara del kiosco no está disponible.
 enum KioskCameraError {
@@ -56,6 +60,11 @@ class KioskCameraService {
       await _controller!.dispose();
       _controller = null;
     }
+
+    // En web se pide el permiso ANTES de enumerar: varios navegadores
+    // móviles fallan en enumerateDevices sin permiso previo y el error que
+    // sale no es CameraException (quedaba como "equipo incompatible").
+    if (kIsWeb) await _pedirPermisoWeb();
 
     // NOTA: no se usa permission_handler (su plugin nativo de Windows no
     // compila con VS2026 y rompía el build del kiosco). En móvil el SO pide
@@ -129,6 +138,62 @@ class KioskCameraService {
           'No se pudo iniciar la vista previa de la cámara.',
         );
       }
+    }
+  }
+
+  /// Pide permiso de cámara al navegador con getUserMedia directo y mapea el
+  /// error DOM real a un mensaje útil (denegado / sin cámara / no soportado).
+  /// Sin esto, en varios navegadores móviles el fallo salía como error
+  /// genérico aunque el equipo sí tiene cámara.
+  Future<void> _pedirPermisoWeb() async {
+    try {
+      // Sin contexto seguro (HTTPS) el navegador ni expone la cámara.
+      if (!web.window.isSecureContext) {
+        throw const KioskCameraException(
+          KioskCameraError.denied,
+          'Abre la página con HTTPS (candado en la barra). Sin conexión segura el navegador bloquea la cámara.',
+        );
+      }
+      final stream = await web.window.navigator.mediaDevices
+          .getUserMedia(web.MediaStreamConstraints(
+            video: true.toJS,
+            audio: false.toJS,
+          ))
+          .toDart
+          .timeout(const Duration(seconds: 30));
+      for (final track in stream.getTracks().toDart) {
+        track.stop();
+      }
+    } on web.DOMException catch (e) {
+      final name = e.name;
+      if (name == 'NotAllowedError') {
+        throw const KioskCameraException(
+          KioskCameraError.denied,
+          'Permiso de cámara denegado. Toca el candado de la barra del navegador, permite la cámara y reintenta.',
+        );
+      }
+      if (name == 'NotFoundError' || name == 'OverconstrainedError') {
+        throw const KioskCameraException(
+          KioskCameraError.noCamera,
+          'No se encontró ninguna cámara en este dispositivo.',
+        );
+      }
+      throw KioskCameraException(
+        KioskCameraError.notSupported,
+        'No se pudo usar la cámara ($name). Prueba en Chrome.',
+      );
+    } on TimeoutException {
+      throw const KioskCameraException(
+        KioskCameraError.denied,
+        'No respondiste al permiso de cámara. Permítela en el navegador y reintenta.',
+      );
+    } on KioskCameraException {
+      rethrow;
+    } catch (_) {
+      throw const KioskCameraException(
+        KioskCameraError.notSupported,
+        'Este navegador no permite usar la cámara. Prueba en Chrome.',
+      );
     }
   }
 
