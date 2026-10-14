@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/foto_utils.dart';
 import 'kiosk/auto_captura_service.dart';
+import 'kiosk/captura_web.dart';
 import 'kiosk/gesto_assessment_service.dart';
 import 'kiosk/kiosk_camera_service.dart';
 
@@ -166,6 +168,12 @@ class _GuiaCapturaDialog extends StatefulWidget {
 
 class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   final _camera = KioskCameraService(frontPreference: true);
+
+  /// En web se captura directo del <video> (una sola apertura). En el resto
+  /// se usa el plugin. Misma API de foto para el resto del flujo.
+  final _camWeb = CapturaWebDirecta();
+  bool get _esWeb => kIsWeb;
+
   final _auto = AutoCapturaService();
   final _asesor = GestoAssessmentService();
   final List<MuestraFacial> _muestras = [];
@@ -207,6 +215,7 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   void dispose() {
     _sonda?.cancel();
     _camera.dispose();
+    unawaited(_camWeb.liberar());
     super.dispose();
   }
 
@@ -216,7 +225,11 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
       _error = null;
     });
     try {
-      await _camera.initialize().timeout(const Duration(seconds: 25));
+      if (_esWeb) {
+        await _camWeb.iniciar();
+      } else {
+        await _camera.initialize().timeout(const Duration(seconds: 25));
+      }
     } on KioskCameraException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -268,8 +281,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     }
     _ocupado = true;
     try {
-      final photo = await _camera
-          .capture()
+      final photo = await (_esWeb
+              ? _camWeb.capturarFoto()
+              : _camera.capture())
           .timeout(const Duration(seconds: 12));
       if (!mounted || _completo) return;
       final pose = _poseActual;
@@ -376,8 +390,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     if (_ocupado || _completo) return;
     _ocupado = true;
     try {
-      final photo = await _camera
-          .capture()
+      final photo = await (_esWeb
+              ? _camWeb.capturarFoto()
+              : _camera.capture())
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
       final pose = _poseActual;
@@ -503,24 +518,36 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
           borderRadius: BorderRadius.circular(16),
           // Aspecto real del sensor (sin recorte): lo que ves es lo que se
           // captura. Un aspecto fijo cortaba los bordes del rostro.
-          child: AspectRatio(
-            aspectRatio:
-                controller == null || !_camera.isInitialized
-                    ? 4 / 3
-                    : controller.value.aspectRatio,
-            child: controller == null || !_camera.isInitialized
-                ? const ColoredBox(
-                    color: AppColors.background,
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : Stack(
+          child: _esWeb
+              ? AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      CameraPreview(controller),
+                      _camWeb.vistaPrevia(),
                       const CustomPaint(painter: _OvaloGuia()),
                     ],
                   ),
-          ),
+                )
+              : AspectRatio(
+                  aspectRatio:
+                      controller == null || !_camera.isInitialized
+                          ? 4 / 3
+                          : controller.value.aspectRatio,
+                  child: controller == null || !_camera.isInitialized
+                      ? const ColoredBox(
+                          color: AppColors.background,
+                          child:
+                              Center(child: CircularProgressIndicator()),
+                        )
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CameraPreview(controller),
+                            const CustomPaint(painter: _OvaloGuia()),
+                          ],
+                        ),
+                ),
         ),
         const SizedBox(height: 10),
         Row(
