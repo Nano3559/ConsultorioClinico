@@ -54,18 +54,21 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
 
   Future<void> _abrirGuia() async {
     setState(() => _busy = true);
-    final resultado = await showDialog<List<MuestraFacial>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const _GuiaCapturaDialog(),
-    );
-    if (!mounted) return;
-    setState(() => _busy = false);
-    if (resultado != null && resultado.isNotEmpty) {
-      setState(() => _muestras = resultado);
-      widget.onChanged(resultado);
+    try {
+      final resultado = await showDialog<List<MuestraFacial>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const _GuiaCapturaDialog(),
+      );
+      if (!mounted) return;
+      if (resultado != null && resultado.isNotEmpty) {
+        setState(() => _muestras = resultado);
+        widget.onChanged(resultado);
+      }
+      // Si canceló el diálogo no se muestra nada (no es un error).
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    // Si canceló el diálogo no se muestra nada (no es un error).
   }
 
   void _clear() {
@@ -213,12 +216,22 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
       _error = null;
     });
     try {
-      await _camera.initialize();
+      await _camera.initialize().timeout(const Duration(seconds: 25));
     } on KioskCameraException catch (e) {
       if (!mounted) return;
       setState(() {
         _initializing = false;
         _error = e;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _initializing = false;
+        _error = const KioskCameraException(
+          KioskCameraError.notSupported,
+          'No se pudo abrir la cámara en este equipo.',
+        );
       });
       return;
     }
@@ -255,7 +268,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     }
     _ocupado = true;
     try {
-      final photo = await _camera.capture();
+      final photo = await _camera
+          .capture()
+          .timeout(const Duration(seconds: 12));
       if (!mounted || _completo) return;
       final pose = _poseActual;
       final ev = _auto.evaluar(photo.bytes, pose: pose);
@@ -328,6 +343,13 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
         _mensajeGuia = e.message;
         _manual = true;
       });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _mensajeGuia =
+            'La cámara no respondió. Revisa el permiso e intenta de nuevo.';
+        _manual = true;
+      });
     } finally {
       _ocupado = false;
     }
@@ -354,7 +376,9 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     if (_ocupado || _completo) return;
     _ocupado = true;
     try {
-      final photo = await _camera.capture();
+      final photo = await _camera
+          .capture()
+          .timeout(const Duration(seconds: 12));
       if (!mounted) return;
       final pose = _poseActual;
       if (pose == 'frontal') _auto.fijarReferenciaFrontal(photo.bytes);
@@ -370,6 +394,10 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('La cámara no respondió. Intenta de nuevo.')));
     } finally {
       _ocupado = false;
     }

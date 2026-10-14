@@ -82,6 +82,13 @@ class KioskCameraService {
             ? 'Acceso a la cámara denegado. Habilítalo e intenta de nuevo.'
             : 'No se pudo acceder a la cámara en este equipo.',
       );
+    } catch (_) {
+      // Cualquier otro error (entorno sin cámara, WebView, fallo del
+      // plugin): mensaje visible en vez de spinner infinito.
+      throw const KioskCameraException(
+        KioskCameraError.notSupported,
+        'Este equipo no permite usar la cámara desde aquí. Prueba en Chrome.',
+      );
     }
 
     if (cameras.isEmpty) {
@@ -131,6 +138,13 @@ class KioskCameraService {
         );
         await _controller!.initialize();
       } on CameraException {
+        await _controller?.dispose();
+        _controller = null;
+        throw const KioskCameraException(
+          KioskCameraError.notSupported,
+          'No se pudo iniciar la vista previa de la cámara.',
+        );
+      } catch (_) {
         await _controller?.dispose();
         _controller = null;
         throw const KioskCameraException(
