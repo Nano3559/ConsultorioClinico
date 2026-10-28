@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
@@ -176,7 +175,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   const Text('Datos de la cita', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: clinic.specialties.any((s) => s.id == _specialtyId)
+                    initialValue: clinic.specialties.any((s) => s.id == _specialtyId)
                         ? _specialtyId
                         : null,
                     decoration: const InputDecoration(labelText: 'Especialidad'),
@@ -200,7 +199,8 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    value: doctors.any((d) => d.id == _doctorId) ? _doctorId : null,
+                    initialValue:
+                        doctors.any((d) => d.id == _doctorId) ? _doctorId : null,
                     decoration: InputDecoration(
                       labelText: 'Médico',
                       helperText: isMedico ? 'Solo puedes agendar citas para ti.' : null,

@@ -78,7 +78,7 @@ class ApiClient {
   Map<String, String> _headers({String? token, Map<String, String>? extra}) => {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
-        if (extra != null) ...extra,
+        ...?extra,
       };
 
   Future<ApiResult<Map<String, dynamic>>> getJson(
