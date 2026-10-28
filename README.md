@@ -19,7 +19,8 @@ Sistema integral de control médico y clínico con **IA (Visión por Computadora
 11. [Endpoints de la API](#-endpoints-de-la-api)
 12. [Tests](#-tests)
 13. [Agentes de desarrollo (OpenCode: GLM 5.3 · DeepSeek v4 Pro · GPT 5.6 Luna)](#-agentes-de-desarrollo-opencode-glm-53--deepseek-v4-pro--gpt-56-luna)
-14. [Notas de seguridad](#-notas-de-seguridad)
+14. [HITO 4: Integración de Predicción y Diagnóstico de ECG](#hito-4-integración-de-predicción-y-diagnóstico-de-ecg)
+15. [Notas de seguridad](#-notas-de-seguridad)
 
 > 🖥️ **¿PC nuevo?** Sigue la guía paso a paso completa (instalar Git, Node,
 > Flutter, clonar, configurar y correr):
@@ -651,6 +652,81 @@ También se reconfiguraron los agentes base: `build` y `plan` usan
 
 Los agentes completos están en `.opencode/agent/*.md` y su documentación
 detallada en **`docs/AGENTES.md`**.
+
+---
+
+## HITO 4: Integración de Predicción y Diagnóstico de ECG
+
+### Estado del Hito y Componentes
+
+| Componente | Estado | Detalles |
+|---|---|---|
+| **Modelo ECG_ResNet1D** | ✅ Integrado | Guardado en `modelo_ecg_entrenado.pth`. Listo para inferencia. |
+| **Backend FastAPI** | ✅ Funcional | Servidor de inferencia con endpoint de predicción y verificación de estado. |
+| **Frontend interactivo (`index.html`)** | ✅ Implementado | Carga asíncrona de archivos `.csv` con interfaz de desglose probabilístico en tiempo real. |
+
+### Arquitectura de Inferencia
+
+| Elemento | Especificación |
+|---|---|
+| **Entrada** | Matriz de voltaje de 12 derivaciones $(12, 2500)$ |
+| **Frecuencia de muestreo** | $500\text{ Hz}$ |
+| **Duración del registro** | 5 segundos |
+| **Modelo** | `ECG_ResNet1D` (PyTorch) cargado desde `modelo_ecg_entrenado.pth` |
+
+### Clases Diagnósticas Soportadas
+
+El sistema es capaz de predecir las siguientes 5 clases diagnósticas:
+
+| # | Clase Diagnóstica | Descripción |
+|---|---|---|
+| 1 | **Ritmo Sinusal Normal** | Ritmo cardíaco normal sin alteraciones significativas. |
+| 2 | **Fibrilación Auricular (AFib)** | Arritmia caracterizada por actividad auricular caótica e irregular. |
+| 3 | **Isquemia / Infarto Agudo** | Alteraciones sugestivas de isquemia miocárdica o infarto agudo. |
+| 4 | **Bloqueo de Rama Izquierda (LBBB)** | Bloqueo completo de la rama izquierda del sistema de conducción. |
+| 5 | **Contracción Ventricular Prematura (PVC)** | Extrasístoles ventriculares prematuras. |
+
+### Contexto del Dataset (PTB-XL)
+
+El entrenamiento del modelo utilizado en este hito se realizó con el dataset público internacional **PTB-XL ECG Database** (PhysioNet / PTB Alemania). 
+
+- **Registros**: 21,837 registros clínicos validados por cardiólogos.
+- **Estándar**: Anotaciones bajo la norma **SCP-ECG**.
+- **Fuente**: [PhysioNet - PTB-XL Database](https://physionet.org/content/ptb-xl/).
+
+### API de Inferencia
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/health` | Comprobación de estado del servicio. Retorna `{"status": "ok"}`. |
+| `POST` | `/api/analizar-ecg` | Endpoint de inferencia para análisis y predicción de ECG. Acepta archivos `.csv` con la matriz de 12 derivaciones. |
+
+### Guía de Ejecución Local
+
+#### 1. Instalar dependencias
+
+Desde el directorio del servicio de inferencia ECG, instalar las dependencias requeridas:
+
+```bash
+pip install fastapi uvicorn torch numpy python-multipart
+```
+
+#### 2. Arrancar el servidor
+
+En entorno **Windows**, puede ejecutarse con cualquiera de los siguientes comandos:
+
+```bash
+py app.py
+# o
+python app.py
+```
+
+Por defecto, el servidor quedará disponible en `http://localhost:8000` (o el puerto configurado en `app.py`).
+
+#### 3. Probar el servicio
+
+- **Health check:** `GET http://localhost:8000/health` → `{"status": "ok"}`
+- **Inferencia:** `POST http://localhost:8000/api/analizar-ecg` con un archivo `.csv` (matriz 12x2500) mediante el frontend `index.html` o herramientas como `curl`/Postman.
 
 ---
 
