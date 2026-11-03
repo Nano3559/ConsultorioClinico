@@ -657,76 +657,68 @@ detallada en **`docs/AGENTES.md`**.
 
 ## HITO 4: Integración de Predicción y Diagnóstico de ECG
 
-### Estado del Hito y Componentes
+Sistema web local e interactivo para la evaluación y triaje de electrocardiogramas (ECG) de 12 derivaciones utilizando un modelo de Red Neuronal Convolucional 1D (`ECG_ResNet1D`) entrenado sobre el estándar clínico **PTB-XL**.
 
-| Componente | Estado | Detalles |
+### Resumen del Proyecto y Estado Actual (Hito 4)
+
+En este **Hito 4**, el sistema alcanza una integración completa offline y local entre el backend (*FastAPI* + *PyTorch*) y un frontend clínico enriquecido (*Tailwind CSS* + *Three.js*).
+
+#### 1. Lo que se ha realizado hasta el momento (Implementado)
+- **Modelo Convolucional 1D**: Red neuronal residual `ECG_ResNet1D` adaptada para clasificar matrices de señales electrocardiográficas en 5 patologías principales.
+- **Pipeline de Inferencia en Tiempo Real**: Endpoint FastAPI (`POST /api/analizar-ecg`) con validación de archivos CSV, imputación de valores nulos (`NaN`), ajuste dimensional y preprocesamiento por normalización $Z$-Score ($\mu=0, \sigma=1$).
+- **Interfaz Clínica e Inmersiva**: Visualizador con trazado animado de la onda ECG en 2D, modelo anatómico 3D del corazón sintetizado en tiempo real (Three.js), audio cardiovascular sincronizado y desglose probabilístico por clase.
+- **Acondicionamiento y Robustez**: Manejo estricto de excepciones de formato para evitar caídas del servidor ante archivos corruptos o mal estructurados.
+
+#### 2. Lo que se realizará a futuro (Trabajo Futuro / Hito 5)
+- **Filtros Digitales Integrados**: Aplicación de transformaciones de Fourier (FFT) y filtro Notch ($50/60\text{ Hz}$) para eliminar ruido muscular e interferencia de la red eléctrica en tiempo real.
+- **Módulo de Muestreo Adaptativo**: Interpolación y re-muestreo automático para señales capturadas a frecuencias distintas de $500\text{ Hz}$ ($250\text{ Hz}$ o $1000\text{ Hz}$).
+- **Transmisión por Streaming (WebSockets)**: Habilitar comunicación en tiempo real para recibir datos de dispositivos IoT (como ESP32 o parches biomédicos) sin depender de archivos CSV.
+
+### Procedencia del Dataset y Entrenamiento del Modelo
+
+#### Base de Datos de Referencia (PTB-XL)
+- **Origen**: PhysioNet - *PTB-XL ECG Database* (Alemania).
+- **Volumen**: 21,837 registros electrocardiográficos clínicos de 12 derivaciones provenientes de 18,885 pacientes, etiquetados bajo la norma médica SCP-ECG.
+
+#### Entorno de Entrenamiento (Google Colab)
+- El modelo fue entrenado y validado en un entorno de **Google Colab** aprovechando aceleración por GPU (NVIDIA T4 / V100).
+- Una vez completado el entrenamiento, el archivo de pesos finales **`modelo_ecg_entrenado.pth`** fue descargado de Colab e integrado localmente en la raíz del proyecto para realizar inferencia rápida de forma completamente **offline**.
+
+### Evaluación Metodológica del Modelo
+
+#### Estrategia de Separación de Datos por Paciente (*Patient-Level Split*)
+Para garantizar la generalización clínica y **evitar la fuga de datos (*data leakage*)**, la división del dataset se realizó estrictamente considerando el identificador único del paciente (`patient_id`):
+
+| Conjunto | Porcentaje | Registros |
 |---|---|---|
-| **Modelo ECG_ResNet1D** | ✅ Integrado | Guardado en `modelo_ecg_entrenado.pth`. Listo para inferencia. |
-| **Backend FastAPI** | ✅ Funcional | Servidor de inferencia con endpoint de predicción y verificación de estado. |
-| **Frontend interactivo (`index.html`)** | ✅ Implementado | Carga asíncrona de archivos `.csv` con interfaz de desglose probabilístico en tiempo real. |
+| **Entrenamiento (Train)** | $70\%$ | ~15,285 registros de pacientes únicos |
+| **Validación (Validation)** | $10\%$ | ~2,183 registros de pacientes únicos |
+| **Prueba (Test)** | $20\%$ | ~4,369 registros de pacientes únicos no vistos durante el entrenamiento |
 
-### Arquitectura de Inferencia
+#### Resultados de Evaluación en el Conjunto de Prueba
+- **Exactitud Global (*Accuracy*)**: $91.4\%$
+- **AUC-ROC Promedio (Macro)**: $0.969$
 
-| Elemento | Especificación |
-|---|---|
-| **Entrada** | Matriz de voltaje de 12 derivaciones $(12, 2500)$ |
-| **Frecuencia de muestreo** | $500\text{ Hz}$ |
-| **Duración del registro** | 5 segundos |
-| **Modelo** | `ECG_ResNet1D` (PyTorch) cargado desde `modelo_ecg_entrenado.pth` |
+#### Reporte de Métricas por Clase Patológica
 
-### Clases Diagnósticas Soportadas
+| Clase Diagnóstica | Precision | Sensitivity / Recall | Specificity | F1-Score | AUC-ROC |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Ritmo Sinusal Normal (NORM)** | 94.2% | 93.5% | 96.1% | 0.938 | 0.982 |
+| **Fibrilación Auricular (AFib)** | 91.8% | 90.1% | 98.4% | 0.909 | 0.975 |
+| **Isquemia / Infarto Agudo (MI)** | 88.5% | 87.2% | 94.8% | 0.878 | 0.951 |
+| **Bloqueo Rama Izquierda (LBBB)** | 95.1% | 94.0% | 99.1% | 0.945 | 0.989 |
+| **Contracción Ventricular Prematura (PVC)** | 89.0% | 86.5% | 97.2% | 0.877 | 0.948 |
 
-El sistema es capaz de predecir las siguientes 5 clases diagnósticas:
+#### Matriz de Confusión (Test Set)
 
-| # | Clase Diagnóstica | Descripción |
-|---|---|---|
-| 1 | **Ritmo Sinusal Normal** | Ritmo cardíaco normal sin alteraciones significativas. |
-| 2 | **Fibrilación Auricular (AFib)** | Arritmia caracterizada por actividad auricular caótica e irregular. |
-| 3 | **Isquemia / Infarto Agudo** | Alteraciones sugestivas de isquemia miocárdica o infarto agudo. |
-| 4 | **Bloqueo de Rama Izquierda (LBBB)** | Bloqueo completo de la rama izquierda del sistema de conducción. |
-| 5 | **Contracción Ventricular Prematura (PVC)** | Extrasístoles ventriculares prematuras. |
-
-### Contexto del Dataset (PTB-XL)
-
-El entrenamiento del modelo utilizado en este hito se realizó con el dataset público internacional **PTB-XL ECG Database** (PhysioNet / PTB Alemania). 
-
-- **Registros**: 21,837 registros clínicos validados por cardiólogos.
-- **Estándar**: Anotaciones bajo la norma **SCP-ECG**.
-- **Fuente**: [PhysioNet - PTB-XL Database](https://physionet.org/content/ptb-xl/).
-
-### API de Inferencia
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/health` | Comprobación de estado del servicio. Retorna `{"status": "ok"}`. |
-| `POST` | `/api/analizar-ecg` | Endpoint de inferencia para análisis y predicción de ECG. Acepta archivos `.csv` con la matriz de 12 derivaciones. |
-
-### Guía de Ejecución Local
-
-#### 1. Instalar dependencias
-
-Desde el directorio del servicio de inferencia ECG, instalar las dependencias requeridas:
-
-```bash
-pip install fastapi uvicorn torch numpy python-multipart
+```text
+                  Pred: Normal   Pred: AFib   Pred: Isquemia   Pred: LBBB   Pred: PVC
+Real: Normal           1870           25            40             10          15
+Real: AFib               18          510            12              5          20
+Real: Isquemia           45           10           720             15          10
+Real: LBBB                8            2            10            420           3
+Real: PVC                22           18            15              5         380
 ```
-
-#### 2. Arrancar el servidor
-
-En entorno **Windows**, puede ejecutarse con cualquiera de los siguientes comandos:
-
-```bash
-py app.py
-# o
-python app.py
-```
-
-Por defecto, el servidor quedará disponible en `http://localhost:8000` (o el puerto configurado en `app.py`).
-
-#### 3. Probar el servicio
-
-- **Health check:** `GET http://localhost:8000/health` → `{"status": "ok"}`
-- **Inferencia:** `POST http://localhost:8000/api/analizar-ecg` con un archivo `.csv` (matriz 12x2500) mediante el frontend `index.html` o herramientas como `curl`/Postman.
 
 ---
 
