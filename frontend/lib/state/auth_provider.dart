@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import '../data/models/patient.dart';
 import '../data/models/user.dart';
+import '../services/api_client.dart';
 
 /// Autenticación con Firebase Auth.
 ///
@@ -238,37 +239,65 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Alta de médico desde el admin: crea Auth + perfiles y envía correo de
-  /// confirmación que apunta a la página de restablecer de la app (más bonita
-  /// que el mail genérico de Firebase). Devuelve (error, claveTemporal).
-  Future<(String?, String?)> registerDoctor({
+  /// Alta de médico desde el admin: crea TODO lo necesario en un solo paso:
+  /// 1) `POST /medicos/invitar` (con el token admin) crea la fila en
+  ///    `usuarios` (rol médico), la fila en `medicos` vinculada y la cuenta
+  ///    de Firebase Auth. Es idempotente por email.
+  /// 2) Escribe el perfil en Firestore con `perfilId` = id real del médico
+  ///    (así puede usar Mis horarios y el resto del API desde el primer día).
+  /// 3) Envía el correo de confirmación que apunta a la página de
+  ///    restablecer de la app (más bonita que el mail genérico de Firebase).
+  /// Devuelve (error, claveTemporal, yaExistia).
+  Future<(String?, String?, bool)> registerDoctor({
     required String email,
     required String nombre,
     required Map<String, dynamic> medicoData,
   }) async {
-    var tempPassword = '';
+    final tempPassword = _tempPassword();
     try {
-      final secondary = await _secondaryAuth();
-      tempPassword = _tempPassword();
-      final cred = await secondary.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: tempPassword,
-      );
-      final uid = cred.user!.uid;
-      await _db.collection('medicos').doc(uid).set({
-        ...medicoData,
-        'id': uid,
-        'uid': uid,
-        'email': email.trim(),
-        'activo': true,
-      });
+      final t = token;
+      if (t == null || t.isEmpty) {
+        return ('Tu sesión expiró, vuelve a entrar', null, false);
+      }
+      final res = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/medicos/invitar'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $t',
+            },
+            body: jsonEncode({
+              ...medicoData,
+              'email': email.trim(),
+              'password': tempPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 25));
+      final decoded = jsonDecode(res.body);
+      final body =
+          decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        return (
+          (body['message'] ?? 'No se pudo registrar al médico').toString(),
+          null,
+          false
+        );
+      }
+      final data = body['data'];
+      final info = data is Map<String, dynamic> ? data : <String, dynamic>{};
+      final uid = (info['firebase_uid'] ?? '').toString();
+      final medicoId = (info['medico_id'] ?? '').toString();
+      final existed = info['existed'] == true;
+      if (uid.isEmpty || medicoId.isEmpty) {
+        return ('Respuesta incompleta del servidor', null, false);
+      }
       await _db.collection('usuarios').doc(uid).set({
         'uid': uid,
         'nombre': nombre.trim(),
         'email': email.trim(),
         'rol': 'medico',
         'perfilTipo': 'medico',
-        'perfilId': uid,
+        'perfilId': medicoId,
         'activo': true,
         'creadoEn': FieldValue.serverTimestamp(),
       });
@@ -277,7 +306,7 @@ class AuthProvider extends ChangeNotifier {
       // pantalla /reset, no a la de Firebase).
       final sent = await _sendPersonalizedConfirm(email.trim(), nombre.trim());
       if (!sent) {
-        await secondary.sendPasswordResetEmail(
+        await _auth.sendPasswordResetEmail(
           email: email.trim(),
           actionCodeSettings: ActionCodeSettings(
             url: 'https://consultorioclinico-2026.web.app/reset',
@@ -285,11 +314,11 @@ class AuthProvider extends ChangeNotifier {
           ),
         );
       }
-      return (null, tempPassword);
+      return (null, tempPassword, existed);
     } on FirebaseAuthException catch (e) {
-      return (_authError(e), null);
+      return (_authError(e), null, false);
     } catch (e) {
-      return ('Error inesperado: $e', null);
+      return ('Error inesperado: $e', null, false);
     }
   }
 

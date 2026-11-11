@@ -607,27 +607,33 @@ const remove = async (req, res) => {
 
 /**
  * GET /api/citas/mis-citas
- * Obtener citas del paciente autenticado
+ * Citas del usuario autenticado: del paciente (paciente_id = perfil) o
+ * del médico (medico_id = perfil).
  */
 const getMisCitas = async (req, res) => {
   try {
     const supabase = getSupabase();
 
-    // El ID de paciente está en el perfil del token, no en req.user.id
+    // El ID de perfil está en el token, no en req.user.id
     // (req.user.id corresponde a usuarios.id).
     const pacienteId =
       req.user.perfilTipo === 'paciente' ? req.user.perfilId : null;
+    const medicoId =
+      req.user.perfilTipo === 'medico' ? req.user.perfilId : null;
 
-    if (!pacienteId) {
-      return sendError(res, 'Solo el paciente puede consultar sus citas', 403);
+    if (!pacienteId && !medicoId) {
+      return sendError(res, 'Solo el paciente o el médico pueden consultar sus citas', 403);
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('citas')
       .select(SELECT_CITA_RELACIONES)
-      .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: true })
       .order('hora', { ascending: true });
+    if (pacienteId) query = query.eq('paciente_id', pacienteId);
+    if (medicoId) query = query.eq('medico_id', medicoId);
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return sendSuccess(res, {

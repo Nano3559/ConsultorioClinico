@@ -8,11 +8,13 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_formatters.dart';
 import '../../core/utils/app_validators.dart';
+import '../../core/utils/foto_utils.dart';
 import '../../data/models/patient.dart';
 import '../../data/models/user.dart';
 import '../../state/auth_provider.dart';
 import '../../state/clinic_provider.dart';
 import 'face_photo_field.dart';
+import 'kiosk/rostro_pack_service.dart';
 
 /// Formulario público para solicitar una cita (Ejercicio 3).
 class RequestAppointmentPage extends StatefulWidget {
@@ -36,13 +38,19 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   late final TextEditingController _reason = TextEditingController();
 
   DateTime? _birthDate;
-  Uint8List? _faceBytes;
+  List<MuestraFacial> _faceMuestras = [];
   DateTime _date = DateTime.now().add(const Duration(days: 1));
   String? _specialtyId;
   String? _doctorId;
   String? _time;
   bool _submitting = false;
   String? _availKey;
+  // Estado del backend biométrico (Supabase) para esta cédula:
+  // si el rostro está vigente, se autocompleta y NO se pide foto.
+  final _packService = RostroPackService();
+  bool _buscandoBackend = false;
+  bool _fotoRequerida = true;
+  String? _ultimaCedulaBackend;
 
   @override
   void initState() {
@@ -169,9 +177,52 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  FacePhotoField(
-                    onChanged: (b) => setState(() => _faceBytes = b),
-                  ),
+                  if (_buscandoBackend)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Verificando tu registro en el sistema...',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_fotoRequerida)
+                    FacePhotoField(
+                      onChanged: (m) =>
+                          setState(() => _faceMuestras = m ?? []),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.verified_user_outlined,
+                              color: AppColors.success),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Ya tienes tu rostro registrado y vigente: '
+                              'no necesitas tomarte foto de nuevo.',
+                              style: TextStyle(fontSize: 13, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   const SizedBox(height: 28),
                   const Text('Datos de la cita', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
                   const SizedBox(height: 16),
@@ -291,6 +342,9 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   }
 
   /// Si el CI ya existe, autocompleta los datos del paciente.
+  /// Primero busca en el catálogo local (Firestore) y además consulta el
+  /// backend biométrico: si el rostro está vigente, la foto ya no se pide
+  /// (el paciente está en la base de datos y su registro no venció).
   void _onCiChanged(String value) {
     final ci = value.trim().toLowerCase();
     if (ci.isEmpty) return;
@@ -310,6 +364,40 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       _birthDate = found.birthDate;
       _birth.text = AppFormatters.shortDate(found.birthDate);
       setState(() {});
+    }
+    _buscarEnBackend(value.trim());
+  }
+
+  /// Consulta diferida al backend (evita un request por cada tecla).
+  Future<void> _buscarEnBackend(String cedula) async {
+    if (cedula.length < 5 || cedula == _ultimaCedulaBackend) return;
+    _ultimaCedulaBackend = cedula;
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    if (!mounted || _ultimaCedulaBackend != cedula) return;
+    setState(() => _buscandoBackend = true);
+    try {
+      final res = await _packService.buscarPorCedula(cedula);
+      if (!mounted) return;
+      setState(() {
+        _buscandoBackend = false;
+        if (res.existe) {
+          _name.text = res.nombre ?? _name.text;
+          _lastName.text = res.apellido ?? _lastName.text;
+          _phone.text = res.telefono ?? _phone.text;
+          _email.text = res.email ?? _email.text;
+          _fotoRequerida = res.fotoRequerida;
+          if (!_fotoRequerida) _faceMuestras = [];
+        } else {
+          _fotoRequerida = true;
+        }
+      });
+    } catch (_) {
+      // Sin backend no se bloquea la reserva: se pide foto como siempre.
+      if (!mounted) return;
+      setState(() {
+        _buscandoBackend = false;
+        _fotoRequerida = true;
+      });
     }
   }
 
@@ -378,11 +466,15 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   String _doctorName(ClinicProvider clinic) =>
       _doctorId == null ? '' : clinic.doctorById(_doctorId!).displayName;
 
-  /// Comprime la foto del rostro (sin procesar) a base64 para guardarla en
-  /// Firestore. Funciona sin facturación (sin Storage).
+  /// Comprime la foto FRONTAL del pack (sin procesar) a base64 para
+  /// guardarla en Firestore. Funciona sin facturación (sin Storage).
   String? _faceBase64() {
-    final bytes = _faceBytes;
-    if (bytes == null) return null;
+    if (_faceMuestras.isEmpty) return null;
+    final frontal = _faceMuestras.firstWhere(
+      (m) => m.pose == 'frontal',
+      orElse: () => _faceMuestras.first,
+    );
+    final bytes = frontal.bytes;
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return null;
@@ -401,9 +493,11 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_faceBytes == null) {
+    // La foto solo es obligatoria si el backend no tiene un registro vigente:
+    // se exigen las 5 poses del pack (una foto fija no sirve contra suplantación).
+    if (_fotoRequerida && _faceMuestras.length < 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registra tu foto del rostro para completar la solicitud')),
+        const SnackBar(content: Text('Completa las 5 fotos guiadas del rostro para continuar')),
       );
       return;
     }
@@ -488,14 +582,22 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
-    // Foto del rostro (obligatoria): se guarda sin procesar; el kiosco la usa.
+    // Foto del rostro: se guarda en Firestore (compatibilidad) y, si se
+    // tomó foto en este flujo, el pack liviano va al backend biométrico
+    // (carpeta rostros/{cedula}_{nombre}/) para que el kiosco reconozca.
+    // La reserva online aporta 1 muestra frontal; el registro multi-pose
+    // completo se hace en recepción si el kiosco lo requiere después.
     final face = _faceBase64();
     if (face != null) {
       await clinic.setPatientFace(patientId, face);
-    } else {
+    } else if (_fotoRequerida) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cita registrada, pero no se pudo guardar la foto. Avísalo en recepción.')),
       );
+    }
+    if (_faceMuestras.isNotEmpty && _fotoRequerida) {
+      // Mejor esfuerzo: no bloquea el éxito de la reserva si falla.
+      await _subirPackBackend();
     }
     if (staff) {
       // Personal interno: ya está dentro del sistema.
@@ -516,6 +618,49 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         phone: _phone.text.trim(),
         email: _email.text.trim(),
       ));
+    }
+  }
+
+  /// Sube el pack facial multi-pose al backend (mejor esfuerzo, fuera del
+  /// camino crítico). Son las 5 fotos guiadas (no una fija): el servidor
+  /// valida calidad por muestra y genera las plantillas.
+  Future<void> _subirPackBackend() async {
+    if (_faceMuestras.isEmpty || _birthDate == null) return;
+    try {
+      final muestras = <Map<String, String>>[];
+      for (final m in _faceMuestras) {
+        final b64 = FotoUtils.aBase64Liviano(m.bytes);
+        if (b64 == null) continue;
+        muestras.add({'imagen': b64, 'pose': m.pose});
+      }
+      if (muestras.isEmpty) return;
+      final pack = await _packService.ingestarPaquete(
+        cedula: _ci.text.trim(),
+        nombre: _name.text.trim(),
+        apellido: _lastName.text.trim(),
+        telefono: _phone.text.trim(),
+        email: _email.text.trim(),
+        fechaNacimiento:
+            '${_birthDate!.year.toString().padLeft(4, '0')}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
+        muestras: muestras,
+      );
+      // Si alguna pose fue rechazada (mala luz, rostro pequeño, no coincide),
+      // se avisa para repetirla en recepción en la próxima visita.
+      if (!mounted) return;
+      if (pack.rechazadas.isNotEmpty) {
+        final cuales = pack.rechazadas.keys.join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              pack.registrado
+                  ? 'Cita lista. Repite estas fotos en recepción: $cuales.'
+                  : 'Las fotos no alcanzaron calidad ($cuales). Pide registro facial en recepción.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      // Se ignora: la cita ya quedó registrada; recepción completa el rostro.
     }
   }
 

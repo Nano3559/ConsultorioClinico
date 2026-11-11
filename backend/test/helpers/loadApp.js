@@ -36,6 +36,9 @@ function getApp() {
   delete require.cache[path.resolve(__dirname, '../../src/controllers/authController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/authRoutes.js')];
   delete require.cache[path.resolve(__dirname, '../../src/middleware/rateLimiter.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/middleware/auth.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/middleware/verifyFlexible.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/config/firebaseAdmin.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/visionController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/visionRoutes.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/kioscoController.js')];
@@ -51,6 +54,9 @@ function restore() {
   delete require.cache[path.resolve(__dirname, '../../src/app.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/authController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/authRoutes.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/middleware/auth.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/middleware/verifyFlexible.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/config/firebaseAdmin.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/visionController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/visionRoutes.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/kioscoController.js')];

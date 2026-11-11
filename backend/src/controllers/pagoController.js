@@ -9,10 +9,28 @@ const { ESTADOS_PAGO } = require('../utils/constants');
 const getAll = async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase
+    let query = supabase
       .from('pagos')
       .select('*')
       .order('creado_en', { ascending: false });
+
+    // Un médico solo lista los pagos de sus propios pacientes (vía sus
+    // citas); admin/recepción ven todo.
+    if (req.user && req.user.rol === 'medico') {
+      if (!req.user.perfilId) {
+        return sendError(res, 'Perfil de médico no encontrado. Contacte al administrador', 403);
+      }
+      const { data: citasMedico, error: citasError } = await supabase
+        .from('citas')
+        .select('paciente_id')
+        .eq('medico_id', req.user.perfilId);
+      if (citasError) throw citasError;
+      const idsPacientes = [...new Set((citasMedico || []).map((c) => c.paciente_id))];
+      if (idsPacientes.length === 0) return sendSuccess(res, []);
+      query = query.in('paciente_id', idsPacientes);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return sendSuccess(res, data);

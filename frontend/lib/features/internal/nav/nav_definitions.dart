@@ -10,6 +10,7 @@ import '../payments/payments_page.dart';
 import '../reports/reports_page.dart';
 import '../settings_page.dart';
 import '../doctor_panel_page.dart';
+import '../my_schedule_page.dart';
 import '../patient_my_appointments_page.dart';
 import '../ecg/ecg_page.dart';
 
@@ -65,6 +66,7 @@ List<NavModule> navModulesFor(UserRole role, {bool esCardiologo = false}) {
         const NavModule('panel', 'Mi panel', Icons.medical_services_outlined, kGroupPrincipal, _panel),
         const NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
         const NavModule('miagenda', 'Mi agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
+        const NavModule('mishorarios', 'Mis horarios', Icons.schedule_outlined, kGroupClinico, _misHorarios),
         const NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
         // Módulo exclusivo del médico cardiólogo. Se abre como una pestaña más
         // dentro de `/app` (mismo sidebar/topbar), no como ruta aparte.
@@ -101,5 +103,6 @@ Widget _pagos(BuildContext _) => const PaymentsPage();
 Widget _reportes(BuildContext _) => const ReportsPage();
 Widget _settings(BuildContext _) => const SettingsPage();
 Widget _panel(BuildContext _) => const DoctorPanelPage();
+Widget _misHorarios(BuildContext _) => const MySchedulePage();
 Widget _myAppointments(BuildContext _) => const PatientMyAppointmentsPage();
 Widget _ecg(BuildContext _) => const CardioEcgPage();

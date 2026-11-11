@@ -14,7 +14,8 @@ class AppInfo {
 /// Días de atención en orden.
 const List<String> kDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-/// Franjas horarias disponibles (30 min).
+/// Franjas horarias disponibles (30 min). Hasta las 23:00 (último inicio
+/// de atención; el turno de 23:00 termina a las 23:30).
 const List<String> kTimeSlots = [
   '08:00',
   '08:30',
@@ -33,4 +34,15 @@ const List<String> kTimeSlots = [
   '16:30',
   '17:00',
   '17:30',
+  '18:00',
+  '18:30',
+  '19:00',
+  '19:30',
+  '20:00',
+  '20:30',
+  '21:00',
+  '21:30',
+  '22:00',
+  '22:30',
+  '23:00',
 ];

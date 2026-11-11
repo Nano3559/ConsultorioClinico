@@ -32,6 +32,38 @@ const sesionActiva = async (tokenId) => {
 };
 
 /**
+ * Núcleo compartido de validación del JWT propio.
+ * Lo usan verifyToken (comportamiento histórico intacto) y verifyFlexible
+ * (que además acepta ID tokens de Firebase).
+ *
+ * @param {string} token JWT en crudo (sin 'Bearer ').
+ * @returns {object} payload decodificado (req.user).
+ * @throws {{status:number, message:string}} en fallos duros (401).
+ */
+const validarTokenJwt = async (token) => {
+  let decoded;
+  try {
+    decoded = jwt.verify(token, config.jwtSecret);
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      throw { status: 401, message: 'Token expirado' };
+    }
+    throw { status: 401, message: 'Token inválido' };
+  }
+
+  // Tokens de tipo prueba o legacy sin jti no se validan contra sesiones
+  if (decoded.jti) {
+    const activa = await sesionActiva(decoded.jti);
+    if (activa === false) {
+      throw { status: 401, message: 'Sesión cerrada. Inicie sesión nuevamente' };
+    }
+    // activa === null (indeterminado): se continúa para no romper el servicio
+  }
+
+  return decoded;
+};
+
+/**
  * Middleware para verificar token JWT.
  * Si el token incluye jti (emitido por /login), comprueba además que la
  * sesión siga activa en la BD, de modo que un logout la revoque de inmediato.
@@ -45,28 +77,12 @@ const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    let decoded;
-    try {
-      decoded = jwt.verify(token, config.jwtSecret);
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        return sendError(res, 'Token expirado', 401);
-      }
-      return sendError(res, 'Token inválido', 401);
-    }
-
-    // Tokens de tipo prueba o legacy sin jti no se validan contra sesiones
-    if (decoded.jti) {
-      const activa = await sesionActiva(decoded.jti);
-      if (activa === false) {
-        return sendError(res, 'Sesión cerrada. Inicie sesión nuevamente', 401);
-      }
-      // activa === null (indeterminado): se continúa para no romper el servicio
-    }
-
-    req.user = decoded;
+    req.user = await validarTokenJwt(token);
     return next();
   } catch (error) {
+    if (error && error.status) {
+      return sendError(res, error.message, error.status);
+    }
     console.error('[auth] verifyToken:', error.message);
     return sendError(res, 'Error interno de autenticación', 500);
   }
@@ -92,4 +108,4 @@ const optionalAuth = (req, res, next) => {
   next();
 };
 
-module.exports = { verifyToken, optionalAuth };
+module.exports = { verifyToken, optionalAuth, validarTokenJwt, sesionActiva };

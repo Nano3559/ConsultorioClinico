@@ -59,7 +59,7 @@ class ApiConfig {
   /// flutter run --dart-define=API_BASE_URL=http://localhost:3000/api
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://consultorio-clinico.vercel.app/api',
+    defaultValue: 'https://consultorio-clinico-brayan.vercel.app/api',
   );
 
   static const Duration timeout = Duration(seconds: 15);
@@ -67,11 +67,14 @@ class ApiConfig {
 
 /// Resultado genérico de una petición.
 class ApiResult<T> {
-  const ApiResult.success(this.data) : error = null;
-  const ApiResult.failure(this.error) : data = null;
+  const ApiResult.success(this.data, [this.statusCode]) : error = null;
+  const ApiResult.failure(this.error, [this.statusCode]) : data = null;
 
   final T? data;
   final String? error;
+
+  /// Código HTTP de la respuesta (null si no hubo conexión).
+  final int? statusCode;
 
   bool get isSuccess => error == null;
 }
@@ -92,13 +95,14 @@ class ApiClient {
     String path, {
     Map<String, String>? query,
     String? token,
+    Map<String, String>? extraHeaders,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(
         queryParameters: query,
       );
       final res = await _client
-          .get(uri, headers: _headers(token: token))
+          .get(uri, headers: _headers(token: token, extra: extraHeaders))
           .timeout(ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
@@ -176,12 +180,13 @@ class ApiClient {
     final decoded = jsonDecode(utf8.decode(res.bodyBytes));
     if (decoded is Map<String, dynamic>) {
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return ApiResult.success(decoded);
+        return ApiResult.success(decoded, res.statusCode);
       }
       final msg = decoded['message'] ?? decoded['error'] ?? 'Error del servidor';
-      return ApiResult.failure(msg.toString());
+      return ApiResult.failure(msg.toString(), res.statusCode);
     }
-    return ApiResult.failure('Respuesta inesperada del servidor');
+    return ApiResult.failure(
+        'Respuesta inesperada del servidor', res.statusCode);
   }
 
   void dispose() => _client.close();

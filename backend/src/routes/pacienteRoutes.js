@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { getAll, getById, create, update, remove } = require('../controllers/pacienteController');
-const { verifyToken } = require('../middleware/auth');
+const { getAll, getById, buscarPorCedula, create, update, remove } = require('../controllers/pacienteController');
+const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { checkRole } = require('../middleware/roles');
-const { validate, sanitizarTexto } = require('../middleware/validation');
+const { rateLimit } = require('../middleware/rateLimiter');
+const { validate, sanitizarTexto, buscarCedulaValidation } = require('../middleware/validation');
 
 // Validaciones
 const pacienteValidation = [
@@ -28,12 +29,26 @@ const pacienteUpdateValidation = [
 // Rutas protegidas: los datos de pacientes son datos clínicos sensibles.
 // - Listar: admin, recepcion, medico
 // - Ver uno: además el propio paciente puede ver su ficha
-router.get('/', verifyToken, checkRole('admin', 'recepcion', 'medico'), getAll);
-router.get('/:id', verifyToken, checkRole('admin', 'recepcion', 'medico', 'paciente'), getById);
+router.get('/', verifyFlexible, checkRole('admin', 'recepcion', 'medico'), getAll);
+// Búsqueda pública por cédula (ANTES de /:id para que no la capture):
+// autocompletado de la reserva online. Rate limit 20/15min + respuesta
+// mínima (sin historial clínico) para mitigar enumeración.
+router.get(
+  '/buscar',
+  rateLimit({
+    max: 20,
+    windowMs: 15 * 60 * 1000,
+    mensaje: 'Demasiadas búsquedas. Espere unos minutos e intente de nuevo',
+  }),
+  buscarCedulaValidation,
+  validate,
+  buscarPorCedula
+);
+router.get('/:id', verifyFlexible, checkRole('admin', 'recepcion', 'medico', 'paciente'), getById);
 
 // Escritura
-router.post('/', verifyToken, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
-router.put('/:id', verifyToken, checkRole('admin', 'recepcion'), pacienteUpdateValidation, validate, update);
-router.delete('/:id', verifyToken, checkRole('admin'), remove);
+router.post('/', verifyFlexible, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
+router.put('/:id', verifyFlexible, checkRole('admin', 'recepcion'), pacienteUpdateValidation, validate, update);
+router.delete('/:id', verifyFlexible, checkRole('admin'), remove);
 
 module.exports = router;

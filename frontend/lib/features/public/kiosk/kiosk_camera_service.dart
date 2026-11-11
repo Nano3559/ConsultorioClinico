@@ -1,13 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 /// Motivo por el que la cámara del kiosco no está disponible.
 enum KioskCameraError {
   denied,
   noCamera,
+  busy,
   notSupported,
   unknown,
 }
@@ -32,9 +33,13 @@ class KioskPhoto {
   String get base64 => base64Encode(bytes);
 }
 
-/// Encapsula el plugin `camera` (web + Android/CameraX) para el kiosco de
-/// auto-check-in: pide el permiso, elige la cámara frontal por defecto,
-/// inicializa la vista previa y captura la foto en memoria.
+/// Acceso a la cámara para el kiosco y la reserva online.
+///
+/// Regla de oro: la cámara se abre UNA sola vez por inicialización. Abrir y
+/// cerrar streams en ráfaga (sondeo previo, enumeraciones repetidas) deja el
+/// dispositivo ocupado en varios celulares y el siguiente open falla con
+/// NotReadableError. Por eso aquí no hay sondas ni pre-aperturas: se enumera,
+/// se elige y se abre, una vez.
 class KioskCameraService {
   KioskCameraService({this.frontPreference = true});
 
@@ -49,53 +54,21 @@ class KioskCameraService {
 
   double? get aspectRatio => _controller?.value.aspectRatio;
 
-  /// Solicita el permiso en móvil (en web el navegador lo pide al crear el
-  /// stream) e inicializa la cámara frontal si existe.
+  /// Inicializa la cámara frontal si existe (trasera como respaldo).
+  /// Nunca deja la pantalla colgada: todo fallo termina en
+  /// [KioskCameraException] con mensaje accionable.
   Future<void> initialize() async {
     if (_controller != null) {
       if (_controller!.value.isInitialized) return;
-      await _controller!.dispose();
-      _controller = null;
+      await _cerrarSilencioso();
     }
 
-    if (!kIsWeb) {
-      final status = await Permission.camera.request();
-      if (!status.isGranted) {
-        throw const KioskCameraException(
-          KioskCameraError.denied,
-          'Acceso a la cámara denegado. Habilítalo e intenta de nuevo.',
-        );
-      }
-    }
+    final cameras = await _camarasDisponibles();
 
-    final List<CameraDescription> cameras;
-    try {
-      cameras = await availableCameras();
-    } on CameraException {
-      throw const KioskCameraException(
-        KioskCameraError.notSupported,
-        'No se pudo acceder a la cámara en este equipo.',
-      );
-    }
-
-    if (cameras.isEmpty) {
-      throw const KioskCameraException(
-        KioskCameraError.noCamera,
-        'No se detectó ninguna cámara en el dispositivo.',
-      );
-    }
-
-    // Se elige siempre con `orElse`: `firstWhere` sin él lanza StateError, que
-    // no es una CameraException y por tanto se escapaba del `on` de abajo.
-    // En equipos sin cámara frontal (kioscos con solo cámara trasera, webcams
-    // que reportan lente unspecified) eso abortaba la inicialización.
-    final preferred = frontPreference
-        ? CameraLensDirection.front
-        : CameraLensDirection.back;
-    final opposite = frontPreference
-        ? CameraLensDirection.back
-        : CameraLensDirection.front;
-
+    final preferred =
+        frontPreference ? CameraLensDirection.front : CameraLensDirection.back;
+    final opposite =
+        frontPreference ? CameraLensDirection.back : CameraLensDirection.front;
     final selected = cameras.firstWhere(
       (c) => c.lensDirection == preferred,
       orElse: () => cameras.firstWhere(
@@ -104,49 +77,99 @@ class KioskCameraService {
       ),
     );
 
-    _controller = CameraController(
-      selected,
-      // `low` en móvil reduce mucho el peso de la foto (LBPH no necesita alta
-      // resolución) y evita el 413 de Vercel en el body base64.
-      ResolutionPreset.medium,
-      enableAudio: false,
-    );
-    try {
-      await _controller!.initialize();
-    } on CameraException {
-      // Puede fallar por resolución no soportada o por permission revocada
-      // entre availableCameras() e initialize(): se reintenta una vez con
-      // `low` antes de rendirse.
+    // Primer intento en calidad media; si el equipo no la soporta (o el
+    // permiso se revocó en el medio), un reintento en baja antes de rendirse.
+    for (final preset in [ResolutionPreset.medium, ResolutionPreset.low]) {
+      _controller = CameraController(
+        selected,
+        preset,
+        enableAudio: false,
+      );
       try {
-        _controller = CameraController(
-          selected,
-          ResolutionPreset.low,
-          enableAudio: false,
-        );
         await _controller!.initialize();
-      } on CameraException {
-        await _controller?.dispose();
-        _controller = null;
-        throw const KioskCameraException(
-          KioskCameraError.notSupported,
-          'No se pudo iniciar la vista previa de la cámara.',
-        );
+        return;
+      } catch (_) {
+        await _cerrarSilencioso();
       }
     }
+    throw const KioskCameraException(
+      KioskCameraError.notSupported,
+      'No se pudo iniciar la vista previa de la cámara.',
+    );
+  }
+
+  /// Enumera las cámaras mapeando cada error DOM a su causa real.
+  Future<List<CameraDescription>> _camarasDisponibles() async {
+    late final List<CameraDescription> cameras;
+    try {
+      cameras = await availableCameras()
+          .timeout(const Duration(seconds: 25));
+    } on CameraException catch (e) {
+      throw _mapearErrorCamara(e.code, e.description);
+    } on TimeoutException {
+      throw const KioskCameraException(
+        KioskCameraError.unknown,
+        'La cámara no respondió. Revisa el permiso e intenta de nuevo.',
+      );
+    } catch (_) {
+      throw const KioskCameraException(
+        KioskCameraError.notSupported,
+        'Este equipo no permite usar la cámara desde aquí. Prueba en Chrome.',
+      );
+    }
+    if (cameras.isEmpty) {
+      throw const KioskCameraException(
+        KioskCameraError.noCamera,
+        'No se detectó ninguna cámara en el dispositivo.',
+      );
+    }
+    return cameras;
+  }
+
+  /// Traduce el código de error a causa + acción para el usuario.
+  KioskCameraException _mapearErrorCamara(String code, String? detail) {
+    final d = (detail ?? '').toLowerCase();
+    if (code == 'CameraAccessDenied' ||
+        code == 'NotAllowedError' ||
+        d.contains('permission') ||
+        d.contains('denied') ||
+        d.contains('notallowed')) {
+      return const KioskCameraException(
+        KioskCameraError.denied,
+        'Permiso de cámara denegado. Toca el candado de la barra del navegador, permite la cámara y reintenta.',
+      );
+    }
+    if (code == 'NotFoundError' || code == 'OverconstrainedError') {
+      return const KioskCameraException(
+        KioskCameraError.noCamera,
+        'No se encontró ninguna cámara en este dispositivo.',
+      );
+    }
+    if (code == 'NotReadableError' || d.contains('busy') || d.contains('in use')) {
+      return const KioskCameraException(
+        KioskCameraError.busy,
+        'La cámara está ocupada por otra app o pestaña. Ciérralas y reintenta.',
+      );
+    }
+    if (code == 'SecurityError' || d.contains('secure') || d.contains('https')) {
+      return const KioskCameraException(
+        KioskCameraError.denied,
+        'Abre la página con HTTPS (candado en la barra). Sin conexión segura el navegador bloquea la cámara.',
+      );
+    }
+    return KioskCameraException(
+      KioskCameraError.notSupported,
+      'No se pudo acceder a la cámara en este equipo${code.isEmpty ? '' : ' ($code)'}.',
+    );
   }
 
   /// Alterna entre la cámara frontal y la trasera en caliente.
-  ///
-  /// Necesario en el kiosco: muchoséfonos traen varias cámaras y la frontal
-  /// puede fallar al inicializar (ocupada por otra app, sin permisos en
-  /// runtime, hardware incompatible). Permite al operador recuperar el
-  /// servicio sin reiniciar la app.
   Future<void> switchCamera() async {
     if (_controller == null) return;
-    final List<CameraDescription> cameras;
+    List<CameraDescription> cameras;
     try {
-      cameras = await availableCameras();
-    } on CameraException {
+      cameras = await availableCameras().timeout(const Duration(seconds: 15));
+    } catch (_) {
       return;
     }
     if (cameras.length < 2) return;
@@ -165,7 +188,7 @@ class KioskCameraService {
 
     final previous = _controller;
     _controller = null;
-    await previous?.dispose();
+    await previous?.dispose().catchError((_) {});
     await initialize();
   }
 
@@ -174,6 +197,7 @@ class KioskCameraService {
       _controller?.description.lensDirection == CameraLensDirection.front;
 
   /// Toma una foto y la devuelve en memoria (bytes + base64).
+  /// Con timeout propio: un stream trabado no congela a quien llama.
   Future<KioskPhoto> capture() async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) {
@@ -183,10 +207,25 @@ class KioskCameraService {
       );
     }
     try {
-      final file = await controller.takePicture();
+      final file = await controller
+          .takePicture()
+          .timeout(const Duration(seconds: 15));
       final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        throw const KioskCameraException(
+          KioskCameraError.unknown,
+          'La foto salió vacía. Intenta de nuevo.',
+        );
+      }
       return KioskPhoto(bytes: bytes);
-    } on CameraException {
+    } on KioskCameraException {
+      rethrow;
+    } on TimeoutException {
+      throw const KioskCameraException(
+        KioskCameraError.unknown,
+        'La cámara no respondió al capturar. Intenta de nuevo.',
+      );
+    } catch (_) {
       throw const KioskCameraException(
         KioskCameraError.unknown,
         'No se pudo capturar la foto.',
@@ -195,7 +234,15 @@ class KioskCameraService {
   }
 
   Future<void> dispose() async {
-    await _controller?.dispose();
+    await _cerrarSilencioso();
+  }
+
+  Future<void> _cerrarSilencioso() async {
+    try {
+      await _controller?.dispose();
+    } catch (_) {
+      // Liberar nunca debe romper el flujo.
+    }
     _controller = null;
   }
 }

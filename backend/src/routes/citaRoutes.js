@@ -13,7 +13,7 @@ const {
   getMisCitas,
   confirmar,
 } = require('../controllers/citaController');
-const { verifyToken } = require('../middleware/auth');
+const { verifyFlexible } = require('../middleware/verifyFlexible');
 const { checkRole } = require('../middleware/roles');
 const {
   validate,
@@ -25,12 +25,12 @@ const {
   citaEstadoValidation,
 } = require('../middleware/validation');
 
-// Todas las rutas requieren autenticación
-router.use(verifyToken);
+// Todas las rutas requieren autenticación (JWT propio o Firebase ID token)
+router.use(verifyFlexible);
 
 // Rutas especiales (deben ir antes de /:id)
-router.get('/mis-citas', checkRole('paciente'), getMisCitas);
-router.get('/mis/citas', checkRole('paciente'), getMisCitas);
+router.get('/mis-citas', checkRole('paciente', 'medico'), getMisCitas);
+router.get('/mis/citas', checkRole('paciente', 'medico'), getMisCitas);
 router.get('/agenda/hoy', checkRole('admin', 'medico', 'recepcion'), getHoy);
 router.get('/medico/:medicoId', checkRole('admin', 'medico', 'recepcion'), medicoIdParamValidation, validate, getByMedico);
 router.get('/medico/:id', checkRole('admin', 'medico', 'recepcion'), idParamValidation, validate, getByMedico);

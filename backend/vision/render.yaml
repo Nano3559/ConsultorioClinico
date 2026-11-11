@@ -1,0 +1,26 @@
+# Render Blueprint: despliegue en 3 clics del microservicio de visión.
+# Uso: dashboard Render → New → Blueprint → conectar el repo.
+# Render detecta este archivo y crea el servicio solo.
+services:
+  - type: web
+    name: consultorio-vision
+    runtime: docker
+    rootDir: backend/vision
+    # OJO: con rootDir, estas rutas se resuelven RELATIVAS al rootDir
+    # (no a la raíz del repo): backend/vision/backend/vision/... no existe.
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: ohio
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false # pegar de Supabase → API Keys (Project URL)
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # secret key (sb_secret_...) del proyecto
+      - key: VISION_MODEL_PACK
+        value: buffalo_s
+      - key: VISION_MODEL_VERSION
+        value: buffalo_s_v1
+      - key: VISION_SIMILARITY_THRESHOLD
+        value: '0.5'

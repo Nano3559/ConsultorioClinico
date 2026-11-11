@@ -116,11 +116,11 @@ class Payment {
     );
   }
 
-  Payment copyWith({PaymentStatus? status, PaymentMethod? method}) {
+  Payment copyWith({PaymentStatus? status, PaymentMethod? method, String? doctorId}) {
     return Payment(
       id: id,
       patientId: patientId,
-      doctorId: doctorId,
+      doctorId: doctorId ?? this.doctorId,
       appointmentId: appointmentId,
       amount: amount,
       date: date,

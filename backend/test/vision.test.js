@@ -3,11 +3,12 @@
 /**
  * Suite de pruebas QA para los endpoints de VISIÓN (API /api/vision).
  *
- * - POST /api/vision/registrar-rostro/:pacienteId (KIO-10): validación
+ * - POST /api/vision/registrar-rostro/:pacienteId: validación
  *   (imagenes ausentes), autenticación (401), roles (403), paciente no
- *   encontrado (404), éxito (proxy al microservicio mockeado con fetch +
- *   guardado de rostro_embedding), y errores del microservicio (502/504).
- * - GET /api/vision/rostro/:pacienteId (KIO-07): consulta del descriptor.
+ *   encontrado (404), éxito multi-pose (proxy al microservicio mockeado con
+ *   fetch + subida a Storage + plantillas + embedding 128-d y vigencia), y
+ *   errores del microservicio (502/504).
+ * - GET /api/vision/rostro/:pacienteId: consulta del descriptor + vigencia.
  *
  * Supabase y el microservicio de visión se simulan (sin base de datos real).
  */
@@ -15,8 +16,27 @@
 const { test, before, after, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
+const path = require('path');
+const mock = require('mock-require');
 const supabaseMock = require('./mocks/supabaseMock');
 const { getApp, restore } = require('./helpers/loadApp');
+
+// Mock del Admin SDK ANTES de cargar la app: comportamiento controlable.
+// 'falla' = verifyIdToken lanza (token inválido/sin configurar);
+// {uid, email} = Firebase ID token válido simulado.
+const __firebaseMock = {
+  resolver: 'falla',
+  verifyIdToken: async () => {
+    if (typeof __firebaseMock.resolver === 'object') return __firebaseMock.resolver;
+    throw new Error('auth/argument-error');
+  },
+};
+mock(path.resolve(__dirname, '../src/config/firebaseAdmin.js'), {
+  getAdmin: () => {
+    throw new Error('mock sin getAdmin');
+  },
+  verifyIdToken: (...args) => __firebaseMock.verifyIdToken(...args),
+});
 
 const fetchOriginal = global.fetch;
 
@@ -87,6 +107,16 @@ function embedding128() {
   return Array.from({ length: 128 }, (_, i) => (i + 1) / 128);
 }
 
+function muestraPose(pose, calidad = 82.5) {
+  return {
+    pose,
+    guardada: true,
+    calidad,
+    foto: 'aG9sYQ==',
+    embedding: embedding128(),
+  };
+}
+
 // ============================================================================
 // POST /api/vision/registrar-rostro/:pacienteId
 // ============================================================================
@@ -151,19 +181,20 @@ describe('POST /api/vision/registrar-rostro/:pacienteId', () => {
     assert.equal(res.body.message, 'Paciente no encontrado');
   });
 
-  test('200 - rostro registrado: guarda muestras, reentrena y persiste embedding', async () => {
-    supabaseMock.seedPaciente({ id: 7, nombre: 'Ana', apellido: 'López' });
+  test('200 - rostro registrado: guarda muestras por pose, sube fotos y persiste embedding 128-d', async () => {
+    supabaseMock.seedPaciente({ id: 7, cedula: '0102030405', nombre: 'Ana', apellido: 'López', activo: true });
 
     global.fetch = async () =>
       new Response(
         JSON.stringify({
           success: true,
-          message: 'Rostro registrado y modelo reentrenado',
+          message: 'Rostro registrado (multi-pose)',
           data: {
             paciente_id: 7,
-            guardadas: 5,
-            entrenamiento: { imagenes: 5, pacientes: 1, modelo: 'modelo_lbph.yml' },
+            guardadas: 2,
+            muestras: [muestraPose('frontal'), muestraPose('izquierda')],
             rostro_embedding: embedding128(),
+            modelo: 'sface',
           },
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -172,20 +203,27 @@ describe('POST /api/vision/registrar-rostro/:pacienteId', () => {
     const res = await request(app)
       .post('/api/vision/registrar-rostro/7')
       .set('Authorization', `Bearer ${tokenRecepcion}`)
-      .send({ imagenes: ['aG9sYQ==', 'bXVuZG8='] });
+      .send({
+        imagenes: [
+          { imagen: 'aG9sYQ==', pose: 'frontal' },
+          { imagen: 'bXVuZG8=', pose: 'izquierda' },
+        ],
+      });
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.equal(res.body.data.paciente_id, 7);
-    assert.equal(res.body.data.imagenes_guardadas, 5);
+    assert.equal(res.body.data.imagenes_guardadas, 2);
     assert.equal(res.body.data.rostro_registrado, true);
+    assert.ok(res.body.data.por_pose.frontal > 0);
+    assert.ok(String(res.body.data.carpeta).includes('0102030405'));
 
-    // El embedding debe quedar persistido en el paciente (mock)
+    // El embedding 128-d y la vigencia deben quedar persistidos (mock)
     const pacientes = supabaseMock.getPacientes();
     const p = pacientes.find((x) => x.id === 7);
     assert.ok(p.rostro_embedding, 'debe guardar rostro_embedding');
     assert.ok(String(p.rostro_embedding).startsWith('['));
-    assert.match(p.rostro_embedding, /0\.0078125/); // (1+1)/128
+    assert.ok(p.rostro_actualizado_en, 'debe marcar la vigencia');
   });
 
   test('200 - sin embedding válido: rostro_registrado false', async () => {
@@ -286,6 +324,7 @@ describe('GET /api/vision/rostro/:pacienteId', () => {
       nombre: 'Carlos',
       apellido: 'Ruiz',
       rostro_embedding: embedding128(),
+      rostro_actualizado_en: new Date().toISOString(),
     });
 
     const res = await request(app)
@@ -296,6 +335,7 @@ describe('GET /api/vision/rostro/:pacienteId', () => {
     assert.equal(res.body.success, true);
     assert.equal(res.body.data.paciente_id, 9);
     assert.equal(res.body.data.rostro_registrado, true);
+    assert.equal(res.body.data.rostro_vigente, true);
     assert.equal(res.body.data.dimensiones, 128);
     assert.equal(res.body.data.embedding_resumen.length, 3);
   });
@@ -311,5 +351,78 @@ describe('GET /api/vision/rostro/:pacienteId', () => {
     assert.equal(res.body.success, true);
     assert.equal(res.body.data.rostro_registrado, false);
     assert.equal(res.body.data.dimensiones, 0);
+  });
+});
+
+// ============================================================================
+// Auth flexible Fase 1: Firebase ID token (mock de Admin SDK)
+// ============================================================================
+describe('Auth flexible: Firebase ID token en /api/vision', () => {
+  test('200 - Firebase token válido de recepción registra (repara 401)', async () => {
+    supabaseMock.seedPaciente({ id: 77, cedula: '0101010101', nombre: 'Galo', apellido: 'Rios', activo: true });
+    __firebaseMock.resolver = { uid: 'fb-rec-1', email: 'rec@test.com' };
+
+    global.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Rostro registrado (multi-pose)',
+          data: {
+            paciente_id: 77,
+            guardadas: 2,
+            muestras: [muestraPose('frontal'), muestraPose('izquierda')],
+            rostro_embedding: embedding128(),
+            modelo: 'sface',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+
+    const res = await request(app)
+      .post('/api/vision/registrar-rostro/77')
+      .set('Authorization', 'Bearer FIREBASE_ID_TOKEN_SIMULADO')
+      .send({
+        imagenes: [
+          { imagen: 'aG9sYQ==', pose: 'frontal' },
+          { imagen: 'bXVuZG8=', pose: 'izquierda' },
+        ],
+      });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.data.rostro_registrado, true);
+  });
+
+  test('401 - Firebase token inválido', async () => {
+    __firebaseMock.resolver = 'falla';
+
+    const res = await request(app)
+      .post('/api/vision/registrar-rostro/77')
+      .set('Authorization', 'Bearer TOKEN_MALO')
+      .send({ imagenes: ['aG9sYQ=='] });
+
+    assert.equal(res.status, 401);
+  });
+
+  test('401 - email Firebase sin usuario en el backend', async () => {
+    __firebaseMock.resolver = { uid: 'fb-x', email: 'nadie@test.com' };
+
+    const res = await request(app)
+      .get('/api/vision/rostro/77')
+      .set('Authorization', 'Bearer FIREBASE_ID_TOKEN_SIMULADO');
+
+    assert.equal(res.status, 401);
+    assert.match(res.body.message, /no registrado/i);
+  });
+
+  test('403 - Firebase token de paciente sin rol suficiente', async () => {
+    __firebaseMock.resolver = { uid: 'fb-p', email: 'paciente@test.com' };
+
+    const res = await request(app)
+      .post('/api/vision/registrar-rostro/77')
+      .set('Authorization', 'Bearer FIREBASE_ID_TOKEN_SIMULADO')
+      .send({ imagenes: ['aG9sYQ=='] });
+
+    assert.equal(res.status, 403);
   });
 });
