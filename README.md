@@ -668,6 +668,20 @@ En este **Hito 4**, el sistema alcanza una integración completa offline y local
 - **Pipeline de Inferencia en Tiempo Real**: Endpoint FastAPI (`POST /api/analizar-ecg`) con validación de archivos CSV, imputación de valores nulos (`NaN`), ajuste dimensional y preprocesamiento por normalización $Z$-Score ($\mu=0, \sigma=1$).
 - **Interfaz Clínica e Inmersiva**: Visualizador con trazado animado de la onda ECG en 2D, modelo anatómico 3D del corazón sintetizado en tiempo real (Three.js), audio cardiovascular sincronizado y desglose probabilístico por clase.
 - **Acondicionamiento y Robustez**: Manejo estricto de excepciones de formato para evitar caídas del servidor ante archivos corruptos o mal estructurados.
+- **Integración en la app Flutter**: El módulo `CardiologiaEGC` se consume desde el frontend mediante `EcgApiClient`. La pestaña **Evaluar ECG con IA** aparece únicamente para médicos con especialidad **Cardiología**, dentro del mismo shell de `/app` (sidebar web y drawer móvil), e incluye trazado animado, estado del servidor, desglose probabilístico y recomendaciones clínicas.
+
+#### Integración en la app (módulo del cardiólogo)
+
+- **Servicio**: `CardiologiaEGC/` (FastAPI + PyTorch). Instrucciones de
+  instalación y ejecución en [`CardiologiaEGC/README.md`](CardiologiaEGC/README.md).
+- **Cliente HTTP**: `EcgApiClient` en `frontend/lib/services/api_client.dart`
+  (endpoint `POST /api/analizar-ecg` y `GET /health`).
+- **URL configurable**: por defecto `http://127.0.0.1:8000`; se sobreescribe con
+  `flutter run --dart-define=ECG_API_BASE_URL=<url>`.
+- **Acceso por rol**: la pestaña solo se muestra al médico cuya especialidad es
+  Cardiología (`Specialty.isCardiologia` + `ClinicProvider.esCardiologo`).
+- **Pruebas**: `frontend/test/ecg_page_test.dart` cubre el parseo de la
+  respuesta, el filtrado del módulo por rol y el render de la página.
 
 #### 2. Lo que se realizará a futuro (Trabajo Futuro / Hito 5)
 - **Filtros Digitales Integrados**: Aplicación de transformaciones de Fourier (FFT) y filtro Notch ($50/60\text{ Hz}$) para eliminar ruido muscular e interferencia de la red eléctrica en tiempo real.

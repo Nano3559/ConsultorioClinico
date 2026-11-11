@@ -12,6 +12,7 @@ import '../settings_page.dart';
 import '../doctor_panel_page.dart';
 import '../my_schedule_page.dart';
 import '../patient_my_appointments_page.dart';
+import '../ecg/ecg_page.dart';
 
 /// Módulo de navegación del sistema interno. Cada módulo pertenece a un grupo
 /// para organizarlo en el sidebar web y el drawer móvil.
@@ -38,7 +39,8 @@ const String kGroupAnalisis = 'Análisis';
 const String kGroupSistema = 'Sistema';
 
 /// Módulos disponibles por rol. Cada rol ve solo lo que le corresponde.
-List<NavModule> navModulesFor(UserRole role) {
+/// [esCardiologo] añade al médico el módulo de evaluación de ECG con IA.
+List<NavModule> navModulesFor(UserRole role, {bool esCardiologo = false}) {
   switch (role) {
     case UserRole.admin:
       return const [
@@ -60,12 +62,22 @@ List<NavModule> navModulesFor(UserRole role) {
         NavModule('pagos', 'Pagos', Icons.payments_outlined, kGroupFinanzas, _pagos),
       ];
     case UserRole.medico:
-      return const [
-        NavModule('panel', 'Mi panel', Icons.medical_services_outlined, kGroupPrincipal, _panel),
-        NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
-        NavModule('miagenda', 'Mi agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
-        NavModule('mishorarios', 'Mis horarios', Icons.schedule_outlined, kGroupClinico, _misHorarios),
-        NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
+      return [
+        const NavModule('panel', 'Mi panel', Icons.medical_services_outlined, kGroupPrincipal, _panel),
+        const NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
+        const NavModule('miagenda', 'Mi agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
+        const NavModule('mishorarios', 'Mis horarios', Icons.schedule_outlined, kGroupClinico, _misHorarios),
+        const NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
+        // Módulo exclusivo del médico cardiólogo. Se abre como una pestaña más
+        // dentro de `/app` (mismo sidebar/topbar), no como ruta aparte.
+        if (esCardiologo)
+          const NavModule(
+            'ecg',
+            'Evaluar ECG con IA',
+            Icons.monitor_heart_outlined,
+            kGroupClinico,
+            _ecg,
+          ),
       ];
     case UserRole.paciente:
       return const [
@@ -76,8 +88,10 @@ List<NavModule> navModulesFor(UserRole role) {
 }
 
 /// Módulos que forman parte del IndexedStack (los que no navegan por ruta).
-List<NavModule> stackModulesFor(UserRole role) =>
-    navModulesFor(role).where((m) => m.route == null).toList();
+List<NavModule> stackModulesFor(UserRole role, {bool esCardiologo = false}) =>
+    navModulesFor(role, esCardiologo: esCardiologo)
+        .where((m) => m.route == null)
+        .toList();
 
 Widget _dashboard(BuildContext _) => const DashboardPage();
 Widget _consulta(BuildContext _) => const ConsultsPage();
@@ -91,3 +105,4 @@ Widget _settings(BuildContext _) => const SettingsPage();
 Widget _panel(BuildContext _) => const DoctorPanelPage();
 Widget _misHorarios(BuildContext _) => const MySchedulePage();
 Widget _myAppointments(BuildContext _) => const PatientMyAppointmentsPage();
+Widget _ecg(BuildContext _) => const CardioEcgPage();

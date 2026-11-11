@@ -448,6 +448,20 @@ class ClinicProvider extends ChangeNotifier {
   String specialtyNameOf(String doctorId) =>
       specialtyById(doctorById(doctorId).specialtyId).name;
 
+  /// True si el médico indicado pertenece a la especialidad Cardiología
+  /// (por nombre, ej. "Cardiología"). Devuelve false si el médico o su
+  /// especialidad aún no se han cargado.
+  bool esCardiologo(String? doctorId) {
+    if (doctorId == null) return false;
+    for (final d in _doctors) {
+      if (d.id != doctorId) continue;
+      for (final s in _specialties) {
+        if (s.id == d.specialtyId) return s.isCardiologia;
+      }
+    }
+    return false;
+  }
+
   List<Doctor> doctorsBySpecialty(String specialtyId) =>
       _doctors.where((d) => d.specialtyId == specialtyId).toList();
 

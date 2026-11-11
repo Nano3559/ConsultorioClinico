@@ -20,6 +20,9 @@ class Specialty {
   /// URL de la imagen de la especialidad (vacía => solo ícono).
   final String photoUrl;
 
+  /// Cardiología: tiene módulo propio de evaluación de ECG con IA.
+  bool get isCardiologia => name.toLowerCase().contains('cardi');
+
   /// Construye una Specialty desde la fila de Supabase (sin icono/color).
   factory Specialty.fromApi(Map<String, dynamic> json) {
     return Specialty(

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -8,7 +7,8 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/foto_utils.dart';
 import 'kiosk/auto_captura_service.dart';
-import 'kiosk/captura_web.dart';
+import 'kiosk/captura_web_stub.dart'
+    if (dart.library.js_interop) 'kiosk/captura_web.dart';
 import 'kiosk/gesto_assessment_service.dart';
 import 'kiosk/kiosk_camera_service.dart';
 

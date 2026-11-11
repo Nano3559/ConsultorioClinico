@@ -6,6 +6,7 @@ import '../../core/widgets/app_status_badge.dart';
 import '../../data/models/appointment.dart';
 import '../../state/auth_provider.dart';
 import '../../state/clinic_provider.dart';
+import 'nav/shell_nav.dart';
 import 'patients/patient_detail_page.dart';
 import 'clinical/consult_form_page.dart';
 
@@ -69,6 +70,8 @@ class DoctorPanelPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
+        // Acceso directo al módulo exclusivo del cardiólogo (ECG con IA).
+        if (clinic.esCardiologo(doctorId)) _TarjetaEcg(),
         const Text('Citas de hoy', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
         const SizedBox(height: 12),
         if (today.isEmpty)
@@ -80,6 +83,37 @@ class DoctorPanelPage extends StatelessWidget {
         else
           for (final a in today) _AppointmentCard(appointment: a),
       ],
+    );
+  }
+}
+
+/// Acceso rápido del cardiólogo a la evaluación de ECG con IA: cambia a la
+/// pestaña del módulo dentro del mismo shell (`/app`).
+class _TarjetaEcg extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: AppColors.danger.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.monitor_heart_outlined, color: AppColors.danger, size: 26),
+        ),
+        title: const Text(
+          'Evaluación de ECG con IA',
+          style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark),
+        ),
+        subtitle: const Text(
+          'Analiza registros de 12 derivaciones con la red neuronal ResNet-1D.',
+        ),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+        onTap: () => ShellNav.select(context, 'ecg'),
+      ),
     );
   }
 }
