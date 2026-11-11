@@ -148,6 +148,13 @@ final _router = GoRouter(
         return auth.isLogged ? null : '/login';
       },
       builder: (context, state) => const InternalShell(),
-    ),
+      routes: [
+        // Compatibilidad: la evaluación de ECG ahora es una pestaña de `/app`.
+        GoRoute(
+          path: 'cardiologia',
+          redirect: (context, state) => '/app',
+        ),
+      ],
+   ),
   ],
 );

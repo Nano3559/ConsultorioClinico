@@ -6,7 +6,9 @@ import '../../../core/widgets/ambient_background.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../data/models/user.dart';
 import '../../../state/auth_provider.dart';
+import '../../../state/clinic_provider.dart';
 import '../nav/nav_definitions.dart';
+import '../nav/shell_nav.dart';
 
 /// Caparazón móvil: barra superior con menú (drawer) para acceder a todos los
 /// módulos agrupados. Sin barra inferior: la navegación vive en el drawer.
@@ -20,12 +22,19 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   int _index = 0;
 
+  /// El cardiólogo entra directo a la pestaña de ECG con IA; se aplica una sola
+  /// vez (cuando la especialidad ya está cargada) y nunca pisa una elección del
+  /// usuario.
+  bool _ecgDefaultApplied = false;
+  bool _userSelected = false;
+
   void _select(int index, NavModule module) {
     Navigator.of(context).pop(); // cierra el drawer
     if (module.route != null) {
       context.push(module.route!);
       return;
     }
+    _userSelected = true;
     setState(() => _index = index);
   }
 
@@ -33,7 +42,15 @@ class _MobileShellState extends State<MobileShell> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser!;
-    final modules = stackModulesFor(user.role);
+    // El módulo de ECG con IA solo aparece para el médico cardiólogo.
+    final clinic = context.watch<ClinicProvider>();
+    final modules =
+        stackModulesFor(user.role, esCardiologo: clinic.esCardiologo(user.doctorId));
+    final ecgIndex = modules.indexWhere((m) => m.key == 'ecg');
+    if (!_ecgDefaultApplied && !_userSelected && ecgIndex >= 0) {
+      _ecgDefaultApplied = true;
+      _index = ecgIndex;
+    }
     if (_index >= modules.length) _index = 0;
     final current = modules[_index];
 
@@ -80,10 +97,19 @@ class _MobileShellState extends State<MobileShell> {
       ),
       drawer: _ModuleDrawer(modules: modules, selectedIndex: _index, user: user, onSelect: _select),
       body: AmbientBackground(
-        child: FadeSlide(
-          child: IndexedStack(
-            index: _index,
-            children: [for (final m in modules) m.builder(context)],
+        child: ShellNav(
+          onSelect: (key) {
+            final i = modules.indexWhere((m) => m.key == key);
+            if (i >= 0 && i != _index) {
+              _userSelected = true;
+              setState(() => _index = i);
+            }
+          },
+          child: FadeSlide(
+            child: IndexedStack(
+              index: _index,
+              children: [for (final m in modules) m.builder(context)],
+            ),
           ),
         ),
       ),
