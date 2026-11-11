@@ -99,9 +99,9 @@ void main() {
           .any((m) => m.key == 'ecg'),
       isTrue,
     );
-    // El resto de módulos del médico no cambia.
-    expect(cardio.take(4).map((m) => m.key).toList(),
-        ['panel', 'consulta', 'miagenda', 'pacientes']);
+    // El resto de módulos del médico se conserva (incluye 'Mis horarios').
+    expect(cardio.take(5).map((m) => m.key).toList(),
+        ['panel', 'consulta', 'miagenda', 'mishorarios', 'pacientes']);
   });
 
   test('Ningún otro rol ve el módulo de ECG con IA', () {
