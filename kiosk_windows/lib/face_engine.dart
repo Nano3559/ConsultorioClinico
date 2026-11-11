@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
@@ -46,7 +45,7 @@ class FaceEngine {
         minNeighbors: 4,
         minSize: (60, 60),
       );
-      if (rostros.length == 0) return null;
+      if (rostros.isEmpty) return null;
       // El rostro más grande (el más cercano a la cámara).
       var mejor = rostros[0];
       for (var i = 1; i < rostros.length; i++) {
