@@ -38,10 +38,17 @@
 //     POST /api/pagos                                   -> Payment
 //     PATCH /api/pagos/:id/estado     { status }        -> Payment
 //   Reportes
-//     GET /api/reportes?desde=&hasta=&medico=&especialidad=&estado=
+//     GET  /api/reportes?desde=&hasta=&medico=&especialidad=&estado=
+//   Cardiología IA (CardiologiaEGC, FastAPI + PyTorch)
+//     GET  /health                     -> { status }
+//     POST /api/analizar-ecg (multipart, CSV de 12 derivaciones)
+//          -> { diagnostico_principal, confianza, desglose, bpm,
+//               causas, recomendaciones }
 // ============================================================================
 
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 
 /// Configuración de la API.
@@ -175,6 +182,84 @@ class ApiClient {
       return ApiResult.failure(msg.toString());
     }
     return ApiResult.failure('Respuesta inesperada del servidor');
+  }
+
+  void dispose() => _client.close();
+}
+
+/// Configuración del servicio de IA de ECG (carpeta CardiologiaEGC).
+class EcgApiConfig {
+  EcgApiConfig._();
+
+  /// URL del servidor FastAPI del modelo ECG_ResNet1D (PyTorch). Se levanta
+  /// en local con: `uvicorn app:app --host 127.0.0.1 --port 8000`.
+  /// Se puede sobreescribir con:
+  /// flutter run --dart-define=ECG_API_BASE_URL=http://localhost:8000
+  static const String baseUrl = String.fromEnvironment(
+    'ECG_API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000',
+  );
+
+  /// La inferencia del modelo suele responder en milisegundos; el margen cubre
+  /// equipos lentos sin dejar al usuario esperando si el servicio no responde.
+  static const Duration timeout = Duration(seconds: 20);
+}
+
+/// Cliente HTTP para el servicio de análisis de ECG de Cardiología.
+///
+/// Es un backend distinto al de Node.js (FastAPI + PyTorch), por eso mantiene
+/// su propia configuración ([EcgApiConfig]) reutilizando [ApiResult] para que
+/// el manejo de errores sea uniforme en toda la app.
+class EcgApiClient {
+  EcgApiClient({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
+
+  /// Comprueba si el servidor del modelo está activo (badge de estado).
+  Future<bool> servidorActivo() async {
+    try {
+      final res = await _client
+          .get(Uri.parse('${EcgApiConfig.baseUrl}/health'))
+          .timeout(const Duration(seconds: 2));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Envía el CSV de 12 derivaciones a `POST /api/analizar-ecg` y devuelve el
+  /// dictamen del modelo (diagnóstico, confianza, causas y recomendaciones).
+  Future<ApiResult<Map<String, dynamic>>> analizarEcg({
+    required String nombreArchivo,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final req = http.MultipartRequest(
+        'POST',
+        Uri.parse('${EcgApiConfig.baseUrl}/api/analizar-ecg'),
+      )
+        ..files.add(http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: nombreArchivo,
+        ));
+      final streamed = await _client
+          .send(req)
+          .timeout(EcgApiConfig.timeout)
+          .then(http.Response.fromStream);
+      final decoded = jsonDecode(utf8.decode(streamed.bodyBytes));
+      if (decoded is Map<String, dynamic>) {
+        if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
+          return ApiResult.success(decoded);
+        }
+        // FastAPI responde los errores con { "detail": "..." }.
+        final msg = decoded['detail'] ?? decoded['message'] ?? 'Error del servidor';
+        return ApiResult.failure(msg.toString());
+      }
+      return ApiResult.failure('Respuesta inesperada del servidor');
+    } on Exception {
+      return ApiResult.failure('Sin conexión con el servidor de ECG');
+    }
   }
 
   void dispose() => _client.close();
