@@ -378,11 +378,11 @@ reconoce por su rostro y confirma automáticamente su cita (OpenCV + LBPH).
 | Pantalla kiosco + cámara web/Android (KIO-03, KIO-06) | ✅ Implementado | `frontend/lib/features/public/kiosk/` (`kiosk_page.dart`, `kiosk_camera_service.dart`) |
 | Estudio del plugin de cámara | ✅ Documentado | `docs/KIOSCO_CAMERA.md` |
 | Migración 011 (pgvector + `rostro_embedding` + check-in) | ✅ Diseñada (pendiente de aplicar, KIO-04) | `backend/db/migrations/011_kiosco_facial.sql` |
-| Módulo de visión Python/FastAPI (`backend/vision/`) | ⏳ Pendiente | `backend/vision/{main.py, face_service.py, capture_faces.py, train_model.py}` |
-| Endpoints del kiosco (`verificar-rostro`, `confirmar-cita`) | ⏳ Pendiente | `backend/src/routes/kioscoRoutes.js` + `kioscoController.js` |
-| Endpoint `registrar-rostro/:pacienteId` | ⏳ Pendiente | `backend/src/routes/` (visión) |
-| Variables de entorno `VISION_*` | ⏳ Pendiente | `backend/.env.example` + `backend/src/config/config.js` |
-| Integración kiosco → cita confirmada (KIO-09, KIO-15) | ⏳ Pendiente | `frontend/lib/features/public/kiosk/kiosk_page.dart` (hook `onPhotoCaptured`) |
+| Módulo de visión Python/FastAPI (`backend/vision/`) | ✅ Implementado | `backend/vision/{main.py, face_service.py, capture_faces.py, train_model.py}` |
+| Endpoints del kiosco (`verificar-rostro`, `confirmar-cita`) |✅ Implementado  | `backend/src/routes/kioscoRoutes.js` + `kioscoController.js` |
+| Endpoint `registrar-rostro/:pacienteId` | ✅ Implementado  | `backend/src/routes/` (visión) |
+| Variables de entorno `VISION_*` | ✅ Implementado  | `backend/.env.example` + `backend/src/config/config.js` |
+| Integración kiosco → cita confirmada (KIO-09, KIO-15) | ✅ Implementado | `frontend/lib/features/public/kiosk/kiosk_page.dart` (hook `onPhotoCaptured`) |
 
 > El detalle tarea por tarea (qué hacer y dónde va cada archivo) está en la
 > **Tabla 10 — Mapa de implementación** del `PLAN_TRABAJOENTRELLO.md`.
