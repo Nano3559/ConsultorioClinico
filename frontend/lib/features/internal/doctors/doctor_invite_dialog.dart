@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_validators.dart';
 import '../../../core/widgets/hover_card.dart';
+import '../../../data/models/specialty.dart';
 import '../../../state/auth_provider.dart';
 import '../../../state/clinic_provider.dart';
 
@@ -50,10 +51,13 @@ class _DoctorInviteDialogState extends State<DoctorInviteDialog> {
     setState(() => _sending = true);
     final auth = context.read<AuthProvider>();
     final clinic = context.read<ClinicProvider>();
-    final espNombre = clinic.specialties
-        .firstWhere((s) => s.id == _especialidadId,
-            orElse: () => clinic.specialties.first)
-        .name;
+    final esp = clinic.specialties.firstWhere(
+      (s) => s.id == _especialidadId,
+      orElse: () => clinic.specialties.isNotEmpty
+          ? clinic.specialties.first
+          : Specialty(id: '', name: '', description: '', icon: Icons.medical_services_outlined),
+    );
+    final espNombre = esp.name;
     final medicoData = {
       'nombre': _nombre.text.trim(),
       'apellido': _apellido.text.trim(),

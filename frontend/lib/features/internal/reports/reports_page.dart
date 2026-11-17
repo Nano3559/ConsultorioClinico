@@ -31,7 +31,10 @@ class _ReportsPageState extends State<ReportsPage> {
       if (a.date.isBefore(DateTime(_desde.year, _desde.month, _desde.day))) return false;
       if (a.date.isAfter(DateTime(_hasta.year, _hasta.month, _hasta.day).add(const Duration(days: 1)))) return false;
       if (_doctorFilter != null && a.doctorId != _doctorFilter) return false;
-      if (_specialtyFilter != null && clinic.doctorById(a.doctorId).specialtyId != _specialtyFilter) return false;
+      if (_specialtyFilter != null) {
+        final d = clinic.doctorById(a.doctorId);
+        if (d == null || d.specialtyId != _specialtyFilter) return false;
+      }
       if (_statusFilter != null && a.status != _statusFilter) return false;
       return true;
     }).toList();
@@ -53,7 +56,9 @@ class _ReportsPageState extends State<ReportsPage> {
     }
     final bySpecialty = <String, int>{};
     for (final a in filtered) {
-      final name = clinic.specialtyById(clinic.doctorById(a.doctorId).specialtyId).name;
+      final d = clinic.doctorById(a.doctorId);
+      final s = d != null ? clinic.specialtyById(d.specialtyId) : null;
+      final name = s?.name ?? 'Sin especialidad';
       bySpecialty[name] = (bySpecialty[name] ?? 0) + 1;
     }
     final byStatus = <AppointmentStatus, int>{};

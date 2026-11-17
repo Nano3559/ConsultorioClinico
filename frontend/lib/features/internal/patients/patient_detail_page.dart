@@ -23,6 +23,15 @@ class PatientDetailPage extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final clinic = context.watch<ClinicProvider>();
     final patient = clinic.patientById(patientId);
+    if (patient == null) {
+      return Scaffold(
+        body: AppEmptyState(
+          icon: Icons.person_outline,
+          title: 'Paciente no encontrado',
+          subtitle: 'El registro del paciente no se ha sincronizado.',
+        ),
+      );
+    }
     final isMedico = auth.currentUser?.role == UserRole.medico;
     final puedeRegistrar = isMedico || auth.currentUser?.role == UserRole.admin;
     // El endpoint /api/vision/registrar-rostro exige admin o recepcion, asi que
@@ -105,6 +114,7 @@ class _PatientData extends StatelessWidget {
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
     final p = clinic.patientById(patientId);
+    if (p == null) return const SizedBox.shrink();
     final age = DateTime.now().year - p.birthDate.year;
     final isMobile = MediaQuery.of(context).size.width < 700;
     final items = [
@@ -236,6 +246,7 @@ class _ClinicalHistory extends StatelessWidget {
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
     final p = clinic.patientById(patientId);
+    if (p == null) return const SizedBox.shrink();
     final consults = clinic.historyOf(patientId);
     return ListView(
       padding: const EdgeInsets.all(20),

@@ -34,7 +34,7 @@ class _DoctorsPageState extends State<DoctorsPage> {
     final doctors = q.isEmpty
         ? clinic.doctors
         : clinic.doctors.where((d) {
-            final s = clinic.specialtyById(d.specialtyId).name.toLowerCase();
+            final s = clinic.specialtyById(d.specialtyId)?.name.toLowerCase() ?? '';
             return d.displayName.toLowerCase().contains(q) || s.contains(q);
           }).toList();
     final isWide = MediaQuery.sizeOf(context).width >= 840;
@@ -80,7 +80,7 @@ class _DoctorsPageState extends State<DoctorsPage> {
               for (final d in doctors)
                 [
                   TableText(d.displayName, bold: true),
-                  TableText(clinic.specialtyById(d.specialtyId).name),
+                  TableText(clinic.specialtyById(d.specialtyId)?.name ?? 'Sin especialidad'),
                   TableText('${d.yearsExperience} años'),
                   TableText(_scheduleSummary(d)),
                   TableText(d.active ? 'Activo' : 'Inactivo', bold: true),
@@ -122,6 +122,8 @@ class _DoctorTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final clinic = context.read<ClinicProvider>();
     final specialty = clinic.specialtyById(doctor.specialtyId);
+    final specialtyName = specialty?.name ?? 'Sin especialidad';
+    final specialtyColor = specialty?.color ?? AppColors.primaryDark;
     final width = MediaQuery.of(context).size.width;
     final isMobile = width < 900;
     return Card(
@@ -133,14 +135,14 @@ class _DoctorTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                AppAvatar(name: doctor.name, radius: 26, backgroundColor: specialty.color),
+                AppAvatar(name: doctor.name, radius: 26, backgroundColor: specialtyColor),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(doctor.displayName, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                      Text(specialty.name, style: TextStyle(color: specialty.color, fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(specialtyName, style: TextStyle(color: specialtyColor, fontWeight: FontWeight.w600, fontSize: 13)),
                       Text('${doctor.yearsExperience} años de experiencia', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
                     ],
                   ),

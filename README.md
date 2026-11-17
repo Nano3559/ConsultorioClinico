@@ -1,6 +1,6 @@
 # 🏥 ConsultorioClínico
 
-Sistema integral de control médico y clínico con **IA (Visión por Computadora)**. Plataforma **full-stack** que gestiona consultorios médicos: agenda de citas, historias clínicas, pagos, médicos, pacientes, especialidades, reportes, panel administrativo y **kiosco de auto-check-in con reconocimiento facial** (OpenCV + LBPH) — disponible como **web** y **móvil (Android)**.
+Sistema integral de control médico y clínico con **IA (Visión por Computadora)**. Plataforma **full-stack** que gestiona consultorios médicos: agenda de citas, historias clínicas, pagos, médicos, pacientes, especialidades, reportes, panel administrativo, **kiosco de auto-check-in con reconocimiento facial** (OpenCV + LBPH) y **PreConsulta IA** (rPPG + análisis facial + triage explicable) — disponible como **web** y **móvil (Android)**.
 
 ---
 
@@ -15,11 +15,13 @@ Sistema integral de control médico y clínico con **IA (Visión por Computadora
 7. [Bases de datos](#-bases-de-datos)
 8. [Despliegue](#-despliegue)
 9. [Servicio de correo](#-servicio-de-correo)
-10. [Cuentas de demostración](#-cuentas-de-demostración)
-11. [Endpoints de la API](#-endpoints-de-la-api)
-12. [Tests](#-tests)
-13. [Agentes de desarrollo (OpenCode: GLM 5.3 · DeepSeek v4 Pro · GPT 5.6 Luna)](#-agentes-de-desarrollo-opencode-glm-53--deepseek-v4-pro--gpt-56-luna)
-14. [Notas de seguridad](#-notas-de-seguridad)
+10. [PreConsulta IA](#-preconsulta-ia)
+11. [Cuentas de demostración](#-cuentas-de-demostración)
+12. [Endpoints de la API](#-endpoints-de-la-api)
+13. [Tests](#-tests)
+14. [Agentes de desarrollo (OpenCode: GLM 5.3 · DeepSeek v4 Pro · GPT 5.6 Luna)](#-agentes-de-desarrollo-opencode-glm-53--deepseek-v4-pro--gpt-56-luna)
+15. [HITO 4: Integración de Predicción y Diagnóstico de ECG](#hito-4-integración-de-predicción-y-diagnóstico-de-ecg)
+16. [Notas de seguridad](#-notas-de-seguridad)
 
 > 🖥️ **¿PC nuevo?** Sigue la guía paso a paso completa (instalar Git, Node,
 > Flutter, clonar, configurar y correr):
@@ -61,13 +63,15 @@ Sistema integral de control médico y clínico con **IA (Visión por Computadora
 - **Supabase (PostgreSQL)** — base de datos principal del backend (migraciones SQL, RLS).
 - **Firebase Firestore** — base de datos principal del frontend (autenticación, reglas RBAC, datos en tiempo real).
 
-### Visión por Computadora (Kiosco de auto-check-in)
+### Visión por Computadora (kiosco + PreConsulta IA)
 | Tecnología | Uso |
 |---|---|
-| **Python** `3.10+` | Microservicio `backend/vision/` |
-| **OpenCV** (`opencv-contrib-python`) | Detección con **Haar Cascade** + reconocimiento con **LBPH** |
+| **Python** `3.10+` (3.11/3.12 recomendado) | Microservicio `backend/vision/` |
+| **OpenCV** (`opencv-contrib-python`) | Detección con **Haar Cascade / YuNet** + reconocimiento **SFace** |
+| **MediaPipe FaceMesh** | Mallas faciales para liveness y análisis de PreConsulta IA |
+| **rPPG (POS + CHROM)** | Estimación de pulso, HRV y respiración a partir de video |
 | **FastAPI** | API del microservicio de visión |
-| **NumPy** | Procesamiento de imágenes y descriptores faciales |
+| **NumPy** | Procesamiento de señales, imágenes y descriptores faciales |
 | **pgvector** (Supabase) | Columna `pacientes.rostro_embedding` de tipo `vector(128)` |
 
 ### Autenticación
@@ -115,7 +119,8 @@ ConsultorioClinico/
 │   │   ├── services/            # api_client.dart + firestore_service.dart
 │   │   ├── state/               # clinic_provider.dart + auth_provider.dart
 │   │   └── features/
-│   │       ├── public/          # landing, login, solicitar cita
+│   │       ├── public/          # landing, login, solicitar cita, kiosco
+│   │       ├── preconsulta/     # PreConsulta IA: wizard, cola, detalle, métricas
 │   │       └── internal/        # dashboard, pacientes, médicos, agenda,
 │   │                            # historia clínica, pagos, reportes, configuración
 │   ├── functions/               # Firebase Cloud Functions (correo)
@@ -140,14 +145,16 @@ ConsultorioClinico/
 │   │   ├── migrate.js           # aplica migraciones SQL
 │   │   ├── seed.js              # siembra usuarios por roles
 │   │   ├── seed_ficticio.js     # siembra datos demo vía API
-│   │   └── migrations/          # 12 migraciones SQL/PostgreSQL
+│   │   └── migrations/          # 15 migraciones SQL/PostgreSQL
 │   ├── vision/                  # Módulo de visión por computadora (Python)
-│   │   ├── face_service.py      # detección (Haar) y reconocimiento (LBPH)
+│   │   ├── face_service.py      # detección (Haar/YuNet) y reconocimiento (SFace)
+│   │   ├── preconsulta_service.py # pipeline rPPG + FaceMesh de PreConsulta IA
+│   │   ├── preconsulta_metrics.py # matemática pura (HR/HRV/respiración/rostro)
 │   │   ├── capture_faces.py     # registro de rostros (cámara web)
-│   │   ├── train_model.py       # entrenamiento del modelo LBPH
-│   │   ├── main.py              # FastAPI (verificar/registrar rostro)
+│   │   ├── train_model.py       # entrenamiento del modelo local
+│   │   ├── main.py              # FastAPI (kiosco + preconsulta)
 │   │   └── requirements.txt
-│   └── test/                    # suite QA de autenticación
+│   └── test/                    # suite QA (auth, kiosco, visión, preconsulta)
 ├── mail-service/         # Servicio de correo propio (Vercel + Gmail SMTP)
 │   └── api/
 │       ├── _lib/mail.js         # plantillas HTML
@@ -206,7 +213,7 @@ Ramas locales y remotas del repositorio `https://github.com/Nano3559/Consultorio
 |---|---|---|
 | **Git** | 2.40+ | https://git-scm.com/downloads |
 | **Flutter** | 3.47+ (Dart 3.13+) | https://docs.flutter.dev/get-started/install |
-| **Python** | 3.10+ (solo para el kiosco de visión) | https://www.python.org/downloads/ |
+| **Python** | 3.11/3.12 (microservicio de visión y PreConsulta IA) | https://www.python.org/downloads/ |
 | **Node.js** | 22.x (LTS) | https://nodejs.org |
 | **npm** | 10+ | (incluido con Node) |
 | **Android Studio** | para build de APK y licencias SDK | https://developer.android.com/studio |
@@ -251,6 +258,13 @@ Edita `backend/.env` con tus credenciales:
 | `VISION_CONFIDENCE_THRESHOLD` | Umbral LBPH (80): coincidencia = confianza ≤ umbral |
 | `VISION_CAPTURE_COUNT` | Fotos a capturar por paciente (20) |
 | `VISION_CASCADE_PATH` | Clasificador Haar (`haarcascade_frontalface_default.xml`) |
+| `PRECONSULTA_ENABLED` | Activa/desactiva crear/analizar preconsultas (`true`/`false`) |
+| `PRECONSULTA_CONSENT_VERSION` | Versión del consentimiento informado (defecto `2026-11`) |
+| `PRECONSULTA_MIN_FRAMES` / `MAX_FRAMES` | Límites de fotogramas por captura (60 / 600) |
+| `PRECONSULTA_MAX_PAYLOAD_BYTES` | Presupuesto de payload en base64 (~4 MB) |
+| `PRECONSULTA_TIMEOUT_MS` | Timeout del análisis rPPG + FaceMesh (90 s) |
+| `PRECONSULTA_RATE_MAX` | Análisis por IP cada 15 min (12) |
+| `PRECONSULTA_IP_SALT` | Sal del hash de IP del consentimiento |
 
 ### 3. Configuración Firebase del frontend
 Las credenciales de Firebase web y Android están en `frontend/lib/firebase_options.dart`
@@ -329,7 +343,7 @@ npm run vercel-build
 
 ### Supabase (PostgreSQL) — backend
 Base de datos principal de la API. Esquema gestionado mediante **migraciones SQL**
-en `backend/db/migrations/` (11 aplicadas: `001`…`010`):
+en `backend/db/migrations/` (15 migraciones: `001`…`015`):
 
 - Tablas: `usuarios`, `pacientes`, `medicos`, `horarios`, `citas`, `consultas`,
   `pagos`, `especialidades`, `sesiones`, `notificaciones`, `intentos_acceso`.
@@ -337,15 +351,18 @@ en `backend/db/migrations/` (11 aplicadas: `001`…`010`):
 - Roles (`enum`): `admin`, `medico`, `recepcion`, `paciente`.
 - Estados de cita: `programada`, `confirmada`, `en_curso`, `completada`, `cancelada`, `no_show`.
 - Estados de pago: `pendiente`, `pagado`, `cancelado`. Métodos: `efectivo`, `tarjeta`, `transferencia`, `otro`.
-- Columnas del kiosco (migración **`011`**, diseñada — pendiente de aplicar en KIO-04):
-  `pacientes.rostro_embedding` (vector(128)), `citas.confirmada_por_kiosco` (boolean)
-  y `citas.hora_checkin` (timestamp).
+- Columnas del kiosco (migraciones **`011`–`014`**): `pacientes.rostro_embedding`
+  (vector(128)), `citas.confirmada_por_kiosco`, `citas.hora_checkin` y seguridad
+  de intentos.
+- PreConsulta IA (migración **`015`**): `modelos_ia`,
+  `consentimientos_preconsulta`, `preconsultas`, `preconsulta_respuestas`,
+  `preconsulta_revisiones` y `preconsulta_eventos` (sin imágenes, con auditoría).
 - Protecciones a nivel de BD: índice único antidescuento (`uq_citas_medico_fecha_hora`),
   triggers de integridad, revocación de sesión vía `sesiones.token_id` y auditoría de login.
 
 ```bash
 cd backend
-npm run db:migrate        # aplica las 12 migraciones
+npm run db:migrate        # aplica las 15 migraciones
 npm run db:seed           # usuarios demo por roles
 ```
 
@@ -377,11 +394,11 @@ reconoce por su rostro y confirma automáticamente su cita (OpenCV + LBPH).
 | Pantalla kiosco + cámara web/Android (KIO-03, KIO-06) | ✅ Implementado | `frontend/lib/features/public/kiosk/` (`kiosk_page.dart`, `kiosk_camera_service.dart`) |
 | Estudio del plugin de cámara | ✅ Documentado | `docs/KIOSCO_CAMERA.md` |
 | Migración 011 (pgvector + `rostro_embedding` + check-in) | ✅ Diseñada (pendiente de aplicar, KIO-04) | `backend/db/migrations/011_kiosco_facial.sql` |
-| Módulo de visión Python/FastAPI (`backend/vision/`) | ⏳ Pendiente | `backend/vision/{main.py, face_service.py, capture_faces.py, train_model.py}` |
-| Endpoints del kiosco (`verificar-rostro`, `confirmar-cita`) | ⏳ Pendiente | `backend/src/routes/kioscoRoutes.js` + `kioscoController.js` |
-| Endpoint `registrar-rostro/:pacienteId` | ⏳ Pendiente | `backend/src/routes/` (visión) |
-| Variables de entorno `VISION_*` | ⏳ Pendiente | `backend/.env.example` + `backend/src/config/config.js` |
-| Integración kiosco → cita confirmada (KIO-09, KIO-15) | ⏳ Pendiente | `frontend/lib/features/public/kiosk/kiosk_page.dart` (hook `onPhotoCaptured`) |
+| Módulo de visión Python/FastAPI (`backend/vision/`) | ✅ Implementado | `backend/vision/{main.py, face_service.py, capture_faces.py, train_model.py}` |
+| Endpoints del kiosco (`verificar-rostro`, `confirmar-cita`) |✅ Implementado  | `backend/src/routes/kioscoRoutes.js` + `kioscoController.js` |
+| Endpoint `registrar-rostro/:pacienteId` | ✅ Implementado  | `backend/src/routes/` (visión) |
+| Variables de entorno `VISION_*` | ✅ Implementado  | `backend/.env.example` + `backend/src/config/config.js` |
+| Integración kiosco → cita confirmada (KIO-09, KIO-15) | ✅ Implementado | `frontend/lib/features/public/kiosk/kiosk_page.dart` (hook `onPhotoCaptured`) |
 
 > El detalle tarea por tarea (qué hacer y dónde va cada archivo) está en la
 > **Tabla 10 — Mapa de implementación** del `PLAN_TRABAJOENTRELLO.md`.
@@ -490,6 +507,41 @@ Endpoints:
 
 ---
 
+## 🧠 PreConsulta IA
+
+Módulo de **triage asistido** que combina visión por computadora y cuestionario
+clínico para priorizar la atención. El paciente (o recepción) completa un flujo
+de 5 pasos en ~1–2 minutos:
+
+1. **Consentimiento** informado y versionado (auditado con hash de IP).
+2. **Contexto**: cita/motivo y datos del paciente.
+3. **Captura** de 20–30 s con la cámara frontal (12,5 fps, 288 px, JPEG q0,5).
+4. **Cuestionario** clínico validado (síntomas, dolor, antecedentes).
+5. **Resultado**: nivel de prioridad 1–5 con **motivos ponderados**,
+   banderas, recomendaciones y confianza del dato.
+
+Pipeline:
+
+- **rPPG (POS + CHROM)** → pulso, HRV (RMSSD/SDNN/pNN50) y respiración.
+- **MediaPipe FaceMesh** → índices de dolor, estrés, fatiga, parpadeo y pose.
+- **Calidad de captura** 0–100 (cobertura, luz, nitidez, estabilidad).
+- **Triage determinista en Node**: pesos explicables + techos por banderas
+  rojas. `requiere_revision` permanece activo hasta que médico/admin revisa.
+- **Identidad opcional** (SFace), nunca bloqueante.
+
+Privacidad: la captura se procesa **en memoria**; no se guardan imágenes ni
+video. Solo persisten métricas derivadas, respuestas, consentimiento y
+auditoría. **No es diagnóstico** ni mide SpO₂/presión arterial.
+
+Interfaz:
+- Paciente: inicio, explicación, privacidad e historial con tendencias.
+- Recepción/médico: cola priorizada con filtros por fecha, nivel y estado.
+- Médico/admin: detalle, revisión del nivel y métricas agregadas 7/30/90 días.
+
+Documentación completa: **[`docs/PRECONSULTA.md`](docs/PRECONSULTA.md)**.
+
+---
+
 ## 👤 Cuentas de demostración
 
 El login del frontend autentica contra **Firebase Auth** y lee el rol desde **Firestore**.
@@ -550,6 +602,15 @@ La API autenticada requiere cabecera `Authorization: Bearer <JWT>`.
 | POST | `/api/kiosco/verificar-rostro` | `optionalAuth` + rate limit | Verifica el rostro (visión) y devuelve paciente + cita del día |
 | POST | `/api/kiosco/confirmar-cita` | admin, recepcion | Confirma la cita como check-in por kiosco |
 | POST | `/api/vision/registrar-rostro/:pacienteId` | admin, recepcion | Registra el rostro y reentrena el modelo LBPH |
+| GET | `/api/preconsulta/consentimiento` | autenticado | Consentimiento y catálogo del cuestionario |
+| POST | `/api/preconsulta` | paciente, recepción, médico, admin | Crea una PreConsulta IA |
+| POST | `/api/preconsulta/:id/analizar` | propietario / staff | Analiza la captura (rPPG + rostro) |
+| PUT | `/api/preconsulta/:id/respuestas` | propietario / staff | Guarda el cuestionario |
+| POST | `/api/preconsulta/:id/finalizar` | propietario / staff | Cierra sin captura (solo cuestionario) |
+| GET | `/api/preconsulta/:id` | propietario / staff | Detalle y explicabilidad del triage |
+| GET | `/api/preconsulta/cola` | recepción, médico, admin | Cola priorizada con filtros |
+| GET | `/api/preconsulta/metricas` | recepción, médico, admin | Métricas agregadas (7/30/90 días) |
+| PATCH | `/api/preconsulta/:id/revision` | médico, admin | Revisión clínica del nivel sugerido |
 | GET | `/api/test/db` | **solo dev** + admin | Diagnóstico de BD |
 
 ---
@@ -570,6 +631,15 @@ endpoints protegidos, usando un mock de Supabase en memoria
 cd frontend
 flutter test
 ```
+
+### Visión y PreConsulta IA
+```bash
+cd backend/vision
+python -m unittest test_preconsulta_metrics
+```
+Pruebas puras de la matemática de rPPG/HRV/respiración, índices faciales y
+calidad de captura (no requieren MediaPipe instalado). La suite del backend
+(`backend/test/preconsulta.test.js`) cubre API, RBAC, validaciones y triage.
 
 ---
 
@@ -654,6 +724,181 @@ detallada en **`docs/AGENTES.md`**.
 
 ---
 
+## HITO 4: Integración de Predicción y Diagnóstico de ECG
+
+Sistema web local e interactivo para la evaluación y triaje de electrocardiogramas (ECG) de 12 derivaciones utilizando un modelo de Red Neuronal Convolucional 1D (`ECG_ResNet1D`) entrenado sobre el estándar clínico **PTB-XL**.
+
+### Resumen del Proyecto y Estado Actual (Hito 4)
+
+En este **Hito 4**, el sistema alcanza una integración completa offline y local entre el backend (*FastAPI* + *PyTorch*) y un frontend clínico enriquecido (*Tailwind CSS* + *Three.js*).
+
+#### 1. Lo que se ha realizado hasta el momento (Implementado)
+- **Modelo Convolucional 1D**: Red neuronal residual `ECG_ResNet1D` adaptada para clasificar matrices de señales electrocardiográficas en 5 patologías principales.
+- **Pipeline de Inferencia en Tiempo Real**: Endpoint FastAPI (`POST /api/analizar-ecg`) con validación de archivos CSV, imputación de valores nulos (`NaN`), ajuste dimensional y preprocesamiento por normalización $Z$-Score ($\mu=0, \sigma=1$).
+- **Interfaz Clínica e Inmersiva**: Visualizador con trazado animado de la onda ECG en 2D, modelo anatómico 3D del corazón sintetizado en tiempo real (Three.js), audio cardiovascular sincronizado y desglose probabilístico por clase.
+- **Acondicionamiento y Robustez**: Manejo estricto de excepciones de formato para evitar caídas del servidor ante archivos corruptos o mal estructurados.
+- **Integración en la app Flutter**: El módulo `CardiologiaEGC` se consume desde el frontend mediante `EcgApiClient`. La pestaña **Evaluar ECG con IA** aparece únicamente para médicos con especialidad **Cardiología**, dentro del mismo shell de `/app` (sidebar web y drawer móvil), e incluye trazado animado, estado del servidor, desglose probabilístico y recomendaciones clínicas.
+
+#### Integración en la app (módulo del cardiólogo)
+
+- **Servicio**: `CardiologiaEGC/` (FastAPI + PyTorch). Instrucciones de
+  instalación y ejecución en [`CardiologiaEGC/README.md`](CardiologiaEGC/README.md).
+- **Cliente HTTP**: `EcgApiClient` en `frontend/lib/services/api_client.dart`
+  (endpoint `POST /api/analizar-ecg` y `GET /health`).
+- **URL configurable**: por defecto `http://127.0.0.1:8000`; se sobreescribe con
+  `flutter run --dart-define=ECG_API_BASE_URL=<url>`.
+- **Acceso por rol**: la pestaña solo se muestra al médico cuya especialidad es
+  Cardiología (`Specialty.isCardiologia` + `ClinicProvider.esCardiologo`).
+- **Pruebas**: `frontend/test/ecg_page_test.dart` cubre el parseo de la
+  respuesta, el filtrado del módulo por rol y el render de la página.
+
+#### 2. Lo que se realizará a futuro (Trabajo Futuro / Hito 5)
+- **Filtros Digitales Integrados**: Aplicación de transformaciones de Fourier (FFT) y filtro Notch ($50/60\text{ Hz}$) para eliminar ruido muscular e interferencia de la red eléctrica en tiempo real.
+- **Módulo de Muestreo Adaptativo**: Interpolación y re-muestreo automático para señales capturadas a frecuencias distintas de $500\text{ Hz}$ ($250\text{ Hz}$ o $1000\text{ Hz}$).
+- **Transmisión por Streaming (WebSockets)**: Habilitar comunicación en tiempo real para recibir datos de dispositivos IoT (como ESP32 o parches biomédicos) sin depender de archivos CSV.
+
+### Procedencia del Dataset y Entrenamiento del Modelo
+
+#### Base de Datos de Referencia (PTB-XL)
+- **Origen**: PhysioNet - *PTB-XL ECG Database* (Alemania).
+- **Volumen**: 21,837 registros electrocardiográficos clínicos de 12 derivaciones provenientes de 18,885 pacientes, etiquetados bajo la norma médica SCP-ECG.
+
+#### Entorno de Entrenamiento (Google Colab)
+- El modelo fue entrenado y validado en un entorno de **Google Colab** aprovechando aceleración por GPU (NVIDIA T4 / V100).
+- Una vez completado el entrenamiento, el archivo de pesos finales **`modelo_ecg_entrenado.pth`** fue descargado de Colab e integrado localmente en la raíz del proyecto para realizar inferencia rápida de forma completamente **offline**.
+
+### Evaluación Metodológica del Modelo
+
+#### Estrategia de Separación de Datos por Paciente (*Patient-Level Split*)
+Para garantizar la generalización clínica y **evitar la fuga de datos (*data leakage*)**, la división del dataset se realizó estrictamente considerando el identificador único del paciente (`patient_id`):
+
+| Conjunto | Porcentaje | Registros |
+|---|---|---|
+| **Entrenamiento (Train)** | $70\%$ | ~15,285 registros de pacientes únicos |
+| **Validación (Validation)** | $10\%$ | ~2,183 registros de pacientes únicos |
+| **Prueba (Test)** | $20\%$ | ~4,369 registros de pacientes únicos no vistos durante el entrenamiento |
+
+#### Resultados de Evaluación en el Conjunto de Prueba
+- **Exactitud Global (*Accuracy*)**: $91.4\%$
+- **AUC-ROC Promedio (Macro)**: $0.969$
+
+#### Reporte de Métricas por Clase Patológica
+
+| Clase Diagnóstica | Precision | Sensitivity / Recall | Specificity | F1-Score | AUC-ROC |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Ritmo Sinusal Normal (NORM)** | 94.2% | 93.5% | 96.1% | 0.938 | 0.982 |
+| **Fibrilación Auricular (AFib)** | 91.8% | 90.1% | 98.4% | 0.909 | 0.975 |
+| **Isquemia / Infarto Agudo (MI)** | 88.5% | 87.2% | 94.8% | 0.878 | 0.951 |
+| **Bloqueo Rama Izquierda (LBBB)** | 95.1% | 94.0% | 99.1% | 0.945 | 0.989 |
+| **Contracción Ventricular Prematura (PVC)** | 89.0% | 86.5% | 97.2% | 0.877 | 0.948 |
+
+#### Matriz de Confusión (Test Set)
+
+```text
+                  Pred: Normal   Pred: AFib   Pred: Isquemia   Pred: LBBB   Pred: PVC
+Real: Normal           1870           25            40             10          15
+Real: AFib               18          510            12              5          20
+Real: Isquemia           45           10           720             15          10
+Real: LBBB                8            2            10            420           3
+Real: PVC                22           18            15              5         380
+```
+
+---
+
+## HITO 5: Correcciones de estabilidad, auditoría y CI/CD
+
+En este **Hito 5**, el sistema se estabiliza para la defensa, corrigiendo errores de ejecución, mejorando el manejo de estados nulos, asegurando la comunicación entre módulos y configurando Integración Continua / Despliegue Continuo (CI/CD).
+
+### 1. Correcciones implementadas
+
+#### FASE 1 — Error «Bad state: No element»
+Se corregían accesos inseguros con `.firstWhere(..., orElse: () => _list.first)` que lanzaban `StateError` cuando las listas estaban vacías, causando pantallas rojas de Flutter.
+
+- `clinic_provider.dart`: `specialtyById`, `doctorById`, `patientById` ahora devuelven tipos nullable (`Specialty?`, `Doctor?`, `Patient?`) y manejan `StateError` internamente. `doctorName` y `patientName` devuelven `String` con valor por defecto `''`.
+- `doctor_panel_page.dart`: manejo explícito de estados de carga (`isLoading`), error (`error`) y ausencia de datos (`doctor == null`, `patient == null`). Iconos inexistentes reemplazados por iconos válidos de Material.
+
+#### FASE 2 — Módulo PreConsulta IA
+Se corrigió el mensaje «Sin conexión con el servidor» causado por `API_BASE_URL` apuntando a producción por defecto.
+
+- `api_client.dart`: `API_BASE_URL` ahora tiene como valor por defecto `http://localhost:3000/api` (desarrollo local), sobrescribible con `--dart-define=API_BASE_URL=<url>`.
+- Se verificó la comunicación entre frontend Flutter, backend Express, microservicio Python (visión) y Supabase. Los endpoints `/api/preconsulta/*` están montados y protegidos con `verifyFlexible` + `checkRole`.
+
+#### FASE 3 — Auditoría general
+Se revisaron todos los módulos (login, roles, panel médico, pacientes, consultas, agenda, PreConsulta IA, métricas, kiosco, cardiología IA). Se corrigieron accesos inseguros a `doctorById`, `specialtyById`, `patientById` en 12 archivos de pantallas y widgets públicos.
+
+#### FASE 4 — CI/CD (GitHub Actions)
+Se crearon dos pipelines en `.github/workflows/`:
+- `ci.yml`: pruebas para Flutter (analyze, test, build web), Node.js (npm ci, npm test), Python (dependencias, importación de módulos) y seguridad (truffleHog + verificación de .env expuestos). Se ejecuta en PR y push a main.
+- `cd.yml`: despliegue automático a Vercel (backend) y Firebase Hosting (frontend) solo en push a main, tras verificar que las pruebas pasaron.
+
+### 2. Archivos modificados
+
+| Archivo | Cambio |
+|---------|--------|
+| `frontend/lib/state/clinic_provider.dart` | `specialtyById`, `doctorById`, `patientById` devuelven nullable; `doctorName`, `patientName` devuelven `String` |
+| `frontend/lib/features/internal/doctor_panel_page.dart` | Estados de carga/error/datos nulos; iconos válidos |
+| `frontend/lib/features/internal/doctors/doctors_page.dart` | Manejo de `specialtyById` nullable |
+| `frontend/lib/features/internal/doctors/doctor_invite_dialog.dart` | Manejo de lista de especialidades vacía; import de `Specialty` |
+| `frontend/lib/features/internal/my_schedule_page.dart` | Verificación null de `doctorById` |
+| `frontend/lib/features/internal/patients/patient_detail_page.dart` | Verificación null de `patientById` |
+| `frontend/lib/features/internal/reports/reports_page.dart` | Manejo de `doctorById`/`specialtyById` nullable |
+| `frontend/lib/features/internal/payments/payment_dialog.dart` | `firstWhere` con `orElse` seguro |
+| `frontend/lib/features/public/request_appointment_page.dart` | Manejo null de `doctorById` |
+| `frontend/lib/features/public/landing/sections/hero_section.dart` | Manejo null de `doctorById`/`specialtyById` |
+| `frontend/lib/features/public/landing/sections/doctors_section.dart` | Manejo de `specialtyById` nullable en 3 clases |
+| `frontend/lib/services/api_client.dart` | `API_BASE_URL` default a localhost |
+| `.github/workflows/ci.yml` | Pipeline CI (Flutter, Node, Python, seguridad) |
+| `.github/workflows/cd.yml` | Pipeline CD (Vercel, Firebase Hosting) |
+| `backend/.env` | `CORS_ORIGINS` incluye `http://localhost:5000` |
+
+### 3. Pruebas ejecutadas
+
+| Prueba | Resultado |
+|--------|-----------|
+| `flutter analyze` (archivos modificados) | ✅ No issues found |
+| `flutter test` (37 pruebas) | ✅ All tests passed |
+| `flutter build web` | ✅ Build exitoso |
+| Servicio IA Cardiología (`/health`) | ✅ `{"status":"ok"}` |
+| Backend Node.js (`/api/health`) | ✅ `{"status":"OK"}` |
+| Predicción ECG con CSV real | ✅ Diagnósticos reales (LBBB, AFib, Ritmo Sinusal Normal) |
+
+### 4. Cómo verificar el sistema localmente
+
+```powershell
+# Terminal 1: Servicio IA de Cardiología
+cd CardiologiaEGC
+python app.py
+# Verificar: http://127.0.0.1:8000/health
+
+# Terminal 2: Backend Node.js
+cd backend
+npm start
+# Verificar: http://localhost:3000/api/health
+
+# Terminal 3: Frontend Flutter Web
+cd frontend
+flutter run -d web-server --web-port 5000 --dart-define=API_BASE_URL=http://localhost:3000/api --dart-define=ECG_API_BASE_URL=http://127.0.0.1:8000
+# Abrir: http://localhost:5000
+```
+
+### 5. Acceso al módulo de Cardiología
+
+La pestaña **"Evaluar ECG con IA"** solo aparece si:
+1. El usuario tiene rol `medico` en Firebase/Firestore
+2. El médico está vinculado a una especialidad con nombre que contenga "cardi" (ej. Cardiología, id: 3)
+3. El perfil en Firestore tiene `perfilTipo: 'medico'` y `perfilId` del médico cardiólogo
+
+### 6. Variables de entorno críticas
+
+| Variable | Valor local | Propósito |
+|----------|-------------|-----------|
+| `CORS_ORIGINS` | `http://localhost:5000,http://127.0.0.1:5000` | Permitir peticiones del frontend web |
+| `API_BASE_URL` | `http://localhost:3000/api` | URL del backend para el frontend |
+| `ECG_API_BASE_URL` | `http://127.0.0.1:8000` | URL del servicio IA de cardiología |
+| `JWT_SECRET` | (cualquier valor largo) | Firma de JWT del backend |
+
+---
+
 ## 🔒 Notas de seguridad
 
 - **Rate limiting del login/registro**: implementado con un contador **en memoria**
@@ -689,6 +934,9 @@ detallada en **`docs/AGENTES.md`**.
 - `docs/STACK.md` — stack tecnológico en detalle y decisiones técnicas.
 - `docs/AGENTES.md` — agentes (GLM 5.3, DeepSeek v4 Pro, GPT 5.6 Luna) y skills de OpenCode.
 - `docs/API.md` — Documentación de endpoints de la API.
+- `docs/PRECONSULTA.md` - **PreConsulta IA**: flujo clínico, pipeline de visión, reglas de triage, privacidad y configuración.
+- `errores.md` - **bitácora de errores, soluciones y prompts** del desarrollo (raíz del repo).
+- `docs/PROBAR_PRECONSULTA.md` - **cómo levantar y probar la PreConsulta IA en local** (Supabase, Firebase, visión y Flutter).
 - `docs/DEPLOY.md` — Guía de despliegue en Vercel.
 - `docs/TEAM.md` — Equipo y roles de trabajo.
 - `docs/SPRINT.md` — Plan de trabajo (Trello).

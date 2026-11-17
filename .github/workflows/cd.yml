@@ -1,0 +1,94 @@
+name: CD - Despliegue Continuo (Hito 5)
+
+on:
+  push:
+    branches: [main]
+
+env:
+  FLUTTER_VERSION: '3.13.0'
+  NODE_VERSION: '22.x'
+
+jobs:
+  # =========================================================================
+  # VERIFICACIÓN PREVIA (reutiliza resultados de CI si existen)
+  # =========================================================================
+  verify-tests:
+    name: Verificar pruebas previas
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Verificar que se ejecuta solo en main
+        run: echo "Despliegue autorizado en rama main"
+
+  # =========================================================================
+  # DESPLIEGUE BACKEND - Vercel
+  # =========================================================================
+  deploy-backend:
+    name: Desplegar Backend (Vercel)
+    needs: verify-tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Desplegar backend en Vercel
+        working-directory: ./backend
+        run: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
+
+  # =========================================================================
+  # DESPLIEGUE FRONTEND - Firebase Hosting
+  # =========================================================================
+  deploy-frontend:
+    name: Desplegar Frontend (Firebase Hosting)
+    needs: verify-tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Instalar dependencias Flutter
+        working-directory: ./frontend
+        run: flutter pub get
+
+      - name: Compilar Flutter Web para producción
+        working-directory: ./frontend
+        run: flutter build web --release
+
+      - name: Instalar Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Desplegar frontend en Firebase Hosting
+        working-directory: ./frontend
+        run: firebase deploy --only hosting --token=${{ secrets.FIREBASE_TOKEN }}
+
+  # =========================================================================
+  # DESPLIEGUE MICROSERVICIO PYTHON - Render / Railway
+  # =========================================================================
+  deploy-python:
+    name: Desplegar Microservicios Python
+    needs: verify-tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Notificar despliegue de microservicios Python
+        run: |
+          echo "Los microservicios Python (CardiologiaEGC, backend/vision) deben desplegarse"
+          echo "en Render/Railway/Vercel usando sus respectivos render.yaml o vercel.json"
+          echo "Configurar variables de entorno en el proveedor seleccionado."

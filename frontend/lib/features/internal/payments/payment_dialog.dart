@@ -111,8 +111,10 @@ Future<void> showRegisterPaymentDialog(
                       onChanged: (v) => setState(() {
                         citaId = v;
                         if (v != null) {
-                          final a =
-                              clinic.appointments.firstWhere((x) => x.id == v);
+                          final a = clinic.appointments.firstWhere(
+                            (x) => x.id == v,
+                            orElse: () => clinic.appointments.first,
+                          );
                           doctorId = a.doctorId;
                           amountCtrl.text = MockData.consultPrice.toStringAsFixed(2);
                         }

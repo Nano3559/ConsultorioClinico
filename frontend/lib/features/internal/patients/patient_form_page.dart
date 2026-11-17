@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/utils/app_validators.dart';
 import '../../../data/models/patient.dart';
@@ -26,6 +27,8 @@ class _PatientFormPageState extends State<PatientFormPage> {
   late final TextEditingController _alergias;
   late final TextEditingController _observaciones;
   DateTime? _birthDate;
+
+  bool _guardando = false;
 
   bool get _isEdit => widget.patient != null;
 
@@ -56,36 +59,66 @@ class _PatientFormPageState extends State<PatientFormPage> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _guardando = true);
     final clinic = context.read<ClinicProvider>();
-    if (_isEdit) {
-      clinic.updatePatient(widget.patient!.copyWith(
-        firstName: _name.text.trim(),
-        lastName: _lastName.text.trim(),
-        ci: _ci.text.trim(),
-        birthDate: _birthDate!,
-        phone: _phone.text.trim(),
-        email: _email.text.trim(),
-        antecedentes: _antecedentes.text.trim(),
-        alergias: _alergias.text.trim(),
-        observaciones: _observaciones.text.trim(),
-      ));
-    } else {
-      clinic.addPatient(Patient(
-        id: 'p${DateTime.now().millisecondsSinceEpoch}',
-        firstName: _name.text.trim(),
-        lastName: _lastName.text.trim(),
-        ci: _ci.text.trim(),
-        birthDate: _birthDate!,
-        phone: _phone.text.trim(),
-        email: _email.text.trim(),
-        antecedentes: _antecedentes.text.trim(),
-        alergias: _alergias.text.trim(),
-        observaciones: _observaciones.text.trim(),
-      ));
+    bool exito = false;
+    String? mensaje;
+
+    try {
+      if (_isEdit) {
+        final errorUpdate = await clinic.updatePatient(widget.patient!.copyWith(
+          firstName: _name.text.trim(),
+          lastName: _lastName.text.trim(),
+          ci: _ci.text.trim(),
+          birthDate: _birthDate!,
+          phone: _phone.text.trim(),
+          email: _email.text.trim(),
+          antecedentes: _antecedentes.text.trim(),
+          alergias: _alergias.text.trim(),
+          observaciones: _observaciones.text.trim(),
+        ));
+        exito = errorUpdate == null;
+        mensaje = errorUpdate;
+      } else {
+        final creado = await clinic.addPatient(Patient(
+          id: 'p${DateTime.now().millisecondsSinceEpoch}',
+          firstName: _name.text.trim(),
+          lastName: _lastName.text.trim(),
+          ci: _ci.text.trim(),
+          birthDate: _birthDate!,
+          phone: _phone.text.trim(),
+          email: _email.text.trim(),
+          antecedentes: _antecedentes.text.trim(),
+          alergias: _alergias.text.trim(),
+          observaciones: _observaciones.text.trim(),
+        ));
+        exito = creado != null;
+        mensaje = exito ? null : clinic.error;
+      }
+    } catch (e) {
+      mensaje = e.toString();
     }
-    Navigator.of(context).pop();
+
+    if (!mounted) return;
+    setState(() => _guardando = false);
+
+    if (exito) {
+      Navigator.of(context).pop(true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje ?? 'No se pudo guardar el paciente'),
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Cerrar',
+            onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -131,13 +164,22 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   const SizedBox(height: 14),
                   _field(_observaciones, 'Observaciones', null),
                   const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _save,
-                      child: Text(_isEdit ? 'Guardar cambios' : 'Registrar paciente'),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _guardando ? null : _save,
+                        child: _guardando
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(_isEdit ? 'Guardar cambios' : 'Registrar paciente'),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
