@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 env:
-  FLUTTER_VERSION: '3.13.0'
+  FLUTTER_VERSION: '3.47.5'
   NODE_VERSION: '22.x'
 
 jobs:
@@ -21,35 +21,42 @@ jobs:
         run: echo "Despliegue autorizado en rama main"
 
   # =========================================================================
-  # DESPLIEGUE BACKEND - Vercel (solo si existe VERCEL_TOKEN)
+  # DESPLIEGUE BACKEND - Vercel
   # =========================================================================
   deploy-backend:
     name: Desplegar Backend (Vercel)
     needs: verify-tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.VERCEL_TOKEN != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Si los secrets no están configurados, el deploy se omite y el job
+    # termina en verde (evita que el CI/CD quede rojo por falta de tokens).
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
 
       - name: Instalar Vercel CLI
+        if: env.VERCEL_TOKEN != ''
         run: npm install -g vercel@latest
 
       - name: Desplegar backend en Vercel
+        if: env.VERCEL_TOKEN != ''
         working-directory: ./backend
-        run: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
+        run: vercel --prod --token="$VERCEL_TOKEN"
 
   # =========================================================================
-  # DESPLIEGUE FRONTEND - Firebase Hosting (solo si existe FIREBASE_TOKEN)
+  # DESPLIEGUE FRONTEND - Firebase Hosting
   # =========================================================================
   deploy-frontend:
     name: Desplegar Frontend (Firebase Hosting)
     needs: verify-tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.FIREBASE_TOKEN != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
@@ -69,11 +76,13 @@ jobs:
         run: flutter build web --release
 
       - name: Instalar Firebase CLI
+        if: env.FIREBASE_TOKEN != ''
         run: npm install -g firebase-tools
 
       - name: Desplegar frontend en Firebase Hosting
+        if: env.FIREBASE_TOKEN != ''
         working-directory: ./frontend
-        run: firebase deploy --only hosting --token=${{ secrets.FIREBASE_TOKEN }}
+        run: firebase deploy --only hosting --token="$FIREBASE_TOKEN"
 
   # =========================================================================
   # DESPLIEGUE MICROSERVICIO PYTHON - Render / Railway
