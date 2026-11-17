@@ -21,13 +21,13 @@ jobs:
         run: echo "Despliegue autorizado en rama main"
 
   # =========================================================================
-  # DESPLIEGUE BACKEND - Vercel
+  # DESPLIEGUE BACKEND - Vercel (solo si existe VERCEL_TOKEN)
   # =========================================================================
   deploy-backend:
     name: Desplegar Backend (Vercel)
     needs: verify-tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.VERCEL_TOKEN != ''
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
@@ -43,13 +43,13 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
 
   # =========================================================================
-  # DESPLIEGUE FRONTEND - Firebase Hosting
+  # DESPLIEGUE FRONTEND - Firebase Hosting (solo si existe FIREBASE_TOKEN)
   # =========================================================================
   deploy-frontend:
     name: Desplegar Frontend (Firebase Hosting)
     needs: verify-tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.FIREBASE_TOKEN != ''
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
