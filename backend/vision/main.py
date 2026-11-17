@@ -6,12 +6,13 @@ from typing import Optional
 import cv2
 import numpy as np
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client
 
 from face_service import face_service, UMBRAL_SIMILITUD, MODEL_PACK
+import preconsulta_service
 
 load_dotenv()
 
@@ -30,6 +31,13 @@ async def lifespan(app: FastAPI):
         print('[vision] modelos YuNet+SFace listos', flush=True)
     except Exception as exc:
         print(f'[vision] AVISO: modelos no cargaron al arranque: {exc}', flush=True)
+    try:
+        # FaceMesh se carga en el primer análisis de preconsulta; adelantarlo
+        # evita que el primer paciente espere la inicialización de MediaPipe.
+        face_service._facemesh()
+        print('[vision] FaceMesh listo para PreConsulta IA', flush=True)
+    except Exception as exc:
+        print(f'[vision] AVISO: FaceMesh no cargó al arranque: {exc}', flush=True)
     yield
 
 
@@ -77,6 +85,18 @@ class EvaluarGestoRequest(BaseModel):
     pitch_ref: Optional[float] = None
     # True si el frame viene espejado (web): se invierte el yaw.
     espejado: bool = False
+
+
+class AnalizarPreconsultaRequest(BaseModel):
+    # Web: secuencia JPEG en base64 (10-25 fps). Android: video corto base64.
+    frames: list = []
+    video: str = ''
+    fps: float = 0
+    timestamps: list = []
+    espejado: bool = False
+    # Identidad opcional (SFace) contra la plantilla del paciente.
+    paciente_id: Optional[int] = None
+    identidad: bool = True
 
 
 def _cliente_supabase():
@@ -145,7 +165,12 @@ def health():
 @app.get('/api/vision/version')
 def version():
     """Versión del servicio (para verificar despliegues)."""
-    return {'version': '1.1.3', 'pose_check': True, 'model': MODEL_PACK}
+    return {
+        'version': '1.2.0',
+        'pose_check': True,
+        'model': MODEL_PACK,
+        'preconsulta': preconsulta_service.version(),
+    }
 
 
 @app.post('/api/vision/evaluar-gesto')
@@ -371,3 +396,36 @@ def registrar_rostro(paciente_id: int, payload: RegistrarRostroRequest):
             'modelo': MODEL_PACK,
         },
     }
+
+
+# ============================================================================
+# PreConsulta IA
+# ============================================================================
+@app.get('/api/preconsulta/version')
+def preconsulta_version():
+    """Versión y límites del pipeline de visión de la PreConsulta IA."""
+    return preconsulta_service.version()
+
+
+@app.post('/api/preconsulta/analizar')
+def preconsulta_analizar(payload: AnalizarPreconsultaRequest):
+    """Analiza una secuencia de fotogramas o un video corto.
+
+    - No guarda imágenes ni video: solo devuelve métricas derivadas.
+    - Es idempotente y no escribe en la base de datos: Node decide qué
+      persistir y aplica el triage explicable.
+    - 422 si la captura no alcanza (pocos frames, sin rostro, muy corta).
+    - 503 si el motor de visión no está disponible.
+    """
+    try:
+        return preconsulta_service.analizar(payload.dict())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - defensa en producción
+        print(f'[preconsulta] error inesperado: {exc}', flush=True)
+        raise HTTPException(
+            status_code=500,
+            detail='No se pudo analizar la captura. Intente nuevamente.',
+        ) from exc

@@ -60,7 +60,7 @@ Future<void> showRegisterPaymentDialog(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String?>(
-                    value: patientId,
+                    initialValue: patientId,
                     decoration: const InputDecoration(
                       labelText: 'Paciente',
                       prefixIcon: Icon(Icons.person_outline),
@@ -75,7 +75,7 @@ Future<void> showRegisterPaymentDialog(
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String?>(
-                    value: doctorId,
+                    initialValue: doctorId,
                     decoration: InputDecoration(
                       labelText: 'Médico',
                       prefixIcon: const Icon(Icons.medical_services_outlined),
@@ -93,7 +93,7 @@ Future<void> showRegisterPaymentDialog(
                   if (!locked) ...[
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String?>(
-                      value: citaId,
+                      initialValue: citaId,
                       decoration: const InputDecoration(
                         labelText: 'Cita (opcional)',
                         prefixIcon: Icon(Icons.event_outlined),

@@ -53,6 +53,8 @@ dependencies:
   file_picker: ^8.1.2
   image: ^4.2.0
   camera_windows: ^0.3.0
+  # API DOM para la captura de camara directa en web (captura_web.dart).
+  web: ^1.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

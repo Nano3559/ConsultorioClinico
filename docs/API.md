@@ -106,6 +106,18 @@ Errores: `400` (solicitud inválida), `401` (no autenticado), `403` (sin permiso
 | [`GET /kiosco/intentos`](#get-kioscointentos) | Kiosco: auditoría de intentos (admin/recepción) |
 | [`POST /vision/registrar-rostro/:pacienteId`](#post-visionregistrar-rostropacienteid) | Registrar rostro del paciente (admin) |
 | [`GET /vision/rostro/:pacienteId`](#get-visionrostropacienteid) | Estado del rostro del paciente (admin) |
+| [`GET /preconsulta/consentimiento`](#get-preconsultaconsentimiento) | Consentimiento y catálogo del cuestionario |
+| [`POST /preconsulta`](#post-preconsulta) | Crear una PreConsulta IA |
+| [`POST /preconsulta/:id/analizar`](#post-preconsultaidanalizar) | Analizar captura (rPPG + rostro) |
+| [`PUT /preconsulta/:id/respuestas`](#put-preconsultaidrespuestas) | Guardar cuestionario |
+| [`POST /preconsulta/:id/finalizar`](#post-preconsultaidfinalizar) | Cerrar sin captura |
+| [`GET /preconsulta/:id`](#get-preconsultaid) | Detalle y explicabilidad |
+| [`GET /preconsulta/cita/:citaId`](#get-preconsultacitacitaid) | Preconsulta de una cita |
+| [`GET /preconsulta/paciente/:id/tendencias`](#get-preconsultapacienteidtendencias) | Serie histórica del paciente |
+| [`GET /preconsulta/cola`](#get-preconsultacola) | Cola de priorización del personal |
+| [`GET /preconsulta/metricas`](#get-preconsultametricas) | Métricas agregadas |
+| [`PATCH /preconsulta/:id/revision`](#patch-preconsultaidrevision) | Revisión clínica del nivel |
+| [`GET /preconsulta/:id/eventos`](#get-preconsultaideventos) | Auditoría del caso |
 
 ---
 
@@ -588,6 +600,147 @@ rostro_embedding }`.
 
 Indica si el paciente tiene rostro registrado. Requiere `admin`.
 Respuesta (200): `{ paciente_id, nombre, rostro_registrado, dimensiones }`.
+
+---
+
+## PreConsulta IA (triage asistido)
+
+Módulo de pre-consulta con **rPPG** (pulso/HRV/respiración), análisis facial de
+dolor/estrés/fatiga, cuestionario y **triage explicable 1–5**. Todos los
+endpoints usan `verifyFlexible` (JWT propio o ID token de Firebase) y el
+paciente solo accede a sus propios registros.
+
+> **No es diagnóstico.** No mide SpO₂ ni presión arterial. El nivel es una
+> sugerencia que **requiere revisión humana** (`requiere_revision: true`).
+> No se guardan imágenes ni video: solo métricas derivadas.
+
+> Guía completa (flujo, pipeline, reglas y privacidad):
+> [`docs/PRECONSULTA.md`](PRECONSULTA.md).
+
+### `GET /preconsulta/consentimiento`
+
+Devuelve la versión vigente del consentimiento, los párrafos, los datos que se
+recogen, los derechos del paciente y el **catálogo de preguntas** agrupado por
+secciones, además de los niveles de triage y si el paciente ya aceptó
+(`ya_aceptado`, `aceptado_en`, `paciente_id`). Query opcional:
+`?paciente_id=` (solo staff; el paciente siempre resuelve el suyo).
+
+### `POST /preconsulta`
+
+Crea la preconsulta en estado `pendiente`.
+
+```json
+{
+  "paciente_id": 7,
+  "consentimiento_aceptado": true,
+  "consentimiento_version": "2026-11",
+  "cita_id": 99,
+  "medico_id": 3,
+  "canal": "web",
+  "motivo": "Dolor de cabeza desde ayer"
+}
+```
+
+- **Roles:** `paciente`, `recepcion`, `medico`, `admin`.
+- `canal`: `web`, `android`, `recepcion` o `tablet`.
+- El consentimiento es obligatorio; su aceptación queda auditada con hash de IP.
+- Rate limit: `PRECONSULTA_CREATE_RATE_MAX` (30 / 15 min por IP).
+
+### `POST /preconsulta/:id/analizar`
+
+Envía la captura al microservicio de visión. Acepta `frames` (lista de JPEG en
+base64) o `video` (base64), más `fps` y `duracion_seg` opcionales.
+
+```json
+{
+  "frames": ["<jpeg base64>", "..."],
+  "fps": 12.5,
+  "duracion_seg": 22.4
+}
+```
+
+- **Roles:** paciente (propietario), recepción, médico, admin.
+- Límites: `PRECONSULTA_MIN/MAX_FRAMES`, `PRECONSULTA_MAX_PAYLOAD_BYTES` y
+  `PRECONSULTA_MIN/MAX_SEGUNDOS`; timeout de 90 s.
+- Rate limit: `PRECONSULTA_RATE_MAX` (12 / 15 min por IP).
+- Respuesta (200): el **detalle completo** con `estado`, `captura`
+  (`duracion_seg`, `frames`, `calidad`, `rostro_detectado`, `detalle`),
+  `vitales`, `rostro`, `identidad` (opcional), `triage` (nivel, motivos,
+  banderas, recomendaciones, confianza) y `no_es_diagnostico: true`.
+- Errores: `422` (captura inválida o insuficiente), `502`/`504` (visión no
+  disponible), `503` (módulo deshabilitado).
+
+### `PUT /preconsulta/:id/respuestas`
+
+Guarda el cuestionario validado contra el catálogo.
+
+```json
+{
+  "respuestas": [
+    { "codigo": "dolor_intensidad", "valor": 7 },
+    { "codigo": "dificultad_respiratoria", "valor": "leve" }
+  ]
+}
+```
+
+- Recalcula el triage con la captura existente (si la hay) y devuelve el
+  detalle actualizado. Rate limit: `PRECONSULTA_ANSWERS_RATE_MAX` (40 / 15 min).
+
+### `POST /preconsulta/:id/finalizar`
+
+Cierra la preconsulta **sin captura**: el triage se calcula solo con el
+cuestionario y baja la confianza del resultado. Útil si el paciente rechaza la
+cámara. Body: `{ "respuestas": [...] }` (opcional si ya se guardaron).
+
+### `GET /preconsulta/:id`
+
+Detalle completo: paciente, cita, estado, captura, `vitales`, `rostro`,
+`triage` (nivel, etiqueta, confianza, motivos, banderas, recomendaciones,
+resumen, versión), revisión y metadatos. El paciente solo ve las suyas.
+
+### `GET /preconsulta/cita/:citaId`
+
+Preconsulta asociada a una cita (o `null` si no existe). Sujeta a propiedad.
+
+### `GET /preconsulta/paciente/:id/tendencias`
+
+Serie histórica del paciente con nivel, signos estimados y resumen. Query
+opcional: `?limite=1..50` (defecto 10). El paciente solo consulta la suya.
+
+### `GET /preconsulta/cola`
+
+Cola de priorización del personal (`recepcion`, `medico`, `admin`).
+Query opcional: `?fecha=YYYY-MM-DD`, `?nivel=1..5`, `?estado=`,
+`?medico_id=`. Devuelve contadores por nivel/estado y las tarjetas ordenadas
+por prioridad y hora.
+
+### `GET /preconsulta/metricas`
+
+Agregados para dirección/coordinación (`recepcion`, `medico`, `admin`).
+Query: `?dias=7|30|90` (defecto 30) o `?desde=&hasta=` (máx. 366 días).
+
+Respuesta: `rango`, `total`, `completadas`, `pendientes`, `revisadas`,
+`tasa_revision`, `sin_revision`, `criticas`, `con_banderas`,
+`promedio_nivel`, `promedio_calidad`, `promedio_confianza`,
+`tiempo_promedio_analisis_seg`, `distribucion`, `por_canal`, `top_motivos`,
+`top_banderas` y `serie_diaria` (siempre sin datos identificables).
+
+### `PATCH /preconsulta/:id/revision`
+
+Revisión clínica (**solo `medico` y `admin`**).
+
+```json
+{ "nivel_revisado": 2, "nota_revision": "Se adelanta la cita por dolor persistente." }
+```
+
+Marca `revisado_en`, guarda el historial en `preconsulta_revisiones` y deja un
+evento de auditoría. `nivel_revisado` puede ser `null` para aceptar el nivel de
+la IA sin cambiarlo.
+
+### `GET /preconsulta/:id/eventos`
+
+Auditoría del caso (`recepcion`, `medico`, `admin`): transiciones de estado,
+análisis, respuestas y revisiones, con usuario y detalle.
 
 ---
 

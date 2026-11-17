@@ -68,12 +68,11 @@ import 'package:http/http.dart' as http;
 class ApiConfig {
   ApiConfig._();
 
-  /// URL del backend. En desarrollo local usar:
-  ///   flutter run --dart-define=API_BASE_URL=http://localhost:3000/api
-  /// En producción se sobresale con la URL de Vercel.
+  /// URL del backend desplegado en Vercel. En local se puede sobreescribir con:
+  /// flutter run --dart-define=API_BASE_URL=http://localhost:3000/api
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:3000/api',
+    defaultValue: 'https://consultorio-clinico-brayan.vercel.app/api',
   );
 
   static const Duration timeout = Duration(seconds: 15);

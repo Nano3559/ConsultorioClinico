@@ -43,6 +43,8 @@ function getApp() {
   delete require.cache[path.resolve(__dirname, '../../src/routes/visionRoutes.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/kioscoController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/kioscoRoutes.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/controllers/preconsultaController.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/routes/preconsultaRoutes.js')];
 
   const app = require('../../src/app');
   return app;
@@ -61,6 +63,8 @@ function restore() {
   delete require.cache[path.resolve(__dirname, '../../src/routes/visionRoutes.js')];
   delete require.cache[path.resolve(__dirname, '../../src/controllers/kioscoController.js')];
   delete require.cache[path.resolve(__dirname, '../../src/routes/kioscoRoutes.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/controllers/preconsultaController.js')];
+  delete require.cache[path.resolve(__dirname, '../../src/routes/preconsultaRoutes.js')];
 }
 
 module.exports = { getApp, restore };

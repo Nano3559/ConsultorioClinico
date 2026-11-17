@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro Cardiológico - Evaluación de ECG e IA 3D</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+    <!-- Encabezado Principal -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20 shadow-inner">
+                    <i class="fa-solid fa-heart-pulse text-2xl animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-wide">Centro Cardiológico</h1>
+                    <p class="text-xs text-slate-400 font-medium">Sistema Asistido por IA &bull; ECG ResNet-1D</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <span id="serverStatusBadge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 transition-colors">
+                    <span id="serverStatusDot" class="w-2 h-2 mr-2 bg-slate-500 rounded-full"></span>
+                    <span id="serverStatusText">Verificando Servidor...</span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Panel Izquierdo -->
+        <section class="lg:col-span-5 space-y-6">
+            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 backdrop-blur shadow-xl">
+                <h2 class="text-lg font-semibold text-white mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-file-csv text-sky-400"></i> Cargar Registro de ECG
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Seleccione un archivo CSV estructurado con 12 derivaciones (12 &times; 2500 lecturas a 500 Hz).
+                </p>
+
+                <form id="uploadForm" class="space-y-4">
+                    <div id="dropZone" class="border-2 border-dashed border-slate-600 hover:border-sky-500 transition-all rounded-xl p-6 text-center cursor-pointer bg-slate-900/40 hover:bg-slate-900/70 group">
+                        <input type="file" id="csvFile" accept=".csv" class="hidden" />
+                        <div class="w-12 h-12 bg-slate-800 group-hover:bg-sky-500/10 text-slate-400 group-hover:text-sky-400 rounded-full flex items-center justify-center mx-auto mb-3 transition-colors">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                        </div>
+                        <p id="fileName" class="text-sm font-medium text-slate-200">Arrastre su archivo CSV aquí o haga clic para examinar</p>
+                        <p class="text-xs text-slate-500 mt-1">Formato soportado: .csv (12 derivaciones &times; 2500 puntos)</p>
+                    </div>
+
+                    <button type="submit" id="btnSubmit" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-sky-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-microchip text-sm"></i>
+                        <span>Ejecutar Inferencia IA</span>
+                    </button>
+                </form>
+
+                <div id="errorMessage" class="hidden mt-4 p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400 flex items-start gap-2.5">
+                    <i class="fa-solid fa-triangle-exclamation text-sm mt-0.5 shrink-0"></i>
+                    <span id="errorText" class="leading-relaxed"></span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5 text-xs space-y-3">
+                <h3 class="font-semibold text-slate-300 uppercase tracking-wider text-[11px] flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-sky-400"></i> Especificación del Formato CSV
+                </h3>
+                <ul class="space-y-2 text-slate-400">
+                    <li class="flex justify-between border-b border-slate-700/40 pb-1.5">
+                        <span>Derivaciones Requeridas:</span>
+                        <span class="font-mono text-slate-200 font-medium">12 (I, II, III, aVR, aVL, aVF, V1-V6)</span>
+                    </li>
+                    <li class="flex justify-between border-b border-slate-700/40 pb-1.5">
+                        <span>Frecuencia / Muestras:</span>
+                        <span class="font-mono text-slate-200 font-medium">500 Hz (2500 puntos / 5 seg)</span>
+                    </li>
+                    <li class="flex justify-between border-b border-slate-700/40 pb-1.5">
+                        <span>Manejo de Nulos (NaN):</span>
+                        <span class="font-mono text-slate-200 font-medium">Imputación automática a 0.0</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Acondicionamiento:</span>
+                        <span class="font-mono text-slate-200 font-medium">Normalización Z-Score (&mu;=0, &sigma;=1)</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Panel Derecho -->
+        <section class="lg:col-span-7 space-y-6">
+            
+            <div id="emptyState" class="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-12 text-center space-y-3">
+                <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-500 shadow-inner">
+                    <i class="fa-solid fa-wave-square text-2xl"></i>
+                </div>
+                <h3 class="text-base font-semibold text-slate-300">Esperando registro de ECG</h3>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                    Suba un archivo CSV para procesar las 12 derivaciones mediante la red ResNet-1D, desplegar el corazón en 3D y consultar la orientación médica.
+                </p>
+            </div>
+
+            <div id="loadingState" class="hidden bg-slate-800/50 border border-slate-700/60 rounded-2xl p-12 text-center space-y-4 backdrop-blur">
+                <div class="inline-block relative">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-sky-400"></i>
+                    <i class="fa-solid fa-heart-pulse text-xs text-sky-300 absolute inset-0 m-auto"></i>
+                </div>
+                <p class="text-sm font-semibold text-slate-200">Procesando tensor (1, 12, 2500) en PyTorch...</p>
+            </div>
+
+            <!-- Contenedor de Resultados -->
+            <div id="resultContainer" class="hidden space-y-6">
+                
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    
+                    <!-- Modelo 3D del Corazón -->
+                    <div class="md:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl p-3 relative overflow-hidden flex flex-col items-center justify-center min-h-[220px]">
+                        <span class="absolute top-3 left-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 z-10">
+                            <i class="fa-solid fa-cube text-red-500"></i> Modelo Anatómico 3D
+                        </span>
+                        <div id="heart3dContainer" class="w-full h-48"></div>
+                    </div>
+
+                    <!-- Diagnóstico Principal -->
+                    <div id="diagCard" class="md:col-span-7 bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 backdrop-blur flex flex-col justify-between shadow-xl">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-stethoscope"></i> Diagnóstico Impreso
+                            </span>
+                            <span id="badgeConfianza" class="px-3 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                0.00% Confianza
+                            </span>
+                        </div>
+
+                        <div class="my-3">
+                            <h2 id="txtDiagnostico" class="text-2xl font-extrabold text-white tracking-tight">--</h2>
+                            <p class="text-xs text-slate-400 mt-1">Simulación ventricular sincronizada con el electrocardiograma.</p>
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-700/60 pt-2.5">
+                            <span>Frecuencia Sincronizada</span>
+                            <span id="txtBpm" class="font-mono text-emerald-400 font-bold">72 BPM</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trazado ECG -->
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-sky-400"></i> Trazado Dinámico de Derivación (V1)
+                        </h3>
+                        <div class="flex items-center gap-3">
+                            <button id="toggleAudioBtn" type="button" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-volume-high text-emerald-400" id="audioIcon"></i>
+                                <span id="audioText">Sonido: En Vivo</span>
+                            </button>
+                            <span class="text-[10px] text-slate-400 font-mono">500 Hz | Vivo</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-950 rounded-xl p-2 border border-slate-800 relative overflow-hidden shadow-inner">
+                        <canvas id="ecgCanvas" width="600" height="110" class="w-full h-28"></canvas>
+                    </div>
+                </div>
+
+                <!-- Desglose Probabilístico -->
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 space-y-4">
+                    <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-sky-400"></i> Desglose Probabilístico por Patología
+                    </h3>
+                    <div id="desgloseList" class="space-y-3.5"></div>
+                </div>
+
+                <!-- CAUSAS Y RECOMENDACIONES -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Tarjeta de Causas -->
+                    <div class="bg-slate-800/50 border border-amber-500/30 rounded-2xl p-5 space-y-3 backdrop-blur">
+                        <h3 class="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-circle-nodes text-amber-400"></i> Causas del Cuadro Clínico
+                        </h3>
+                        <ul id="listaCausas" class="space-y-2 text-xs text-slate-300 leading-relaxed">
+                            <!-- Inyección dinámica con JS -->
+                        </ul>
+                    </div>
+
+                    <!-- Tarjeta de Recomendaciones -->
+                    <div class="bg-slate-800/50 border border-emerald-500/30 rounded-2xl p-5 space-y-3 backdrop-blur">
+                        <h3 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-user-doctor text-emerald-400"></i> Recomendaciones Médicas
+                        </h3>
+                        <ul id="listaRecomendaciones" class="space-y-2 text-xs text-slate-300 leading-relaxed">
+                            <!-- Inyección dinámica con JS -->
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript Integrado -->
+    <script>
+        // Si la página se abre como archivo local (file://), apuntar al servicio
+        // FastAPI local. Servida por app.py, basta con rutas relativas.
+        const API_BASE = (window.location.protocol === 'file:') ? 'http://127.0.0.1:8000' : '';
+
+        const dropZone = document.getElementById('dropZone');
+        const csvFileInput = document.getElementById('csvFile');
+        const fileNameDisplay = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+
+        const emptyState = document.getElementById('emptyState');
+        const loadingState = document.getElementById('loadingState');
+        const resultContainer = document.getElementById('resultContainer');
+        const ecgCanvas = document.getElementById('ecgCanvas');
+
+        let parsedPoints = [];
+        let animationFrameId = null;
+        let currentIndex = 0;
+        let audioEnabled = true;
+        let audioCtx = null;
+        let lastBeepTime = 0;
+
+        let scene3D, camera3D, renderer3D, heartGroup;
+        let heartPulseScale = 1.0;
+
+        function init3DHeart() {
+            const container = document.getElementById('heart3dContainer');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            scene3D = new THREE.Scene();
+            camera3D = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera3D.position.set(0, 0, 4.5);
+
+            renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+            renderer3D.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer3D.domElement);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+            scene3D.add(ambient);
+
+            const light1 = new THREE.DirectionalLight(0xff3333, 1.5);
+            light1.position.set(5, 5, 5);
+            scene3D.add(light1);
+
+            const light2 = new THREE.DirectionalLight(0x38bdf8, 0.8);
+            light2.position.set(-5, -5, 2);
+            scene3D.add(light2);
+
+            heartGroup = new THREE.Group();
+
+            const heartMat = new THREE.MeshPhongMaterial({
+                color: 0xef4444,
+                emissive: 0x450a0a,
+                specular: 0xfca5a5,
+                shininess: 30
+            });
+
+            const leftVent = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), heartMat);
+            leftVent.scale.set(0.85, 1.25, 0.75);
+            leftVent.position.set(-0.25, -0.2, 0);
+            leftVent.rotation.z = -0.2;
+            heartGroup.add(leftVent);
+
+            const rightVent = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 32), heartMat);
+            rightVent.scale.set(0.75, 1.1, 0.65);
+            rightVent.position.set(0.3, -0.1, 0);
+            rightVent.rotation.z = 0.3;
+            heartGroup.add(rightVent);
+
+            const aortaMat = new THREE.MeshPhongMaterial({ color: 0x38bdf8, shininess: 40 });
+            const aorta = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.8, 16), aortaMat);
+            aorta.position.set(-0.1, 0.75, 0);
+            aorta.rotation.z = -0.1;
+            heartGroup.add(aorta);
+
+            const venaCava = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.7, 16), aortaMat);
+            venaCava.position.set(0.25, 0.7, -0.1);
+            venaCava.rotation.z = 0.25;
+            heartGroup.add(venaCava);
+
+            heartGroup.position.set(0, -0.2, 0);
+            scene3D.add(heartGroup);
+        }
+
+        async function checkServerHealth() {
+            const badge = document.getElementById('serverStatusBadge');
+            const dot = document.getElementById('serverStatusDot');
+            const txt = document.getElementById('serverStatusText');
+
+            try {
+                const res = await fetch(API_BASE + '/health', { method: 'GET' });
+                if (res.ok) {
+                    badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                    dot.className = "w-2 h-2 mr-2 bg-emerald-400 rounded-full animate-pulse";
+                    txt.textContent = "Servidor Activo";
+                    btnSubmit.disabled = false;
+                } else { throw new Error(); }
+            } catch {
+                badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20";
+                dot.className = "w-2 h-2 mr-2 bg-red-400 rounded-full";
+                txt.textContent = "Servidor Desconectado";
+                // El boton queda habilitado: si el servicio aun arranca, el
+                // analisis se intenta y el error se muestra al instante.
+            }
+        }
+        checkServerHealth();
+        setInterval(checkServerHealth, 5000);
+
+        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        const audioIcon = document.getElementById('audioIcon');
+        const audioText = document.getElementById('audioText');
+
+        toggleAudioBtn.addEventListener('click', () => {
+            audioEnabled = !audioEnabled;
+            if (audioEnabled) {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                audioIcon.className = "fa-solid fa-volume-high text-emerald-400";
+                audioText.textContent = "Sonido: En Vivo";
+                toggleAudioBtn.classList.replace('bg-slate-800', 'bg-emerald-950');
+            } else {
+                audioIcon.className = "fa-solid fa-volume-xmark text-red-400";
+                audioText.textContent = "Sonido: Apagado";
+                toggleAudioBtn.classList.replace('bg-emerald-950', 'bg-slate-800');
+            }
+        });
+
+        function playHeartBeep() {
+            if (!audioEnabled) return;
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = Date.now();
+            if (now - lastBeepTime < 350) return;
+            lastBeepTime = now;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
+
+        dropZone.addEventListener('click', () => csvFileInput.click());
+
+        csvFileInput.addEventListener('change', () => {
+            if (csvFileInput.files.length > 0) {
+                const file = csvFileInput.files[0];
+                if (!file.name.endsWith('.csv')) {
+                    showError("El archivo seleccionado debe ser .csv");
+                    return;
+                }
+                fileNameDisplay.textContent = file.name;
+                hideError();
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-sky-500', 'bg-slate-800/80');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-sky-500', 'bg-slate-800/80');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-sky-500', 'bg-slate-800/80');
+            if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if (!file.name.endsWith('.csv')) {
+                    showError("El archivo arrastrado debe ser un archivo CSV.");
+                    return;
+                }
+                csvFileInput.files = e.dataTransfer.files;
+                fileNameDisplay.textContent = file.name;
+                hideError();
+            }
+        });
+
+        function showError(msg) {
+            errorText.textContent = msg;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+
+        function startECGAnimation(csvText) {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            const lines = csvText.trim().split('\n');
+            parsedPoints = [];
+            const startIndex = isNaN(parseFloat(lines[0].split(',')[0])) ? 1 : 0;
+
+            for (let i = startIndex; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if (cols.length >= 1) {
+                    const val = parseFloat(cols[6] || cols[0]);
+                    if (!isNaN(val)) parsedPoints.push(val);
+                }
+            }
+
+            if (parsedPoints.length === 0) return;
+
+            const ctx = ecgCanvas.getContext('2d');
+            const width = ecgCanvas.width;
+            const height = ecgCanvas.height;
+
+            const min = Math.min(...parsedPoints);
+            const max = Math.max(...parsedPoints);
+            const range = (max - min) || 1;
+            const thresholdR = min + range * 0.75;
+
+            currentIndex = 0;
+            const displayPoints = new Array(width).fill(height / 2);
+
+            function animate() {
+                for (let step = 0; step < 2; step++) {
+                    const val = parsedPoints[currentIndex];
+                    const y = height - (((val - min) / range) * (height - 30) + 15);
+                    
+                    displayPoints.shift();
+                    displayPoints.push(y);
+
+                    if (val > thresholdR) {
+                        playHeartBeep();
+                        heartPulseScale = 1.25;
+                    }
+
+                    currentIndex = (currentIndex + 1) % parsedPoints.length;
+                }
+
+                ctx.fillStyle = '#020617';
+                ctx.fillRect(0, 0, width, height);
+
+                ctx.strokeStyle = 'rgba(14, 165, 233, 0.12)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < width; x += 20) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+                }
+                for (let y = 0; y < height; y += 20) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+                }
+
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = 6;
+                ctx.beginPath();
+
+                for (let x = 0; x < width; x++) {
+                    const y = displayPoints[x];
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                if (heartGroup && renderer3D) {
+                    heartGroup.rotation.y += 0.012;
+                    heartPulseScale += (1.0 - heartPulseScale) * 0.12;
+                    heartGroup.scale.set(heartPulseScale, heartPulseScale, heartPulseScale);
+                    renderer3D.render(scene3D, camera3D);
+                }
+
+                animationFrameId = requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!csvFileInput.files[0]) {
+                showError("Por favor, seleccione un archivo CSV antes de procesar.");
+                return;
+            }
+
+            hideError();
+            emptyState.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            btnSubmit.disabled = true;
+
+            const file = csvFileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                resultContainer.classList.remove('hidden');
+                loadingState.classList.add('hidden');
+                try {
+                    init3DHeart();
+                    startECGAnimation(evt.target.result);
+                } catch (err) {
+                    // Si falla el 3D/trazado (p. ej. CDN bloqueado), el dictamen
+                    // del servidor debe mostrarse igualmente.
+                    console.warn('No se pudo animar el ECG/3D:', err);
+                }
+            };
+            reader.readAsText(file);
+
+            try {
+                const response = await fetch(API_BASE + '/api/analizar-ecg', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const detalle = typeof data.detail === 'string'
+                        ? data.detail
+                        : JSON.stringify(data.detail || data);
+                    throw new Error(detalle || "Error al procesar la señal de ECG.");
+                }
+
+                const diag = data.diagnostico_principal;
+                const diagCard = document.getElementById('diagCard');
+                const badgeConf = document.getElementById('badgeConfianza');
+                const txtBpm = document.getElementById('txtBpm');
+
+                let themeColor = "sky";
+                if (diag.includes("Normal")) {
+                    themeColor = "emerald";
+                } else if (diag.includes("Isquemia") || diag.includes("Infarto")) {
+                    themeColor = "rose";
+                } else {
+                    themeColor = "amber";
+                }
+
+                diagCard.className = `md:col-span-7 bg-slate-800/80 border border-${themeColor}-500/40 rounded-2xl p-6 backdrop-blur flex flex-col justify-between shadow-xl`;
+                badgeConf.className = `px-3 py-1 rounded-full text-xs font-bold bg-${themeColor}-500/20 text-${themeColor}-300 border border-${themeColor}-500/30`;
+
+                document.getElementById('txtDiagnostico').textContent = diag;
+                badgeConf.textContent = `${data.confianza}% Confianza`;
+                txtBpm.textContent = data.bpm || "72 BPM";
+
+                // Desglose
+                const desgloseContainer = document.getElementById('desgloseList');
+                desgloseContainer.innerHTML = '';
+
+                Object.entries(data.desglose).forEach(([clase, prob]) => {
+                    const isMain = clase === diag;
+                    const barColor = isMain ? `bg-${themeColor}-500` : 'bg-slate-700';
+                    const textColor = isMain ? `font-bold text-${themeColor}-400` : 'text-slate-400';
+
+                    const itemHtml = `
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="${textColor}">${clase}</span>
+                                <span class="font-mono ${textColor}">${prob}%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                                <div class="${barColor} h-2 rounded-full transition-all duration-1000 ease-out" style="width: 0%" data-prob="${prob}"></div>
+                            </div>
+                        </div>
+                    `;
+                    desgloseContainer.innerHTML += itemHtml;
+                });
+
+                setTimeout(() => {
+                    document.querySelectorAll('#desgloseList [data-prob]').forEach(bar => {
+                        bar.style.width = `${bar.getAttribute('data-prob')}%`;
+                    });
+                }, 50);
+
+                // Inyección de Causas
+                const listaCausas = document.getElementById('listaCausas');
+                const causas = Array.isArray(data.causas) ? data.causas : [];
+                listaCausas.innerHTML = causas.length
+                    ? causas.map(c => `<li class="flex items-start gap-2"><span class="text-amber-400">•</span><span>${c}</span></li>`).join('')
+                    : '<li class="text-slate-500">Sin información clínica disponible.</li>';
+
+                // Inyección de Recomendaciones
+                const listaRecomendaciones = document.getElementById('listaRecomendaciones');
+                const recomendaciones = Array.isArray(data.recomendaciones) ? data.recomendaciones : [];
+                listaRecomendaciones.innerHTML = recomendaciones.length
+                    ? recomendaciones.map(r => `<li class="flex items-start gap-2"><span class="text-emerald-400">✓</span><span>${r}</span></li>`).join('')
+                    : '<li class="text-slate-500">Sin recomendaciones disponibles.</li>';
+
+            } catch (err) {
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                resultContainer.classList.add('hidden');
+                showError(err.message || 'No se pudo conectar con el servidor de IA. Verifique que app.py esté en ejecución.');
+            } finally {
+                btnSubmit.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
