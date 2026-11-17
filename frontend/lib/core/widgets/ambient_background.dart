@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Fondo ambiental con gradiente suave y "blobs" de color que se desplazan
@@ -34,7 +36,8 @@ class _AmbientBackgroundState extends State<AmbientBackground>
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -80,7 +83,12 @@ class _AmbientBackgroundState extends State<AmbientBackground>
     );
   }
 
-  Widget _blob(Alignment base, {required double radius, required double phase, required Color color}) {
+  Widget _blob(
+    Alignment base, {
+    required double radius,
+    required double phase,
+    required Color color,
+  }) {
     final dx = math.sin(phase) * 0.12;
     final dy = math.cos(phase) * 0.10;
     return Align(
@@ -93,7 +101,10 @@ class _AmbientBackgroundState extends State<AmbientBackground>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
-              colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0.0)],
+              colors: [
+                color.withValues(alpha: 0.28),
+                color.withValues(alpha: 0.0),
+              ],
             ),
           ),
         ),
@@ -126,7 +137,10 @@ class FadeSlide extends StatelessWidget {
       builder: (context, value, child) => Opacity(
         opacity: value,
         child: Transform.translate(
-          offset: Offset(offset.dx * (1 - value), offset.dy * 120 * (1 - value)),
+          offset: Offset(
+            offset.dx * (1 - value),
+            offset.dy * 120 * (1 - value),
+          ),
           child: child,
         ),
       ),

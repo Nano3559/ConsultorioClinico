@@ -107,7 +107,9 @@ class Payment {
       patientId: json['paciente_id'].toString(),
       doctorId: '',
       appointmentId: (json['cita_id'] ?? '').toString(),
-      amount: monto is num ? monto.toDouble() : double.tryParse(monto?.toString() ?? '') ?? 0,
+      amount: monto is num
+          ? monto.toDouble()
+          : double.tryParse(monto?.toString() ?? '') ?? 0,
       date: fecha is DateTime
           ? fecha
           : DateTime.tryParse(fecha?.toString() ?? '') ?? DateTime.now(),
@@ -116,7 +118,11 @@ class Payment {
     );
   }
 
-  Payment copyWith({PaymentStatus? status, PaymentMethod? method, String? doctorId}) {
+  Payment copyWith({
+    PaymentStatus? status,
+    PaymentMethod? method,
+    String? doctorId,
+  }) {
     return Payment(
       id: id,
       patientId: patientId,

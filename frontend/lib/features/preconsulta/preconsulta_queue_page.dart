@@ -59,8 +59,7 @@ class _PreconsultaQueuePageState extends State<PreconsultaQueuePage> {
         children: [
           PageHeader(
             title: 'PreConsulta IA',
-            subtitle:
-                'Triage asistido con cámara y cuestionario. La IA prioriza; el personal confirma.',
+            subtitle: 'Triage asistido con cámara y cuestionario. La IA prioriza; el personal confirma.',
             icon: Icons.auto_awesome_outlined,
             count: stats?.total,
             actions: [
@@ -132,8 +131,11 @@ class _PreconsultaQueuePageState extends State<PreconsultaQueuePage> {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     ActionChip(
-                      avatar: const Icon(Icons.calendar_today_outlined,
-                          size: 15, color: AppColors.primary),
+                      avatar: const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 15,
+                        color: AppColors.primary,
+                      ),
                       label: Text(
                         DateFormat("EEEE d 'de' MMMM", 'es').format(_fecha),
                         style: const TextStyle(
@@ -184,17 +186,29 @@ class _PreconsultaQueuePageState extends State<PreconsultaQueuePage> {
                           isDense: true,
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'todos', child: Text('Todos')),
                           DropdownMenuItem(
-                              value: 'pendiente', child: Text('Pendientes')),
+                            value: 'todos',
+                            child: Text('Todos'),
+                          ),
                           DropdownMenuItem(
-                              value: 'completada', child: Text('Completadas')),
+                            value: 'pendiente',
+                            child: Text('Pendientes'),
+                          ),
                           DropdownMenuItem(
-                              value: 'revisada', child: Text('Revisadas')),
+                            value: 'completada',
+                            child: Text('Completadas'),
+                          ),
                           DropdownMenuItem(
-                              value: 'cancelada', child: Text('Canceladas')),
+                            value: 'revisada',
+                            child: Text('Revisadas'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'cancelada',
+                            child: Text('Canceladas'),
+                          ),
                         ],
-                        onChanged: (v) => _filtrarEstado(v == 'todos' ? null : v),
+                        onChanged: (v) =>
+                            _filtrarEstado(v == 'todos' ? null : v),
                       ),
                     ),
                   ],
@@ -212,8 +226,11 @@ class _PreconsultaQueuePageState extends State<PreconsultaQueuePage> {
             PreconsultaCard(
               child: Column(
                 children: [
-                  const Icon(Icons.cloud_off_outlined,
-                      size: 40, color: AppColors.danger),
+                  const Icon(
+                    Icons.cloud_off_outlined,
+                    size: 40,
+                    color: AppColors.danger,
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     prov.error!,
@@ -418,8 +435,8 @@ class _ColaTile extends StatelessWidget {
                                 p.motivo.isNotEmpty
                                     ? p.motivo
                                     : (p.triage.resumen.isNotEmpty
-                                        ? p.triage.resumen
-                                        : 'Sin motivo registrado'),
+                                          ? p.triage.resumen
+                                          : 'Sin motivo registrado'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -469,8 +486,10 @@ class _ColaTile extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Icon(Icons.chevron_right,
-                                color: color.withValues(alpha: 0.7)),
+                            Icon(
+                              Icons.chevron_right,
+                              color: color.withValues(alpha: 0.7),
+                            ),
                           ],
                         ),
                       ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 
@@ -65,7 +66,10 @@ class _DayScheduleRowState extends State<DayScheduleRow> {
               items: [
                 for (final t in kTimeSlots)
                   DropdownMenuItem(value: t, child: Text(t)),
-                const DropdownMenuItem(value: '--', child: Text('Sin atención')),
+                const DropdownMenuItem(
+                  value: '--',
+                  child: Text('Sin atención'),
+                ),
               ],
               onChanged: (v) => widget.onChanged([start, v!]),
             ),

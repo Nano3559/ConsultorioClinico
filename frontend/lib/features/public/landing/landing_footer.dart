@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 
@@ -20,36 +21,69 @@ class LandingFooter extends StatelessWidget {
           colors: [Color(0xFF0F172A), Color(0xFF0B3B37)],
         ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 48, vertical: 48),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 24 : 48,
+        vertical: 48,
+      ),
       child: Column(
         children: [
           if (!isMobile)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
+                Expanded(flex: 2, child: _FooterAbout()),
                 Expanded(
-                  flex: 2,
-                  child: _FooterAbout(),
+                  child: _FooterColumn(
+                    title: 'Consultorio',
+                    items: [
+                      'Nosotros',
+                      'Especialidades',
+                      'Médicos',
+                      'Horarios',
+                    ],
+                  ),
                 ),
-                Expanded(child: _FooterColumn(title: 'Consultorio', items: ['Nosotros', 'Especialidades', 'Médicos', 'Horarios'])),
-                Expanded(child: _FooterColumn(title: 'Pacientes', items: ['Solicitar cita', 'Servicios', 'Contacto'])),
-                Expanded(child: _FooterColumn(title: 'Legal', items: ['Privacidad', 'Términos', 'Cookies'])),
+                Expanded(
+                  child: _FooterColumn(
+                    title: 'Pacientes',
+                    items: ['Solicitar cita', 'Servicios', 'Contacto'],
+                  ),
+                ),
+                Expanded(
+                  child: _FooterColumn(
+                    title: 'Legal',
+                    items: ['Privacidad', 'Términos', 'Cookies'],
+                  ),
+                ),
               ],
             )
           else ...[
             const _FooterAbout(),
             const SizedBox(height: 24),
-            const _FooterColumn(title: 'Consultorio', items: ['Nosotros', 'Especialidades', 'Médicos']),
+            const _FooterColumn(
+              title: 'Consultorio',
+              items: ['Nosotros', 'Especialidades', 'Médicos'],
+            ),
             const SizedBox(height: 16),
-            const _FooterColumn(title: 'Pacientes', items: ['Solicitar cita', 'Contacto']),
+            const _FooterColumn(
+              title: 'Pacientes',
+              items: ['Solicitar cita', 'Contacto'],
+            ),
           ],
           const SizedBox(height: 28),
           TextButton.icon(
             onPressed: () => context.go('/kiosco'),
-            icon: const Icon(Icons.face_retouching_natural, color: AppColors.primaryLight, size: 20),
+            icon: const Icon(
+              Icons.face_retouching_natural,
+              color: AppColors.primaryLight,
+              size: 20,
+            ),
             label: const Text(
               'Kiosco de auto-check-in',
-              style: TextStyle(color: Color(0xFFCCFBF1), fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Color(0xFFCCFBF1),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -80,7 +114,11 @@ class _FooterAbout extends StatelessWidget {
             Flexible(
               child: Text(
                 AppInfo.name,
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -108,7 +146,11 @@ class _FooterColumn extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 12),
         for (final item in items)

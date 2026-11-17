@@ -167,9 +167,7 @@ class _CardioEcgPageState extends State<CardioEcgPage>
         ? filas[filas.length > 6 ? 6 : 0]
         : [for (final f in filas) f[ancho > 6 ? 6 : 0]];
 
-    return [
-      for (final v in serie) ?v,
-    ];
+    return [for (final v in serie) ?v];
   }
 
   Future<void> _seleccionarCsv() async {
@@ -191,15 +189,15 @@ class _CardioEcgPageState extends State<CardioEcgPage>
         return;
       }
       if (bytes == null || bytes.isEmpty) {
-        setState(() => _error = 'No se pudo leer el archivo. Intenta de nuevo.');
+        setState(
+          () => _error = 'No se pudo leer el archivo. Intenta de nuevo.',
+        );
         return;
       }
       final texto = String.fromCharCodes(bytes);
       final puntos = _parsearPuntos(texto);
       if (puntos.isEmpty) {
-        setState(
-          () => _error = 'El CSV no contiene lecturas válidas de ECG.',
-        );
+        setState(() => _error = 'El CSV no contiene lecturas válidas de ECG.');
         return;
       }
       var min = puntos.first;
@@ -341,7 +339,10 @@ class _CardioEcgPageState extends State<CardioEcgPage>
                     const SizedBox(width: 24),
                     Expanded(
                       flex: 7,
-                      child: KeyedSubtree(key: _resultadoKey, child: _panelResultado()),
+                      child: KeyedSubtree(
+                        key: _resultadoKey,
+                        child: _panelResultado(),
+                      ),
                     ),
                   ],
                 ),
@@ -359,12 +360,16 @@ class _CardioEcgPageState extends State<CardioEcgPage>
 
   Widget _badgeServidor() {
     final ok = _servidorOk;
-    final color = ok == null ? AppColors.muted : ok ? AppColors.success : AppColors.danger;
+    final color = ok == null
+        ? AppColors.muted
+        : ok
+        ? AppColors.success
+        : AppColors.danger;
     final texto = ok == null
         ? 'Verificando servidor…'
         : ok
-            ? 'Servidor de IA activo'
-            : 'Servidor de IA desconectado';
+        ? 'Servidor de IA activo'
+        : 'Servidor de IA desconectado';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
@@ -429,7 +434,10 @@ class _CardioEcgPageState extends State<CardioEcgPage>
                         const SizedBox(height: 2),
                         Text(
                           'Archivo CSV de 12 derivaciones · 12 × 2500 lecturas a 500 Hz',
-                          style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.muted,
+                          ),
                         ),
                       ],
                     ),
@@ -438,10 +446,7 @@ class _CardioEcgPageState extends State<CardioEcgPage>
               ),
               const SizedBox(height: 18),
               _zonaCarga(),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                _cajaError(),
-              ],
+              if (_error != null) ...[const SizedBox(height: 16), _cajaError()],
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -501,7 +506,9 @@ class _CardioEcgPageState extends State<CardioEcgPage>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    seleccionado ? _nombreArchivo! : 'Selecciona tu archivo CSV',
+                    seleccionado
+                        ? _nombreArchivo!
+                        : 'Selecciona tu archivo CSV',
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -516,7 +523,10 @@ class _CardioEcgPageState extends State<CardioEcgPage>
                   seleccionado
                       ? '${_puntos.length} lecturas de la derivación V1'
                       : 'Formato soportado: .csv (12 derivaciones × 2500 puntos)',
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.muted,
+                  ),
                 ),
               ],
             ),
@@ -537,8 +547,11 @@ class _CardioEcgPageState extends State<CardioEcgPage>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: AppColors.danger, size: 18),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.danger,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -585,7 +598,10 @@ class _CardioEcgPageState extends State<CardioEcgPage>
             ],
           ),
           const SizedBox(height: 14),
-          _filaSpec('Derivaciones requeridas', '12 (I, II, III, aVR, aVL, aVF, V1–V6)'),
+          _filaSpec(
+            'Derivaciones requeridas',
+            '12 (I, II, III, aVR, aVL, aVF, V1–V6)',
+          ),
           _filaSpec('Frecuencia / muestras', '500 Hz (2500 puntos / 5 seg)'),
           _filaSpec('Manejo de nulos (NaN)', 'Imputación automática a 0.0'),
           _filaSpec('Acondicionamiento', 'Normalización min–max por canal'),
@@ -607,7 +623,10 @@ class _CardioEcgPageState extends State<CardioEcgPage>
               Flexible(
                 child: Text(
                   etiqueta,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.muted,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -703,7 +722,10 @@ class _CardioEcgPageState extends State<CardioEcgPage>
             const SizedBox(
               width: 44,
               height: 44,
-              child: CircularProgressIndicator(color: AppColors.info, strokeWidth: 3),
+              child: CircularProgressIndicator(
+                color: AppColors.info,
+                strokeWidth: 3,
+              ),
             ),
             const SizedBox(height: 18),
             const Text(
@@ -836,7 +858,10 @@ class _CardioEcgPageState extends State<CardioEcgPage>
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: tema.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -997,7 +1022,11 @@ class _CardioEcgPageState extends State<CardioEcgPage>
         children: [
           Row(
             children: [
-              const Icon(Icons.pie_chart_outline, color: AppColors.info, size: 16),
+              const Icon(
+                Icons.pie_chart_outline,
+                color: AppColors.info,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               const Text(
                 'DESGLOSE PROBABILÍSTICO POR PATOLOGÍA',
@@ -1268,7 +1297,10 @@ class _TrazadoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF020617));
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFF020617),
+    );
 
     final cuadricula = Paint()
       ..color = const Color(0x1F0EA5E9)
@@ -1287,10 +1319,11 @@ class _TrazadoPainter extends CustomPainter {
     for (var i = 0; i < valores.length; i++) {
       final x = estatica
           ? (valores.length <= 1
-              ? size.width
-              : i / (valores.length - 1) * size.width)
+                ? size.width
+                : i / (valores.length - 1) * size.width)
           : size.width - (valores.length - i) * paso;
-      final y = size.height -
+      final y =
+          size.height -
           (((valores[i] - min) / rango) * (size.height - 30) + 15);
       if (i == 0) {
         path.moveTo(x, y);
@@ -1354,11 +1387,7 @@ class _CorazonPainter extends CustomPainter {
     final relleno = Paint()
       ..shader = RadialGradient(
         center: const Alignment(-0.4, -0.4),
-        colors: const [
-          Color(0xFFFCA5A5),
-          Color(0xFFEF4444),
-          Color(0xFF7F1D1D),
-        ],
+        colors: const [Color(0xFFFCA5A5), Color(0xFFEF4444), Color(0xFF7F1D1D)],
         radius: 1.1,
       ).createShader(Offset.zero & size);
     canvas.drawPath(cuerpo, relleno);

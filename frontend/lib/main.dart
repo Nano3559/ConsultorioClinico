@@ -64,7 +64,8 @@ class EntranceLayer extends StatefulWidget {
   State<EntranceLayer> createState() => _EntranceLayerState();
 }
 
-class _EntranceLayerState extends State<EntranceLayer> with WidgetsBindingObserver {
+class _EntranceLayerState extends State<EntranceLayer>
+    with WidgetsBindingObserver {
   final _overlayKey = GlobalKey<OverlayState>();
   bool _entranceShown = false;
 
@@ -111,9 +112,7 @@ class _EntranceLayerState extends State<EntranceLayer> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     return Overlay(
       key: _overlayKey,
-      initialEntries: [
-        OverlayEntry(builder: (_) => widget.child),
-      ],
+      initialEntries: [OverlayEntry(builder: (_) => widget.child)],
     );
   }
 }
@@ -130,17 +129,12 @@ const String _rutaInicial = String.fromEnvironment(
 final _router = GoRouter(
   initialLocation: _rutaInicial,
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const LandingPage(),
-    ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginPage(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const LandingPage()),
+    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     GoRoute(
       path: '/reset',
-      builder: (context, state) => ResetPasswordPage(oobCode: state.uri.queryParameters['oobCode']),
+      builder: (context, state) =>
+          ResetPasswordPage(oobCode: state.uri.queryParameters['oobCode']),
     ),
     GoRoute(
       path: '/solicitar-cita',
@@ -178,11 +172,8 @@ final _router = GoRouter(
       builder: (context, state) => const InternalShell(),
       routes: [
         // Compatibilidad: la evaluación de ECG ahora es una pestaña de `/app`.
-        GoRoute(
-          path: 'cardiologia',
-          redirect: (context, state) => '/app',
-        ),
+        GoRoute(path: 'cardiologia', redirect: (context, state) => '/app'),
       ],
-   ),
+    ),
   ],
 );

@@ -182,8 +182,11 @@ class _PreconsultaDetailPageState extends State<PreconsultaDetailPage> {
             if (prov.cargando)
               const CircularProgressIndicator()
             else ...[
-              const Icon(Icons.search_off_outlined,
-                  size: 48, color: AppColors.muted),
+              const Icon(
+                Icons.search_off_outlined,
+                size: 48,
+                color: AppColors.muted,
+              ),
               const SizedBox(height: 12),
               Text(
                 prov.error ?? 'No se pudo cargar la preconsulta.',
@@ -238,8 +241,11 @@ class _Barra extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.auto_awesome,
-                color: Colors.white, size: 18),
+            child: const Icon(
+              Icons.auto_awesome,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -329,14 +335,20 @@ class _Hero extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      meta.isEmpty ? 'Sin datos demográficos' : meta.join(' · '),
+                      meta.isEmpty
+                          ? 'Sin datos demográficos'
+                          : meta.join(' · '),
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 12),
+                        color: AppColors.muted,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 7),
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(10),
@@ -344,8 +356,11 @@ class _Hero extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.notes_outlined,
-                              size: 15, color: AppColors.muted),
+                          const Icon(
+                            Icons.notes_outlined,
+                            size: 15,
+                            color: AppColors.muted,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
@@ -378,14 +393,12 @@ class _Hero extends StatelessWidget {
                         if (detalle.medico != null)
                           _Meta(
                             icono: Icons.medical_services_outlined,
-                            texto:
-                                '${detalle.medico!['nombre'] ?? 'Médico'}',
+                            texto: '${detalle.medico!['nombre'] ?? 'Médico'}',
                           ),
                         if (detalle.cita != null)
                           _Meta(
                             icono: Icons.event_available_outlined,
-                            texto:
-                                'Cita ${detalle.cita!['hora'] ?? ''}'.trim(),
+                            texto: 'Cita ${detalle.cita!['hora'] ?? ''}'.trim(),
                           ),
                       ],
                     ),
@@ -426,7 +439,9 @@ class _Hero extends StatelessWidget {
                     Text(
                       nivelTiempo(nivel),
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 10),
+                        color: AppColors.muted,
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),
@@ -452,14 +467,16 @@ class _Hero extends StatelessWidget {
                       ? triage.resumen
                       : 'Triaje sin resumen.',
                   style: const TextStyle(
-                      color: AppColors.muted, fontSize: 11.5, height: 1.35),
+                    color: AppColors.muted,
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 'Confianza ${porcentaje(triage.confianza)}',
-                style: const TextStyle(
-                    color: AppColors.muted, fontSize: 10.5),
+                style: const TextStyle(color: AppColors.muted, fontSize: 10.5),
               ),
             ],
           ),
@@ -467,8 +484,11 @@ class _Hero extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.verified_outlined,
-                    size: 16, color: AppColors.success),
+                const Icon(
+                  Icons.verified_outlined,
+                  size: 16,
+                  color: AppColors.success,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -476,7 +496,9 @@ class _Hero extends StatelessWidget {
                     '${triage.revisadoEn != null ? ' · ${fechaCorta(triage.revisadoEn)}' : ''}'
                     '${triage.notaRevision.isNotEmpty ? ' · ${triage.notaRevision}' : ''}',
                     style: const TextStyle(
-                        color: AppColors.success, fontSize: 11),
+                      color: AppColors.success,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
@@ -556,9 +578,10 @@ class _GridSignos extends StatelessWidget {
             final columnas = constraints.maxWidth >= 860
                 ? 4
                 : constraints.maxWidth >= 560
-                    ? 2
-                    : 1;
-            final ancho = (constraints.maxWidth - (columnas - 1) * 10) / columnas;
+                ? 2
+                : 1;
+            final ancho =
+                (constraints.maxWidth - (columnas - 1) * 10) / columnas;
             return Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -655,8 +678,7 @@ class _GridSignos extends StatelessWidget {
                   const SizedBox(width: 16),
                   _Meta(
                     icono: Icons.screen_rotation_outlined,
-                    texto:
-                        'Estabilidad: ${porcentaje(r.poseEstabilidad)}',
+                    texto: 'Estabilidad: ${porcentaje(r.poseEstabilidad)}',
                   ),
                 ],
               ),
@@ -679,7 +701,9 @@ class _GridSignos extends StatelessWidget {
                           ? 'Identidad verificada · similitud ${porcentaje(detalle.identidad!.similitud)}'
                           : 'Identidad no verificada · similitud ${porcentaje(detalle.identidad!.similitud)}',
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 11),
+                        color: AppColors.muted,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -700,9 +724,8 @@ class _Explicabilidad extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final triage = detalle.triage;
-    final motivos = [...triage.motivos]..sort(
-        (a, b) => b.peso.abs().compareTo(a.peso.abs()),
-      );
+    final motivos = [...triage.motivos]
+      ..sort((a, b) => b.peso.abs().compareTo(a.peso.abs()));
     return PreconsultaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -710,8 +733,7 @@ class _Explicabilidad extends StatelessWidget {
           const SeccionTitulo(
             icono: Icons.account_tree_outlined,
             titulo: 'Explicación del nivel',
-            subtitulo:
-                'Pesos y fuentes auditables. El nivel sugerido no es un diagnóstico.',
+            subtitulo: 'Pesos y fuentes auditables. El nivel sugerido no es un diagnóstico.',
           ),
           if (triage.banderas.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -732,20 +754,18 @@ class _Explicabilidad extends StatelessWidget {
                   child: Row(
                     children: [
                       Icon(
-                        b.critica
-                            ? Icons.priority_high
-                            : Icons.flag_outlined,
+                        b.critica ? Icons.priority_high : Icons.flag_outlined,
                         size: 17,
-                        color:
-                            b.critica ? AppColors.danger : AppColors.warning,
+                        color: b.critica ? AppColors.danger : AppColors.warning,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           b.texto,
                           style: TextStyle(
-                            color:
-                                b.critica ? AppColors.danger : AppColors.warning,
+                            color: b.critica
+                                ? AppColors.danger
+                                : AppColors.warning,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -787,17 +807,21 @@ class _Explicabilidad extends StatelessWidget {
                   children: [
                     const Padding(
                       padding: EdgeInsets.only(top: 4),
-                      child: Icon(Icons.check_circle_outline,
-                          size: 14, color: AppColors.success),
+                      child: Icon(
+                        Icons.check_circle_outline,
+                        size: 14,
+                        color: AppColors.success,
+                      ),
                     ),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
                         r,
                         style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                            height: 1.35),
+                          color: AppColors.muted,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
                       ),
                     ),
                   ],
@@ -843,7 +867,10 @@ class _Motivo extends StatelessWidget {
             child: Text(
               motivo.fuenteEtiqueta,
               style: TextStyle(
-                  color: color, fontSize: 9, fontWeight: FontWeight.w800),
+                color: color,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -854,15 +881,19 @@ class _Motivo extends StatelessWidget {
                 Text(
                   motivo.etiqueta,
                   style: const TextStyle(
-                      color: AppColors.dark,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700),
+                    color: AppColors.dark,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 if (motivo.detalle.isNotEmpty)
                   Text(
                     motivo.detalle,
                     style: const TextStyle(
-                        color: AppColors.muted, fontSize: 11, height: 1.3),
+                      color: AppColors.muted,
+                      fontSize: 11,
+                      height: 1.3,
+                    ),
                   ),
               ],
             ),
@@ -940,9 +971,10 @@ class _Respuestas extends StatelessWidget {
                           child: Text(
                             r.pregunta.isNotEmpty ? r.pregunta : r.codigo,
                             style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 12,
-                                height: 1.3),
+                              color: AppColors.muted,
+                              fontSize: 12,
+                              height: 1.3,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1012,16 +1044,16 @@ class _Revision extends StatelessWidget {
                   child: Container(
                     width: 112,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 10),
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: nivel == n
                           ? nivelColor(n).withValues(alpha: 0.14)
                           : AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: nivel == n
-                            ? nivelColor(n)
-                            : AppColors.border,
+                        color: nivel == n ? nivelColor(n) : AppColors.border,
                         width: nivel == n ? 1.6 : 1,
                       ),
                     ),
@@ -1084,8 +1116,7 @@ class _Revision extends StatelessWidget {
                   detalle.triage.revisado
                       ? 'Última revisión: ${fechaCorta(detalle.triage.revisadoEn)}'
                       : 'Pendiente de revisión humana',
-                  style: const TextStyle(
-                      color: AppColors.muted, fontSize: 11),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
               ),
               FilledButton.icon(
@@ -1095,7 +1126,9 @@ class _Revision extends StatelessWidget {
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.save_outlined, size: 17),
                 label: Text(guardando ? 'Guardando…' : 'Guardar revisión'),
@@ -1109,9 +1142,10 @@ class _Revision extends StatelessWidget {
             const Text(
               'Historial de revisiones',
               style: TextStyle(
-                  color: AppColors.dark,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800),
+                color: AppColors.dark,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 6),
             for (final r in detalle.revisiones.take(5))
@@ -1119,21 +1153,28 @@ class _Revision extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 5),
                 child: Row(
                   children: [
-                    Icon(Icons.history,
-                        size: 13, color: nivelColor(r.nivelNuevo)),
+                    Icon(
+                      Icons.history,
+                      size: 13,
+                      color: nivelColor(r.nivelNuevo),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         '${r.nivelAnterior ?? '—'} → ${r.nivelNuevo}'
                         '${r.nota.isNotEmpty ? ' · ${r.nota}' : ''}',
                         style: const TextStyle(
-                            color: AppColors.muted, fontSize: 11),
+                          color: AppColors.muted,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                     Text(
                       fechaCorta(r.creadoEn),
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 10),
+                        color: AppColors.muted,
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),
@@ -1172,31 +1213,38 @@ class _Auditoria extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (!cargado)
-            const Text('Cargando eventos…',
-                style: TextStyle(color: AppColors.muted, fontSize: 11))
+            const Text(
+              'Cargando eventos…',
+              style: TextStyle(color: AppColors.muted, fontSize: 11),
+            )
           else if (eventos.isEmpty)
-            const Text('Sin eventos registrados.',
-                style: TextStyle(color: AppColors.muted, fontSize: 11))
+            const Text(
+              'Sin eventos registrados.',
+              style: TextStyle(color: AppColors.muted, fontSize: 11),
+            )
           else
             for (final e in eventos)
               Padding(
                 padding: const EdgeInsets.only(bottom: 5),
                 child: Row(
                   children: [
-                    const Icon(Icons.circle,
-                        size: 6, color: AppColors.primary),
+                    const Icon(Icons.circle, size: 6, color: AppColors.primary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _etiquetas[e.tipo] ?? e.tipo,
                         style: const TextStyle(
-                            color: AppColors.dark, fontSize: 11.5),
+                          color: AppColors.dark,
+                          fontSize: 11.5,
+                        ),
                       ),
                     ),
                     Text(
                       fechaCorta(e.creadoEn),
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 10),
+                        color: AppColors.muted,
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),
@@ -1229,7 +1277,8 @@ class _Tendencias extends StatelessWidget {
           const SeccionTitulo(
             icono: Icons.trending_up_outlined,
             titulo: 'Tendencias del paciente',
-            subtitulo: 'Evolución del nivel de triage en sus últimas preconsultas.',
+            subtitulo:
+                'Evolución del nivel de triage en sus últimas preconsultas.',
             iconColor: AppColors.purple,
           ),
           const SizedBox(height: 14),
@@ -1245,16 +1294,16 @@ class _Tendencias extends StatelessWidget {
                   show: true,
                   drawVerticalLine: false,
                   horizontalInterval: 1,
-                  getDrawingHorizontalLine: (v) => FlLine(
-                    color: AppColors.border,
-                    strokeWidth: 1,
-                  ),
+                  getDrawingHorizontalLine: (v) =>
+                      FlLine(color: AppColors.border, strokeWidth: 1),
                 ),
                 titlesData: FlTitlesData(
-                  topTitles:
-                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles:
-                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -1263,7 +1312,9 @@ class _Tendencias extends StatelessWidget {
                       getTitlesWidget: (v, meta) => Text(
                         v.toInt().toString(),
                         style: const TextStyle(
-                            color: AppColors.muted, fontSize: 10),
+                          color: AppColors.muted,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                   ),
@@ -1278,11 +1329,11 @@ class _Tendencias extends StatelessWidget {
                         }
                         final fecha = puntos[i].fecha;
                         return Text(
-                          fecha == null
-                              ? '—'
-                              : '${fecha.day}/${fecha.month}',
+                          fecha == null ? '—' : '${fecha.day}/${fecha.month}',
                           style: const TextStyle(
-                              color: AppColors.muted, fontSize: 9),
+                            color: AppColors.muted,
+                            fontSize: 9,
+                          ),
                         );
                       },
                     ),
@@ -1306,10 +1357,10 @@ class _Tendencias extends StatelessWidget {
                       show: true,
                       getDotPainter: (spot, percent, bar, index) =>
                           FlDotCirclePainter(
-                        radius: 3.5,
-                        color: nivelColor(spot.y.round()),
-                        strokeWidth: 0,
-                      ),
+                            radius: 3.5,
+                            color: nivelColor(spot.y.round()),
+                            strokeWidth: 0,
+                          ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -1326,17 +1377,21 @@ class _Tendencias extends StatelessWidget {
             runSpacing: 4,
             children: [
               _Resumen(
-                  etiqueta: 'Promedio nivel',
-                  valor: decimal(t.promedioNivel)),
+                etiqueta: 'Promedio nivel',
+                valor: decimal(t.promedioNivel),
+              ),
               _Resumen(
-                  etiqueta: 'FC media',
-                  valor: decimal(t.promedioHr, decimales: 0, sufijo: ' lpm')),
+                etiqueta: 'FC media',
+                valor: decimal(t.promedioHr, decimales: 0, sufijo: ' lpm'),
+              ),
               _Resumen(
-                  etiqueta: 'Dolor facial medio',
-                  valor: decimal(t.promedioDolor, sufijo: '/10')),
+                etiqueta: 'Dolor facial medio',
+                valor: decimal(t.promedioDolor, sufijo: '/10'),
+              ),
               _Resumen(
-                  etiqueta: 'Estrés medio',
-                  valor: decimal(t.promedioEstres)),
+                etiqueta: 'Estrés medio',
+                valor: decimal(t.promedioEstres),
+              ),
             ],
           ),
         ],
@@ -1364,7 +1419,9 @@ class _Resumen extends StatelessWidget {
           TextSpan(
             text: valor,
             style: const TextStyle(
-                color: AppColors.dark, fontWeight: FontWeight.w800),
+              color: AppColors.dark,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),

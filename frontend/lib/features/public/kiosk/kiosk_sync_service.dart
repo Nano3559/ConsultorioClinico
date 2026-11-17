@@ -20,8 +20,8 @@ class KioskSyncService {
     ApiClient? client,
     String? kioskKey,
     this.intervalo = const Duration(minutes: 15),
-  })  : _api = client ?? ApiClient(),
-        _kioskKey = kioskKey ?? KioskService.kioskApiKey;
+  }) : _api = client ?? ApiClient(),
+       _kioskKey = kioskKey ?? KioskService.kioskApiKey;
 
   final ApiClient _api;
   final String _kioskKey;
@@ -83,8 +83,9 @@ class KioskSyncService {
         actualizados++;
       }
       // Pacientes que ya no tienen plantilla en la nube salen de la caché.
-      final obsoletos =
-          plantillas.keys.where((id) => !vistos.contains(id)).toList();
+      final obsoletos = plantillas.keys
+          .where((id) => !vistos.contains(id))
+          .toList();
       for (final id in obsoletos) {
         plantillas.remove(id);
         eliminados++;

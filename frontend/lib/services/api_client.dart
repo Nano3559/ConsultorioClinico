@@ -99,10 +99,10 @@ class ApiClient {
   final http.Client _client;
 
   Map<String, String> _headers({String? token, Map<String, String>? extra}) => {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-        ...?extra,
-      };
+    'Content-Type': 'application/json',
+    if (token != null) 'Authorization': 'Bearer $token',
+    ...?extra,
+  };
 
   Future<ApiResult<Map<String, dynamic>>> getJson(
     String path, {
@@ -112,11 +112,13 @@ class ApiClient {
     Duration? timeout,
   }) async {
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(
-        queryParameters: query,
-      );
+      final uri = Uri.parse('${ApiConfig.baseUrl}$path')
+          .replace(queryParameters: query);
       final res = await _client
-          .get(uri, headers: _headers(token: token, extra: extraHeaders))
+          .get(
+            uri,
+            headers: _headers(token: token, extra: extraHeaders),
+          )
           .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
@@ -134,9 +136,11 @@ class ApiClient {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path');
       final res = await _client
-          .post(uri,
-              headers: _headers(token: token, extra: extraHeaders),
-              body: jsonEncode(body))
+          .post(
+            uri,
+            headers: _headers(token: token, extra: extraHeaders),
+            body: jsonEncode(body),
+          )
           .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
@@ -153,7 +157,11 @@ class ApiClient {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path');
       final res = await _client
-          .put(uri, headers: _headers(token: token), body: jsonEncode(body))
+          .put(
+            uri,
+            headers: _headers(token: token),
+            body: jsonEncode(body),
+          )
           .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
@@ -170,7 +178,11 @@ class ApiClient {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path');
       final res = await _client
-          .patch(uri, headers: _headers(token: token), body: jsonEncode(body))
+          .patch(
+            uri,
+            headers: _headers(token: token),
+            body: jsonEncode(body),
+          )
           .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
@@ -199,11 +211,14 @@ class ApiClient {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         return ApiResult.success(decoded, res.statusCode);
       }
-      final msg = decoded['message'] ?? decoded['error'] ?? 'Error del servidor';
+      final msg =
+          decoded['message'] ?? decoded['error'] ?? 'Error del servidor';
       return ApiResult.failure(msg.toString(), res.statusCode);
     }
     return ApiResult.failure(
-        'Respuesta inesperada del servidor', res.statusCode);
+      'Respuesta inesperada del servidor',
+      res.statusCode,
+    );
   }
 
   // ==========================================================================
@@ -214,12 +229,11 @@ class ApiClient {
   Future<ApiResult<Map<String, dynamic>>> preconsultaCatalogo({
     String? token,
     int? pacienteId,
-  }) =>
-      getJson(
-        '/preconsulta/consentimiento',
-        token: token,
-        query: pacienteId == null ? null : {'paciente_id': '$pacienteId'},
-      );
+  }) => getJson(
+    '/preconsulta/consentimiento',
+    token: token,
+    query: pacienteId == null ? null : {'paciente_id': '$pacienteId'},
+  );
 
   /// Crea la preconsulta (consentimiento ya aceptado) antes de la captura.
   Future<ApiResult<Map<String, dynamic>>> preconsultaCrear({
@@ -230,20 +244,15 @@ class ApiClient {
     int? medicoId,
     String canal = 'web',
     String? motivo,
-  }) =>
-      postJson(
-        '/preconsulta',
-        {
-          'paciente_id': pacienteId,
-          'consentimiento_aceptado': true,
-          'consentimiento_version': consentimientoVersion,
-          'cita_id': ?citaId,
-          'medico_id': ?medicoId,
-          'canal': canal,
-          if (motivo != null && motivo.trim().isNotEmpty) 'motivo': motivo.trim(),
-        },
-        token: token,
-      );
+  }) => postJson('/preconsulta', {
+    'paciente_id': pacienteId,
+    'consentimiento_aceptado': true,
+    'consentimiento_version': consentimientoVersion,
+    'cita_id': ?citaId,
+    'medico_id': ?medicoId,
+    'canal': canal,
+    if (motivo != null && motivo.trim().isNotEmpty) 'motivo': motivo.trim(),
+  }, token: token);
 
   /// Envía la captura (frames JPEG en web o video corto en nativo) al
   /// microservicio de visión. El análisis puede tardar; el timeout es amplio
@@ -256,55 +265,46 @@ class ApiClient {
     double? fps,
     double? duracionSeg,
     String? mime,
-  }) =>
-      postJson(
-        '/preconsulta/$id/analizar',
-        {
-          if (frames != null && frames.isNotEmpty) 'frames': frames,
-          if (video != null && video.isNotEmpty) 'video': video,
-          'fps': ?fps,
-          'duracion_seg': ?duracionSeg,
-          'mime': ?mime,
-        },
-        token: token,
-        timeout: const Duration(seconds: 90),
-      );
+  }) => postJson(
+    '/preconsulta/$id/analizar',
+    {
+      if (frames != null && frames.isNotEmpty) 'frames': frames,
+      if (video != null && video.isNotEmpty) 'video': video,
+      'fps': ?fps,
+      'duracion_seg': ?duracionSeg,
+      'mime': ?mime,
+    },
+    token: token,
+    timeout: const Duration(seconds: 90),
+  );
 
   /// Guarda las respuestas del cuestionario y recalcula el triage.
   Future<ApiResult<Map<String, dynamic>>> preconsultaRespuestas({
     required int id,
     required String token,
     required List<Map<String, dynamic>> respuestas,
-  }) =>
-      putJson(
-        '/preconsulta/$id/respuestas',
-        {'respuestas': respuestas},
-        token: token,
-      );
+  }) => putJson('/preconsulta/$id/respuestas', {
+    'respuestas': respuestas,
+  }, token: token);
 
   /// Finaliza sin cámara: solo cuestionario (degradación honesta).
   Future<ApiResult<Map<String, dynamic>>> preconsultaFinalizar({
     required int id,
     required String token,
     required List<Map<String, dynamic>> respuestas,
-  }) =>
-      postJson(
-        '/preconsulta/$id/finalizar',
-        {'respuestas': respuestas},
-        token: token,
-      );
+  }) => postJson('/preconsulta/$id/finalizar', {
+    'respuestas': respuestas,
+  }, token: token);
 
   Future<ApiResult<Map<String, dynamic>>> preconsultaDetalle({
     required int id,
     required String token,
-  }) =>
-      getJson('/preconsulta/$id', token: token);
+  }) => getJson('/preconsulta/$id', token: token);
 
   Future<ApiResult<Map<String, dynamic>>> preconsultaPorCita({
     required int citaId,
     required String token,
-  }) =>
-      getJson('/preconsulta/cita/$citaId', token: token);
+  }) => getJson('/preconsulta/cita/$citaId', token: token);
 
   Future<ApiResult<Map<String, dynamic>>> preconsultaCola({
     required String token,
@@ -312,17 +312,16 @@ class ApiClient {
     int? nivel,
     String? estado,
     String? medicoId,
-  }) =>
-      getJson(
-        '/preconsulta/cola',
-        token: token,
-        query: {
-          if (fecha != null && fecha.isNotEmpty) 'fecha': fecha,
-          if (nivel != null) 'nivel': '$nivel',
-          if (estado != null && estado.isNotEmpty) 'estado': estado,
-          if (medicoId != null && medicoId.isNotEmpty) 'medico_id': medicoId,
-        },
-      );
+  }) => getJson(
+    '/preconsulta/cola',
+    token: token,
+    query: {
+      if (fecha != null && fecha.isNotEmpty) 'fecha': fecha,
+      if (nivel != null) 'nivel': '$nivel',
+      if (estado != null && estado.isNotEmpty) 'estado': estado,
+      if (medicoId != null && medicoId.isNotEmpty) 'medico_id': medicoId,
+    },
+  );
 
   Future<ApiResult<Map<String, dynamic>>> preconsultaMetricas({
     required String token,
@@ -334,30 +333,26 @@ class ApiClient {
     required int pacienteId,
     required String token,
     int limite = 10,
-  }) =>
-      getJson(
-        '/preconsulta/paciente/$pacienteId/tendencias',
-        token: token,
-        query: {'limite': '$limite'},
-      );
+  }) => getJson(
+    '/preconsulta/paciente/$pacienteId/tendencias',
+    token: token,
+    query: {'limite': '$limite'},
+  );
 
   Future<ApiResult<Map<String, dynamic>>> preconsultaRevisar({
     required int id,
     required String token,
     required int nivelRevisado,
     String nota = '',
-  }) =>
-      patchJson(
-        '/preconsulta/$id/revision',
-        {'nivel_revisado': nivelRevisado, 'nota': nota},
-        token: token,
-      );
+  }) => patchJson('/preconsulta/$id/revision', {
+    'nivel_revisado': nivelRevisado,
+    'nota': nota,
+  }, token: token);
 
   Future<ApiResult<Map<String, dynamic>>> preconsultaEventos({
     required int id,
     required String token,
-  }) =>
-      getJson('/preconsulta/$id/eventos', token: token);
+  }) => getJson('/preconsulta/$id/eventos', token: token);
 
   void dispose() => _client.close();
 }
@@ -409,15 +404,18 @@ class EcgApiClient {
     required Uint8List bytes,
   }) async {
     try {
-      final req = http.MultipartRequest(
-        'POST',
-        Uri.parse('${EcgApiConfig.baseUrl}/api/analizar-ecg'),
-      )
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: nombreArchivo,
-        ));
+      final req =
+          http.MultipartRequest(
+              'POST',
+              Uri.parse('${EcgApiConfig.baseUrl}/api/analizar-ecg'),
+            )
+            ..files.add(
+              http.MultipartFile.fromBytes(
+                'file',
+                bytes,
+                filename: nombreArchivo,
+              ),
+            );
       final streamed = await _client
           .send(req)
           .timeout(EcgApiConfig.timeout)
@@ -428,7 +426,8 @@ class EcgApiClient {
           return ApiResult.success(decoded);
         }
         // FastAPI responde los errores con { "detail": "..." }.
-        final msg = decoded['detail'] ?? decoded['message'] ?? 'Error del servidor';
+        final msg =
+            decoded['detail'] ?? decoded['message'] ?? 'Error del servidor';
         return ApiResult.failure(msg.toString());
       }
       return ApiResult.failure('Respuesta inesperada del servidor');

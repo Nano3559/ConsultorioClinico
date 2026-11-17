@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../data/models/user.dart';
 import '../dashboard_page.dart';
 import '../consults/consults_page.dart';
@@ -20,8 +21,14 @@ import '../../preconsulta/preconsulta_paciente_page.dart';
 /// Módulo de navegación del sistema interno. Cada módulo pertenece a un grupo
 /// para organizarlo en el sidebar web y el drawer móvil.
 class NavModule {
-  const NavModule(this.key, this.label, this.icon, this.group, this.builder,
-      {this.route});
+  const NavModule(
+    this.key,
+    this.label,
+    this.icon,
+    this.group,
+    this.builder, {
+    this.route,
+  });
 
   final String key;
   final String label;
@@ -47,35 +54,173 @@ List<NavModule> navModulesFor(UserRole role, {bool esCardiologo = false}) {
   switch (role) {
     case UserRole.admin:
       return const [
-        NavModule('dashboard', 'Dashboard', Icons.dashboard_outlined, kGroupPrincipal, _dashboard),
-        NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
-        NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupClinico, _preconsultaCola),
-        NavModule('agenda', 'Agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
-        NavModule('citas', 'Citas', Icons.event_note_outlined, kGroupClinico, _citas),
-        NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
-        NavModule('medicos', 'Médicos', Icons.medical_services_outlined, kGroupPersonas, _medicos),
-        NavModule('pagos', 'Pagos', Icons.payments_outlined, kGroupFinanzas, _pagos),
-        NavModule('reportes', 'Reportes', Icons.bar_chart_outlined, kGroupAnalisis, _reportes),
-        NavModule('preconsultaMetricas', 'Métricas IA', Icons.insights_outlined, kGroupAnalisis, _preconsultaMetricas),
-        NavModule('configuracion', 'Configuración', Icons.settings_outlined, kGroupSistema, _settings),
+        NavModule(
+          'dashboard',
+          'Dashboard',
+          Icons.dashboard_outlined,
+          kGroupPrincipal,
+          _dashboard,
+        ),
+        NavModule(
+          'consulta',
+          'Consulta',
+          Icons.medical_information_outlined,
+          kGroupClinico,
+          _consulta,
+        ),
+        NavModule(
+          'preconsulta',
+          'PreConsulta IA',
+          Icons.auto_awesome_outlined,
+          kGroupClinico,
+          _preconsultaCola,
+        ),
+        NavModule(
+          'agenda',
+          'Agenda',
+          Icons.calendar_view_day_outlined,
+          kGroupClinico,
+          _agenda,
+        ),
+        NavModule(
+          'citas',
+          'Citas',
+          Icons.event_note_outlined,
+          kGroupClinico,
+          _citas,
+        ),
+        NavModule(
+          'pacientes',
+          'Pacientes',
+          Icons.group_outlined,
+          kGroupPersonas,
+          _pacientes,
+        ),
+        NavModule(
+          'medicos',
+          'Médicos',
+          Icons.medical_services_outlined,
+          kGroupPersonas,
+          _medicos,
+        ),
+        NavModule(
+          'pagos',
+          'Pagos',
+          Icons.payments_outlined,
+          kGroupFinanzas,
+          _pagos,
+        ),
+        NavModule(
+          'reportes',
+          'Reportes',
+          Icons.bar_chart_outlined,
+          kGroupAnalisis,
+          _reportes,
+        ),
+        NavModule(
+          'preconsultaMetricas',
+          'Métricas IA',
+          Icons.insights_outlined,
+          kGroupAnalisis,
+          _preconsultaMetricas,
+        ),
+        NavModule(
+          'configuracion',
+          'Configuración',
+          Icons.settings_outlined,
+          kGroupSistema,
+          _settings,
+        ),
       ];
     case UserRole.recepcion:
       return const [
-        NavModule('agenda', 'Agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
-        NavModule('citas', 'Citas', Icons.event_note_outlined, kGroupClinico, _citas),
-        NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupClinico, _preconsultaCola),
-        NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
-        NavModule('pagos', 'Pagos', Icons.payments_outlined, kGroupFinanzas, _pagos),
+        NavModule(
+          'agenda',
+          'Agenda',
+          Icons.calendar_view_day_outlined,
+          kGroupClinico,
+          _agenda,
+        ),
+        NavModule(
+          'citas',
+          'Citas',
+          Icons.event_note_outlined,
+          kGroupClinico,
+          _citas,
+        ),
+        NavModule(
+          'preconsulta',
+          'PreConsulta IA',
+          Icons.auto_awesome_outlined,
+          kGroupClinico,
+          _preconsultaCola,
+        ),
+        NavModule(
+          'pacientes',
+          'Pacientes',
+          Icons.group_outlined,
+          kGroupPersonas,
+          _pacientes,
+        ),
+        NavModule(
+          'pagos',
+          'Pagos',
+          Icons.payments_outlined,
+          kGroupFinanzas,
+          _pagos,
+        ),
       ];
     case UserRole.medico:
       return [
-        const NavModule('panel', 'Mi panel', Icons.medical_services_outlined, kGroupPrincipal, _panel),
-        const NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
-        const NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupClinico, _preconsultaCola),
-        const NavModule('miagenda', 'Mi agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
-        const NavModule('mishorarios', 'Mis horarios', Icons.schedule_outlined, kGroupClinico, _misHorarios),
-        const NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
-        const NavModule('preconsultaMetricas', 'Métricas IA', Icons.insights_outlined, kGroupAnalisis, _preconsultaMetricas),
+        const NavModule(
+          'panel',
+          'Mi panel',
+          Icons.medical_services_outlined,
+          kGroupPrincipal,
+          _panel,
+        ),
+        const NavModule(
+          'consulta',
+          'Consulta',
+          Icons.medical_information_outlined,
+          kGroupClinico,
+          _consulta,
+        ),
+        const NavModule(
+          'preconsulta',
+          'PreConsulta IA',
+          Icons.auto_awesome_outlined,
+          kGroupClinico,
+          _preconsultaCola,
+        ),
+        const NavModule(
+          'miagenda',
+          'Mi agenda',
+          Icons.calendar_view_day_outlined,
+          kGroupClinico,
+          _agenda,
+        ),
+        const NavModule(
+          'mishorarios',
+          'Mis horarios',
+          Icons.schedule_outlined,
+          kGroupClinico,
+          _misHorarios,
+        ),
+        const NavModule(
+          'pacientes',
+          'Pacientes',
+          Icons.group_outlined,
+          kGroupPersonas,
+          _pacientes,
+        ),
+        const NavModule(
+          'preconsultaMetricas',
+          'Métricas IA',
+          Icons.insights_outlined,
+          kGroupAnalisis,
+          _preconsultaMetricas,
+        ),
         // Módulo exclusivo del médico cardiólogo. Se abre como una pestaña más
         // dentro de `/app` (mismo sidebar/topbar), no como ruta aparte.
         if (esCardiologo)
@@ -89,18 +234,38 @@ List<NavModule> navModulesFor(UserRole role, {bool esCardiologo = false}) {
       ];
     case UserRole.paciente:
       return const [
-        NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupPrincipal, _preconsultaPaciente),
-        NavModule('miscitas', 'Mis citas', Icons.event_outlined, kGroupPrincipal, _myAppointments),
-        NavModule('solicitar', 'Solicitar cita', Icons.add_circle_outline, kGroupPrincipal, _myAppointments, route: '/solicitar-cita'),
+        NavModule(
+          'preconsulta',
+          'PreConsulta IA',
+          Icons.auto_awesome_outlined,
+          kGroupPrincipal,
+          _preconsultaPaciente,
+        ),
+        NavModule(
+          'miscitas',
+          'Mis citas',
+          Icons.event_outlined,
+          kGroupPrincipal,
+          _myAppointments,
+        ),
+        NavModule(
+          'solicitar',
+          'Solicitar cita',
+          Icons.add_circle_outline,
+          kGroupPrincipal,
+          _myAppointments,
+          route: '/solicitar-cita',
+        ),
       ];
   }
 }
 
 /// Módulos que forman parte del IndexedStack (los que no navegan por ruta).
 List<NavModule> stackModulesFor(UserRole role, {bool esCardiologo = false}) =>
-    navModulesFor(role, esCardiologo: esCardiologo)
-        .where((m) => m.route == null)
-        .toList();
+    navModulesFor(
+      role,
+      esCardiologo: esCardiologo,
+    ).where((m) => m.route == null).toList();
 
 Widget _dashboard(BuildContext _) => const DashboardPage();
 Widget _consulta(BuildContext _) => const ConsultsPage();

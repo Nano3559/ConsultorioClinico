@@ -9,11 +9,13 @@ import 'package:consultorio_clinico/services/api_client.dart';
 
 ApiClient clienteQueResponde(Object? cuerpo, [int codigo = 200]) {
   return ApiClient(
-    client: MockClient((_) async => http.Response(
-          jsonEncode(cuerpo),
-          codigo,
-          headers: {'Content-Type': 'application/json'},
-        )),
+    client: MockClient(
+      (_) async => http.Response(
+        jsonEncode(cuerpo),
+        codigo,
+        headers: {'Content-Type': 'application/json'},
+      ),
+    ),
   );
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../../../core/widgets/app_empty_state.dart';
@@ -34,7 +35,8 @@ class _DoctorsPageState extends State<DoctorsPage> {
     final doctors = q.isEmpty
         ? clinic.doctors
         : clinic.doctors.where((d) {
-            final s = clinic.specialtyById(d.specialtyId)?.name.toLowerCase() ?? '';
+            final s =
+                clinic.specialtyById(d.specialtyId)?.name.toLowerCase() ?? '';
             return d.displayName.toLowerCase().contains(q) || s.contains(q);
           }).toList();
     final isWide = MediaQuery.sizeOf(context).width >= 840;
@@ -71,28 +73,49 @@ class _DoctorsPageState extends State<DoctorsPage> {
         if (doctors.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 48),
-            child: AppEmptyState(icon: Icons.medical_services_outlined, title: 'Sin médicos registrados'),
+            child: AppEmptyState(
+              icon: Icons.medical_services_outlined,
+              title: 'Sin médicos registrados',
+            ),
           )
         else if (isWide)
           AppTable(
-            headers: const ['Médico', 'Especialidad', 'Experiencia', 'Horario', 'Estado', ''],
+            headers: const [
+              'Médico',
+              'Especialidad',
+              'Experiencia',
+              'Horario',
+              'Estado',
+              '',
+            ],
             rows: [
               for (final d in doctors)
                 [
                   TableText(d.displayName, bold: true),
-                  TableText(clinic.specialtyById(d.specialtyId)?.name ?? 'Sin especialidad'),
+                  TableText(
+                    clinic.specialtyById(d.specialtyId)?.name ??
+                        'Sin especialidad',
+                  ),
                   TableText('${d.yearsExperience} años'),
                   TableText(_scheduleSummary(d)),
                   TableText(d.active ? 'Activo' : 'Inactivo', bold: true),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Switch(value: d.active, onChanged: (_) => clinic.toggleDoctorActive(d.id)),
+                      Switch(
+                        value: d.active,
+                        onChanged: (_) => clinic.toggleDoctorActive(d.id),
+                      ),
                       IconButton(
                         tooltip: 'Editar',
-                        icon: const Icon(Icons.edit_outlined, color: AppColors.muted),
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          color: AppColors.muted,
+                        ),
                         onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => DoctorFormPage(doctor: d)),
+                          MaterialPageRoute(
+                            builder: (_) => DoctorFormPage(doctor: d),
+                          ),
                         ),
                       ),
                     ],
@@ -135,15 +158,38 @@ class _DoctorTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                AppAvatar(name: doctor.name, radius: 26, backgroundColor: specialtyColor),
+                AppAvatar(
+                  name: doctor.name,
+                  radius: 26,
+                  backgroundColor: specialtyColor,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(doctor.displayName, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                      Text(specialtyName, style: TextStyle(color: specialtyColor, fontWeight: FontWeight.w600, fontSize: 13)),
-                      Text('${doctor.yearsExperience} años de experiencia', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                      Text(
+                        doctor.displayName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      Text(
+                        specialtyName,
+                        style: TextStyle(
+                          color: specialtyColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        '${doctor.yearsExperience} años de experiencia',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -151,7 +197,9 @@ class _DoctorTile extends StatelessWidget {
                   Text(
                     doctor.active ? 'Activo' : 'Inactivo',
                     style: TextStyle(
-                      color: doctor.active ? AppColors.success : AppColors.danger,
+                      color: doctor.active
+                          ? AppColors.success
+                          : AppColors.danger,
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
                     ),
@@ -164,7 +212,9 @@ class _DoctorTile extends StatelessWidget {
                   tooltip: 'Editar',
                   icon: const Icon(Icons.edit_outlined, color: AppColors.muted),
                   onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => DoctorFormPage(doctor: doctor)),
+                    MaterialPageRoute(
+                      builder: (_) => DoctorFormPage(doctor: doctor),
+                    ),
                   ),
                 ),
               ],
@@ -190,14 +240,20 @@ class _DoctorTile extends StatelessWidget {
                 children: [
                   for (final e in doctor.schedule.byDay.entries)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${e.key} ${e.value.first}-${e.value.last}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
                       ),
                     ),
                 ],

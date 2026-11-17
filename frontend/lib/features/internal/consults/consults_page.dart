@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
@@ -45,12 +46,13 @@ class _ConsultsPageState extends State<ConsultsPage> {
     final list = clinic.consults.where((c) {
       if (_doctorFilter != null && c.doctorId != _doctorFilter) return false;
       if (q.isNotEmpty) {
-        final hay = '${clinic.patientName(c.patientId)} ${c.motivo} ${c.diagnostico}'.toLowerCase();
+        final hay =
+            '${clinic.patientName(c.patientId)} ${c.motivo} ${c.diagnostico}'
+                .toLowerCase();
         if (!hay.contains(q)) return false;
       }
       return true;
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    }).toList()..sort((a, b) => b.date.compareTo(a.date));
 
     return ListView(
       padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -86,9 +88,14 @@ class _ConsultsPageState extends State<ConsultsPage> {
                 initialValue: _doctorFilter,
                 isDense: true,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Filtrar por médico'),
+                decoration: const InputDecoration(
+                  labelText: 'Filtrar por médico',
+                ),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Todos los médicos')),
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Todos los médicos'),
+                  ),
                   for (final d in clinic.activeDoctors)
                     DropdownMenuItem(value: d.id, child: Text(d.displayName)),
                 ],
@@ -108,7 +115,13 @@ class _ConsultsPageState extends State<ConsultsPage> {
           )
         else if (isWide)
           AppTable(
-            headers: const ['Fecha', 'Paciente', 'Médico', 'Motivo', 'Diagnóstico'],
+            headers: const [
+              'Fecha',
+              'Paciente',
+              'Médico',
+              'Motivo',
+              'Diagnóstico',
+            ],
             rows: [
               for (final c in list)
                 [
@@ -121,12 +134,20 @@ class _ConsultsPageState extends State<ConsultsPage> {
             ],
           )
         else
-          for (final c in list) _ConsultTile(record: c, onTap: () => _showDetail(context, clinic, c)),
+          for (final c in list)
+            _ConsultTile(
+              record: c,
+              onTap: () => _showDetail(context, clinic, c),
+            ),
       ],
     );
   }
 
-  void _showDetail(BuildContext context, ClinicProvider clinic, ConsultRecord c) {
+  void _showDetail(
+    BuildContext context,
+    ClinicProvider clinic,
+    ConsultRecord c,
+  ) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -140,15 +161,22 @@ class _ConsultsPageState extends State<ConsultsPage> {
               _DetailRow('Médico', clinic.doctorName(c.doctorId)),
               _DetailRow('Motivo', c.motivo),
               _DetailRow('Diagnóstico', c.diagnostico),
-              if (c.observaciones.isNotEmpty) _DetailRow('Observaciones', c.observaciones),
+              if (c.observaciones.isNotEmpty)
+                _DetailRow('Observaciones', c.observaciones),
               _DetailRow('Tratamiento', c.tratamiento),
               if (c.proximoControl != null)
-                _DetailRow('Próximo control', AppFormatters.shortDate(c.proximoControl!)),
+                _DetailRow(
+                  'Próximo control',
+                  AppFormatters.shortDate(c.proximoControl!),
+                ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
         ],
       ),
     );
@@ -173,13 +201,18 @@ class _ConsultsPageState extends State<ConsultsPage> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             onPressed: () {
               if (patientId == null) return;
               Navigator.pop(ctx);
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ConsultFormPage(patientId: patientId!)),
+                MaterialPageRoute(
+                  builder: (_) => ConsultFormPage(patientId: patientId!),
+                ),
               );
             },
             child: const Text('Continuar'),
@@ -214,12 +247,19 @@ class _ConsultTile extends StatelessWidget {
                 children: [
                   Text(
                     clinic.patientName(c.patientId),
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${AppFormatters.shortDate(c.date)} · ${clinic.doctorName(c.doctorId)}',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -255,7 +295,14 @@ class _DetailRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.muted)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+          ),
           Text(value, style: const TextStyle(color: AppColors.dark)),
         ],
       ),

@@ -127,8 +127,11 @@ class AuthProvider extends ChangeNotifier {
         'nombre': nombre.trim(),
         'email': email.trim(),
         'rol': _rolToString(rol),
-        'perfilTipo':
-            rol == UserRole.medico ? 'medico' : rol == UserRole.paciente ? 'paciente' : null,
+        'perfilTipo': rol == UserRole.medico
+            ? 'medico'
+            : rol == UserRole.paciente
+            ? 'paciente'
+            : null,
         'perfilId': perfilId,
         'activo': true,
         'creadoEn': FieldValue.serverTimestamp(),
@@ -163,8 +166,10 @@ class AuthProvider extends ChangeNotifier {
   /// App de Firebase secundaria para crear cuentas sin alterar la sesión actual.
   static FirebaseApp? _secondaryApp;
   static Future<FirebaseAuth> _secondaryAuth() async {
-    _secondaryApp ??=
-        await Firebase.initializeApp(name: 'secondary', options: Firebase.app().options);
+    _secondaryApp ??= await Firebase.initializeApp(
+      name: 'secondary',
+      options: Firebase.app().options,
+    );
     return FirebaseAuth.instanceFor(app: _secondaryApp!);
   }
 
@@ -175,7 +180,10 @@ class AuthProvider extends ChangeNotifier {
   /// sesión actual. Si [autoSignIn] es true, además inicia sesión en la app
   /// principal (para el flujo de autoregistro público).
   /// Devuelve (uid, null) en éxito o (null, mensajeError) en fallo.
-  Future<(String?, String?)> registerPatient(Patient p, {bool autoSignIn = false}) async {
+  Future<(String?, String?)> registerPatient(
+    Patient p, {
+    bool autoSignIn = false,
+  }) async {
     try {
       final secondary = await _secondaryAuth();
       final cred = await secondary.createUserWithEmailAndPassword(
@@ -274,13 +282,14 @@ class AuthProvider extends ChangeNotifier {
           )
           .timeout(const Duration(seconds: 25));
       final decoded = jsonDecode(res.body);
-      final body =
-          decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      final body = decoded is Map<String, dynamic>
+          ? decoded
+          : <String, dynamic>{};
       if (res.statusCode != 200 && res.statusCode != 201) {
         return (
           (body['message'] ?? 'No se pudo registrar al médico').toString(),
           null,
-          false
+          false,
         );
       }
       final data = body['data'];
@@ -335,7 +344,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Fija la contraseña del médico tras confirmar el correo.
-  Future<String?> confirmPasswordReset(String oobCode, String newPassword) async {
+  Future<String?> confirmPasswordReset(
+    String oobCode,
+    String newPassword,
+  ) async {
     try {
       await _auth.confirmPasswordReset(code: oobCode, newPassword: newPassword);
       return null;

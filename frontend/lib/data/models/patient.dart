@@ -44,12 +44,16 @@ class Patient {
       ci: (json['cedula'] ?? '').toString(),
       birthDate: birth == null
           ? DateTime(1900)
-          : (birth is DateTime ? birth : DateTime.tryParse(birth.toString()) ?? DateTime(1900)),
+          : (birth is DateTime
+                ? birth
+                : DateTime.tryParse(birth.toString()) ?? DateTime(1900)),
       phone: (json['telefono'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
       antecedentes: (json['antecedentes'] ?? '').toString(),
       alergias: (json['alergias'] ?? '').toString(),
-      observaciones: (json['observaciones'] ?? json['contacto_emergencia'] ?? '').toString(),
+      observaciones:
+          (json['observaciones'] ?? json['contacto_emergencia'] ?? '')
+              .toString(),
       photoUrl: (json['foto_url'] ?? '').toString(),
       faceBase64: (json['foto_base64'] ?? '').toString(),
     );
@@ -57,18 +61,18 @@ class Patient {
 
   /// Cuerpo para POST/PUT del backend.
   Map<String, dynamic> toApiJson() => {
-        'nombre': firstName,
-        'apellido': lastName,
-        'cedula': ci,
-        'telefono': phone,
-        'email': email,
-        'fecha_nacimiento':
-            '${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
-        'antecedentes': antecedentes,
-        'alergias': alergias,
-        'observaciones': observaciones,
-        if (photoUrl.isNotEmpty) 'foto_url': photoUrl,
-      };
+    'nombre': firstName,
+    'apellido': lastName,
+    'cedula': ci,
+    'telefono': phone,
+    'email': email,
+    'fecha_nacimiento':
+        '${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+    'antecedentes': antecedentes,
+    'alergias': alergias,
+    'observaciones': observaciones,
+    if (photoUrl.isNotEmpty) 'foto_url': photoUrl,
+  };
 
   Patient copyWith({
     String? firstName,

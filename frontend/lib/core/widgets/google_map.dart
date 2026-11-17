@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../constants/app_colors.dart';
 
 /// Mapa real del consultorio (OpenStreetMap vía flutter_map).
@@ -35,7 +36,11 @@ class _GoogleMapBoxState extends State<GoogleMapBox> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(color: AppColors.shadowSoft, blurRadius: 24, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: AppColors.shadowSoft,
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Stack(
@@ -46,7 +51,10 @@ class _GoogleMapBoxState extends State<GoogleMapBox> {
               initialCenter: widget.center,
               initialZoom: 15,
               interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag | InteractiveFlag.doubleTapZoom,
+                flags:
+                    InteractiveFlag.pinchZoom |
+                    InteractiveFlag.drag |
+                    InteractiveFlag.doubleTapZoom,
               ),
             ),
             children: [
@@ -66,10 +74,18 @@ class _GoogleMapBoxState extends State<GoogleMapBox> {
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
-                          BoxShadow(color: AppColors.shadowStrong, blurRadius: 12, offset: const Offset(0, 4)),
+                          BoxShadow(
+                            color: AppColors.shadowStrong,
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
                         ],
                       ),
-                      child: const Icon(Icons.location_on, color: AppColors.danger, size: 26),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: AppColors.danger,
+                        size: 26,
+                      ),
                     ),
                   ),
                 ],
@@ -86,17 +102,29 @@ class _GoogleMapBoxState extends State<GoogleMapBox> {
                 color: Colors.white.withValues(alpha: 0.94),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(color: AppColors.shadowSoft, blurRadius: 14, offset: const Offset(0, 4)),
+                  BoxShadow(
+                    color: AppColors.shadowSoft,
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, color: AppColors.primary, size: 20),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       widget.addressText,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.dark),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.dark,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

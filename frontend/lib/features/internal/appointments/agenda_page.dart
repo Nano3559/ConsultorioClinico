@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
@@ -31,7 +32,8 @@ class _AgendaPageState extends State<AgendaPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
-    final isMedico = context.watch<AuthProvider>().currentUser?.role == UserRole.medico;
+    final isMedico =
+        context.watch<AuthProvider>().currentUser?.role == UserRole.medico;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     final list = clinic.appointmentsOfDay(_date).where((a) {
       if (_doctorFilter != null && a.doctorId != _doctorFilter) return false;
@@ -55,7 +57,9 @@ class _AgendaPageState extends State<AgendaPage> {
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: _date,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 365),
+                    ),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
                   if (picked != null) setState(() => _date = picked);
@@ -72,7 +76,10 @@ class _AgendaPageState extends State<AgendaPage> {
                     ),
                     Text(
                       '${_date.day}/${_date.month}/${_date.year}',
-                      style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -101,17 +108,22 @@ class _AgendaPageState extends State<AgendaPage> {
           children: [
             if (!isMedico)
               DropdownButtonFormField<String?>(
-              initialValue: _doctorFilter,
-              isDense: true,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Filtrar por médico'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Todos los médicos')),
-                for (final d in clinic.activeDoctors)
-                  DropdownMenuItem(value: d.id, child: Text(d.displayName)),
-              ],
-              onChanged: (v) => setState(() => _doctorFilter = v),
-            ),
+                initialValue: _doctorFilter,
+                isDense: true,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Filtrar por médico',
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Todos los médicos'),
+                  ),
+                  for (final d in clinic.activeDoctors)
+                    DropdownMenuItem(value: d.id, child: Text(d.displayName)),
+                ],
+                onChanged: (v) => setState(() => _doctorFilter = v),
+              ),
             FilledButton.icon(
               onPressed: () => context.push('/solicitar-cita'),
               icon: const Icon(Icons.add),
@@ -131,7 +143,14 @@ class _AgendaPageState extends State<AgendaPage> {
           )
         else if (MediaQuery.sizeOf(context).width >= 840)
           AppTable(
-            headers: const ['Hora', 'Paciente', 'Médico', 'Motivo', 'Estado', ''],
+            headers: const [
+              'Hora',
+              'Paciente',
+              'Médico',
+              'Motivo',
+              'Estado',
+              '',
+            ],
             rows: [
               for (final a in list)
                 [
@@ -153,7 +172,9 @@ class _AgendaPageState extends State<AgendaPage> {
               margin: EdgeInsets.only(bottom: isMobile ? 6 : 10),
               child: ListTile(
                 dense: isMobile,
-                contentPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 10, vertical: 2) : null,
+                contentPadding: isMobile
+                    ? const EdgeInsets.symmetric(horizontal: 10, vertical: 2)
+                    : null,
                 leading: Container(
                   width: isMobile ? 46 : 64,
                   height: isMobile ? 32 : 40,
@@ -176,7 +197,11 @@ class _AgendaPageState extends State<AgendaPage> {
                   clinic.patientName(a.patientId),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark, fontSize: isMobile ? 14 : 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                    fontSize: isMobile ? 14 : 16,
+                  ),
                 ),
                 subtitle: Text(
                   '${clinic.doctorName(a.doctorId)} — ${a.reason}',
@@ -191,7 +216,8 @@ class _AgendaPageState extends State<AgendaPage> {
                     const SizedBox(width: 4),
                     IconButton(
                       icon: const Icon(Icons.more_vert, color: AppColors.muted),
-                      onPressed: () => showAppointmentActions(context, clinic, a),
+                      onPressed: () =>
+                          showAppointmentActions(context, clinic, a),
                     ),
                   ],
                 ),

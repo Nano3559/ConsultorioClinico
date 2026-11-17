@@ -5,13 +5,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 
 /// Motivo por el que la cámara del kiosco no está disponible.
-enum KioskCameraError {
-  denied,
-  noCamera,
-  busy,
-  notSupported,
-  unknown,
-}
+enum KioskCameraError { denied, noCamera, busy, notSupported, unknown }
 
 class KioskCameraException implements Exception {
   const KioskCameraException(this.kind, this.message);
@@ -65,10 +59,12 @@ class KioskCameraService {
 
     final cameras = await _camarasDisponibles();
 
-    final preferred =
-        frontPreference ? CameraLensDirection.front : CameraLensDirection.back;
-    final opposite =
-        frontPreference ? CameraLensDirection.back : CameraLensDirection.front;
+    final preferred = frontPreference
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+    final opposite = frontPreference
+        ? CameraLensDirection.back
+        : CameraLensDirection.front;
     final selected = cameras.firstWhere(
       (c) => c.lensDirection == preferred,
       orElse: () => cameras.firstWhere(
@@ -80,11 +76,7 @@ class KioskCameraService {
     // Primer intento en calidad media; si el equipo no la soporta (o el
     // permiso se revocó en el medio), un reintento en baja antes de rendirse.
     for (final preset in [ResolutionPreset.medium, ResolutionPreset.low]) {
-      _controller = CameraController(
-        selected,
-        preset,
-        enableAudio: false,
-      );
+      _controller = CameraController(selected, preset, enableAudio: false);
       try {
         await _controller!.initialize();
         return;
@@ -102,8 +94,7 @@ class KioskCameraService {
   Future<List<CameraDescription>> _camarasDisponibles() async {
     late final List<CameraDescription> cameras;
     try {
-      cameras = await availableCameras()
-          .timeout(const Duration(seconds: 25));
+      cameras = await availableCameras().timeout(const Duration(seconds: 25));
     } on CameraException catch (e) {
       throw _mapearErrorCamara(e.code, e.description);
     } on TimeoutException {
@@ -145,13 +136,17 @@ class KioskCameraService {
         'No se encontró ninguna cámara en este dispositivo.',
       );
     }
-    if (code == 'NotReadableError' || d.contains('busy') || d.contains('in use')) {
+    if (code == 'NotReadableError' ||
+        d.contains('busy') ||
+        d.contains('in use')) {
       return const KioskCameraException(
         KioskCameraError.busy,
         'La cámara está ocupada por otra app o pestaña. Ciérralas y reintenta.',
       );
     }
-    if (code == 'SecurityError' || d.contains('secure') || d.contains('https')) {
+    if (code == 'SecurityError' ||
+        d.contains('secure') ||
+        d.contains('https')) {
       return const KioskCameraException(
         KioskCameraError.denied,
         'Abre la página con HTTPS (candado en la barra). Sin conexión segura el navegador bloquea la cámara.',
@@ -176,9 +171,7 @@ class KioskCameraService {
 
     final current = _controller!.description;
     final target = cameras.firstWhere(
-      (c) =>
-          c.name != current.name &&
-          c.lensDirection != current.lensDirection,
+      (c) => c.name != current.name && c.lensDirection != current.lensDirection,
       orElse: () => cameras.firstWhere(
         (c) => c.name != current.name,
         orElse: () => current,
@@ -207,9 +200,9 @@ class KioskCameraService {
       );
     }
     try {
-      final file = await controller
-          .takePicture()
-          .timeout(const Duration(seconds: 15));
+      final file = await controller.takePicture().timeout(
+        const Duration(seconds: 15),
+      );
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty) {
         throw const KioskCameraException(

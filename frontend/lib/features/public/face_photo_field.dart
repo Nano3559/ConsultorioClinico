@@ -98,8 +98,11 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                 ),
               ),
               child: _muestras.isEmpty
-                  ? const Icon(Icons.face_outlined,
-                      color: AppColors.muted, size: 44)
+                  ? const Icon(
+                      Icons.face_outlined,
+                      color: AppColors.muted,
+                      size: 44,
+                    )
                   : Image.memory(_muestras.first.bytes, fit: BoxFit.cover),
             ),
             const SizedBox(width: 14),
@@ -110,7 +113,9 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                   const Text(
                     'Foto del rostro *',
                     style: TextStyle(
-                        fontWeight: FontWeight.w700, color: AppColors.dark),
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.dark,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -118,7 +123,10 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                         ? 'Pack completo (${_muestras.length}/${_poses.length} poses). Se usa solo en el kiosco para reconocerte.'
                         : 'Obligatoria: 5 fotos guiadas (frente, lados, arriba, abajo). Se usa solo en el kiosco para reconocerte.',
                     style: const TextStyle(
-                        fontSize: 12, color: AppColors.muted, height: 1.4),
+                      fontSize: 12,
+                      color: AppColors.muted,
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -128,9 +136,9 @@ class _FacePhotoFieldState extends State<FacePhotoField> {
                       FilledButton.icon(
                         onPressed: _busy ? null : _abrirGuia,
                         icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                        label: Text(_muestras.isEmpty
-                            ? 'Tomar fotos'
-                            : 'Repetir fotos'),
+                        label: Text(
+                          _muestras.isEmpty ? 'Tomar fotos' : 'Repetir fotos',
+                        ),
                       ),
                       if (_muestras.isNotEmpty)
                         TextButton(
@@ -272,18 +280,12 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   /// del servidor (landmarks reales). Si el servidor no responde, decide
   /// la heurística local. Los bytes evaluados quedan como muestra.
   Future<void> _sondear() async {
-    if (!mounted ||
-        _initializing ||
-        _error != null ||
-        _completo ||
-        _ocupado) {
+    if (!mounted || _initializing || _error != null || _completo || _ocupado) {
       return;
     }
     _ocupado = true;
     try {
-      final photo = await (_esWeb
-              ? _camWeb.capturarFoto()
-              : _camera.capture())
+      final photo = await (_esWeb ? _camWeb.capturarFoto() : _camera.capture())
           .timeout(const Duration(seconds: 12));
       if (!mounted || _completo) return;
       final pose = _poseActual;
@@ -291,15 +293,15 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
       setState(() {
         _mensajeGuia = ev.mensaje;
         _ultEv = ev;
-        _manual =
-            DateTime.now().difference(_poseDesde) > _limiteManual;
+        _manual = DateTime.now().difference(_poseDesde) > _limiteManual;
       });
       if (!ev.encuadreOk) return;
 
       // Encuadre decente: veredicto del servidor (máx 1 en vuelo, mín
       // 1.5s entre llamadas). Autoritativo cuando responde.
       final ahora = DateTime.now();
-      final puedeServer = _serverOk &&
+      final puedeServer =
+          _serverOk &&
           !_serverBusy &&
           ahora.difference(_ultimaServer) > const Duration(milliseconds: 1500);
       if (puedeServer) {
@@ -390,9 +392,7 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     if (_ocupado || _completo) return;
     _ocupado = true;
     try {
-      final photo = await (_esWeb
-              ? _camWeb.capturarFoto()
-              : _camera.capture())
+      final photo = await (_esWeb ? _camWeb.capturarFoto() : _camera.capture())
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
       final pose = _poseActual;
@@ -411,8 +411,11 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
           .showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('La cámara no respondió. Intenta de nuevo.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La cámara no respondió. Intenta de nuevo.'),
+        ),
+      );
     } finally {
       _ocupado = false;
     }
@@ -435,8 +438,10 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      title: const Text('Fotos del rostro',
-          style: TextStyle(fontWeight: FontWeight.w800)),
+      title: const Text(
+        'Fotos del rostro',
+        style: TextStyle(fontWeight: FontWeight.w800),
+      ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: _initializing
@@ -445,8 +450,8 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
                 child: Center(child: CircularProgressIndicator()),
               )
             : _error != null
-                ? _panelError()
-                : _panelCaptura(),
+            ? _panelError()
+            : _panelCaptura(),
       ),
       actions: [
         TextButton(
@@ -455,10 +460,12 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
         ),
         if (_error == null)
           FilledButton.icon(
-            onPressed: (_enviando || !_completo) ? null : () {
-              setState(() => _enviando = true);
-              Navigator.of(context).pop(List.of(_muestras));
-            },
+            onPressed: (_enviando || !_completo)
+                ? null
+                : () {
+                    setState(() => _enviando = true);
+                    Navigator.of(context).pop(List.of(_muestras));
+                  },
             icon: const Icon(Icons.check),
             label: const Text('Usar estas fotos'),
           ),
@@ -476,14 +483,19 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.videocam_off_outlined,
-            size: 56, color: AppColors.muted),
+        const Icon(
+          Icons.videocam_off_outlined,
+          size: 56,
+          color: AppColors.muted,
+        ),
         const SizedBox(height: 12),
         Text(e.message, textAlign: TextAlign.center),
         const SizedBox(height: 8),
-        Text(ayuda,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        Text(
+          ayuda,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
         const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: _init,
@@ -505,13 +517,13 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
           ),
-            child: Text(
-              _completo
-                  ? 'Pack completo. Revisa y confirma.'
-                  : 'Foto ${_muestras.length + 1}/${_poses.length}: $_instruccion\n(Mantén la posición: la foto se toma sola)',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+          child: Text(
+            _completo
+                ? 'Pack completo. Revisa y confirma.'
+                : 'Foto ${_muestras.length + 1}/${_poses.length}: $_instruccion\n(Mantén la posición: la foto se toma sola)',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
         const SizedBox(height: 10),
         ClipRRect(
@@ -530,15 +542,13 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
                   ),
                 )
               : AspectRatio(
-                  aspectRatio:
-                      controller == null || !_camera.isInitialized
-                          ? 4 / 3
-                          : controller.value.aspectRatio,
+                  aspectRatio: controller == null || !_camera.isInitialized
+                      ? 4 / 3
+                      : controller.value.aspectRatio,
                   child: controller == null || !_camera.isInitialized
                       ? const ColoredBox(
                           color: AppColors.background,
-                          child:
-                              Center(child: CircularProgressIndicator()),
+                          child: Center(child: CircularProgressIndicator()),
                         )
                       : Stack(
                           fit: StackFit.expand,
@@ -566,11 +576,14 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
                 ),
                 child: Center(
                   child: i < _muestras.length
-                      ? const Icon(Icons.check,
-                          size: 14, color: Colors.white)
-                      : Text('${i + 1}',
+                      ? const Icon(Icons.check, size: 14, color: Colors.white)
+                      : Text(
+                          '${i + 1}',
                           style: const TextStyle(
-                              fontSize: 12, color: AppColors.muted)),
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
+                        ),
                 ),
               ),
             if (_muestras.isNotEmpty) ...[
@@ -594,16 +607,14 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
               _checkChip('Centro', _ultEv!.centrado),
               _checkChip('Luz', _ultEv!.iluminacionOk),
               _checkChip('Nitidez', _ultEv!.nitida),
-              if (_poseActual != 'frontal')
-                _checkChip('Giro', _ultEv!.gestoOk),
+              if (_poseActual != 'frontal') _checkChip('Giro', _ultEv!.gestoOk),
             ],
           ),
         if (!_completo && _ultEv != null) const SizedBox(height: 8),
         if (!_completo)
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
@@ -645,8 +656,12 @@ class _GuiaCapturaDialogState extends State<_GuiaCapturaDialog> {
               separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (_, i) => ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.memory(_muestras[i].bytes,
-                    width: 56, height: 56, fit: BoxFit.cover),
+                child: Image.memory(
+                  _muestras[i].bytes,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
@@ -661,9 +676,7 @@ Widget _checkChip(String texto, bool ok) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
     decoration: BoxDecoration(
-      color: ok
-          ? AppColors.success.withValues(alpha: 0.14)
-          : AppColors.surface,
+      color: ok ? AppColors.success.withValues(alpha: 0.14) : AppColors.surface,
       borderRadius: BorderRadius.circular(20),
       border: Border.all(
         color: ok ? AppColors.success : AppColors.muted.withValues(alpha: 0.4),

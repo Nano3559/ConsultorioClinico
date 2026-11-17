@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../data/models/appointment.dart';
@@ -27,8 +28,9 @@ Future<void> showRegisterPaymentDialog(
   String? doctorId =
       appointment?.doctorId ?? (isMedico ? auth.currentUser?.doctorId : null);
   String? citaId = appointment?.id;
-  final amountCtrl =
-      TextEditingController(text: MockData.consultPrice.toStringAsFixed(2));
+  final amountCtrl = TextEditingController(
+    text: MockData.consultPrice.toStringAsFixed(2),
+  );
   PaymentMethod method = PaymentMethod.efectivo;
   final formKey = GlobalKey<FormState>();
 
@@ -39,17 +41,25 @@ Future<void> showRegisterPaymentDialog(
       builder: (ctx, setState) {
         final citasDelPaciente = patientId == null
             ? <Appointment>[]
-            : clinic.appointments.where((a) => a.patientId == patientId).toList();
+            : clinic.appointments
+                  .where((a) => a.patientId == patientId)
+                  .toList();
 
         return AlertDialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
+          ),
           titlePadding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
           contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
           title: Row(
             children: const [
               Icon(Icons.payments_outlined, color: AppColors.primary),
               SizedBox(width: 10),
-              Text('Registrar pago', style: TextStyle(fontWeight: FontWeight.w800)),
+              Text(
+                'Registrar pago',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ],
           ),
           content: ConstrainedBox(
@@ -70,8 +80,11 @@ Future<void> showRegisterPaymentDialog(
                       for (final p in clinic.patients)
                         DropdownMenuItem(value: p.id, child: Text(p.fullName)),
                     ],
-                    onChanged: locked ? null : (v) => setState(() => patientId = v),
-                    validator: (v) => v == null ? 'Selecciona un paciente' : null,
+                    onChanged: locked
+                        ? null
+                        : (v) => setState(() => patientId = v),
+                    validator: (v) =>
+                        v == null ? 'Selecciona un paciente' : null,
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String?>(
@@ -83,7 +96,10 @@ Future<void> showRegisterPaymentDialog(
                     ),
                     items: [
                       for (final d in clinic.activeDoctors)
-                        DropdownMenuItem(value: d.id, child: Text(d.displayName)),
+                        DropdownMenuItem(
+                          value: d.id,
+                          child: Text(d.displayName),
+                        ),
                     ],
                     onChanged: (locked || isMedico)
                         ? null
@@ -116,7 +132,8 @@ Future<void> showRegisterPaymentDialog(
                             orElse: () => clinic.appointments.first,
                           );
                           doctorId = a.doctorId;
-                          amountCtrl.text = MockData.consultPrice.toStringAsFixed(2);
+                          amountCtrl.text = MockData.consultPrice
+                              .toStringAsFixed(2);
                         }
                       }),
                     ),
@@ -124,8 +141,9 @@ Future<void> showRegisterPaymentDialog(
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: amountCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Monto',
                       prefixIcon: const Icon(Icons.attach_money),
@@ -144,9 +162,7 @@ Future<void> showRegisterPaymentDialog(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Método de pago',
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelMedium
+                      style: Theme.of(context).textTheme.labelMedium
                           ?.copyWith(color: AppColors.muted),
                     ),
                   ),
@@ -189,16 +205,18 @@ Future<void> showRegisterPaymentDialog(
                 if (!formKey.currentState!.validate()) return;
                 if (isMedico && doctorId == null) return;
                 final amount = double.tryParse(amountCtrl.text) ?? 0;
-                clinic.addPayment(Payment(
-                  id: 'pay${DateTime.now().millisecondsSinceEpoch}',
-                  patientId: patientId!,
-                  doctorId: doctorId!,
-                  appointmentId: citaId ?? '',
-                  amount: amount,
-                  date: DateTime.now(),
-                  method: method,
-                  status: PaymentStatus.pagado,
-                ));
+                clinic.addPayment(
+                  Payment(
+                    id: 'pay${DateTime.now().millisecondsSinceEpoch}',
+                    patientId: patientId!,
+                    doctorId: doctorId!,
+                    appointmentId: citaId ?? '',
+                    amount: amount,
+                    date: DateTime.now(),
+                    method: method,
+                    status: PaymentStatus.pagado,
+                  ),
+                );
                 Navigator.pop(ctx);
               },
               label: const Text('Guardar pago'),

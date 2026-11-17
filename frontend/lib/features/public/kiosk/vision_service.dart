@@ -92,15 +92,11 @@ class VisionService {
     required List<Map<String, String>> muestras,
     required String token,
   }) async {
-    final res = await _api.postJson(
-      '/vision/registrar-rostro/$pacienteId',
-      {
-        'imagenes': muestras,
-        // La recepción también puede operar desde la web (espejada).
-        'espejado': kIsWeb,
-      },
-      token: token,
-    );
+    final res = await _api.postJson('/vision/registrar-rostro/$pacienteId', {
+      'imagenes': muestras,
+      // La recepción también puede operar desde la web (espejada).
+      'espejado': kIsWeb,
+    }, token: token);
     if (!res.isSuccess) {
       throw VisionException(_mensaje(res.error));
     }
@@ -113,10 +109,7 @@ class VisionService {
     required int pacienteId,
     required String token,
   }) async {
-    final res = await _api.getJson(
-      '/vision/rostro/$pacienteId',
-      token: token,
-    );
+    final res = await _api.getJson('/vision/rostro/$pacienteId', token: token);
     if (!res.isSuccess) {
       throw VisionException(_mensaje(res.error));
     }

@@ -49,16 +49,16 @@ class ConsultRecord {
 
   /// Cuerpo para POST /api/consultas.
   Map<String, dynamic> toApiJson() => {
-        'cita_id': citaId,
-        'paciente_id': patientId,
-        'medico_id': doctorId,
-        'motivo': motivo,
-        'diagnostico': diagnostico,
-        'tratamiento': tratamiento,
-        'notas_clinicas': observaciones,
-        'signos_vitales': null,
-        'proximo_control': proximoControl == null
-            ? null
-            : '${proximoControl!.year}-${proximoControl!.month.toString().padLeft(2, '0')}-${proximoControl!.day.toString().padLeft(2, '0')}',
-      };
+    'cita_id': citaId,
+    'paciente_id': patientId,
+    'medico_id': doctorId,
+    'motivo': motivo,
+    'diagnostico': diagnostico,
+    'tratamiento': tratamiento,
+    'notas_clinicas': observaciones,
+    'signos_vitales': null,
+    'proximo_control': proximoControl == null
+        ? null
+        : '${proximoControl!.year}-${proximoControl!.month.toString().padLeft(2, '0')}-${proximoControl!.day.toString().padLeft(2, '0')}',
+  };
 }

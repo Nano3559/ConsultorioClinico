@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/specialty.dart';
 import '../models/doctor.dart';
 import '../models/patient.dart';
@@ -33,14 +34,16 @@ class MockData {
     Specialty(
       id: 'sp3',
       name: 'Ginecología',
-      description: 'Salud de la mujer: controles ginecológicos, embarazo y prevención.',
+      description:
+          'Salud de la mujer: controles ginecológicos, embarazo y prevención.',
       icon: Icons.favorite_outline,
       color: Color(0xFFDB2777),
     ),
     Specialty(
       id: 'sp4',
       name: 'Cardiología',
-      description: 'Prevención, diagnóstico y tratamiento de enfermedades del corazón.',
+      description:
+          'Prevención, diagnóstico y tratamiento de enfermedades del corazón.',
       icon: Icons.monitor_heart_outlined,
       color: Color(0xFFDC2626),
     ),
@@ -54,7 +57,8 @@ class MockData {
     Specialty(
       id: 'sp6',
       name: 'Odontología',
-      description: 'Salud bucodental: limpiezas, tratamientos y prevención dental.',
+      description:
+          'Salud bucodental: limpiezas, tratamientos y prevención dental.',
       icon: Icons.emoji_emotions_outlined,
       color: Color(0xFF0891B2),
     ),
@@ -110,7 +114,8 @@ class MockData {
       name: 'Rosa Martínez',
       title: 'Dra.',
       specialtyId: 'sp3',
-      description: 'Ginecóloga especializada en salud reproductiva y control prenatal.',
+      description:
+          'Ginecóloga especializada en salud reproductiva y control prenatal.',
       yearsExperience: 15,
       schedule: const DoctorSchedule({
         'Lun': ['08:00', '09:00', '10:00', '14:00', '15:00'],

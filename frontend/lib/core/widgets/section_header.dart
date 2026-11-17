@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Encabezado reutilizable de sección (público y privado).
@@ -27,10 +28,12 @@ class SectionHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
             decoration: BoxDecoration(
               gradient: light
-                  ? LinearGradient(colors: [
-                      Colors.white.withValues(alpha: 0.18),
-                      Colors.white.withValues(alpha: 0.06),
-                    ])
+                  ? LinearGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.18),
+                        Colors.white.withValues(alpha: 0.06),
+                      ],
+                    )
                   : const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -61,7 +64,11 @@ class SectionHeader extends StatelessWidget {
         Text(
           title,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: titleColor),
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: titleColor,
+          ),
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 12),

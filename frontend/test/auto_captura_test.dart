@@ -184,20 +184,26 @@ void main() {
       // Giro a la izquierda con sombra a la izquierda: la mitad útil
       // sigue alcanzando para detectar, medir luz/nitidez y el gesto.
       final giro = fotoSintetica(
-          escalaX: 0.8, desplazarX: 15, sombraIzquierda: true);
+        escalaX: 0.8,
+        desplazarX: 15,
+        sombraIzquierda: true,
+      );
       final ev1 = svc.evaluar(giro, pose: 'izquierda');
       expect(ev1.tieneRostro, isTrue);
       final ev2 = svc.evaluar(giro, pose: 'izquierda');
       expect(ev2.lista, isTrue);
     });
 
-    test('sin referencia frontal se aprueba el gesto (lo verifica el servidor)', () {
-      final svc = AutoCapturaService();
-      final foto = fotoSintetica();
-      svc.evaluar(foto, pose: 'izquierda');
-      final ev = svc.evaluar(foto, pose: 'izquierda');
-      expect(ev.gestoOk, isTrue);
-    });
+    test(
+      'sin referencia frontal se aprueba el gesto (lo verifica el servidor)',
+      () {
+        final svc = AutoCapturaService();
+        final foto = fotoSintetica();
+        svc.evaluar(foto, pose: 'izquierda');
+        final ev = svc.evaluar(foto, pose: 'izquierda');
+        expect(ev.gestoOk, isTrue);
+      },
+    );
 
     test('abajo con mentón encogido dispara; sin encoger no', () {
       final svc = AutoCapturaService();

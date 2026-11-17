@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Tarjeta con resumen numérico para dashboards.
@@ -50,7 +51,11 @@ class _AppStatCardState extends State<AppStatCard> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: _hover
-                ? [AppColors.surface, const Color(0xFFF1F5F9), widget.color.withValues(alpha: 0.08)]
+                ? [
+                    AppColors.surface,
+                    const Color(0xFFF1F5F9),
+                    widget.color.withValues(alpha: 0.08),
+                  ]
                 : [AppColors.surface, const Color(0xFFF8FAFC)],
           ),
           borderRadius: BorderRadius.circular(widget.compact ? 14 : 18),
@@ -76,7 +81,10 @@ class _AppStatCardState extends State<AppStatCard> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [widget.color, Color.lerp(widget.color, Colors.black, 0.18)!],
+                  colors: [
+                    widget.color,
+                    Color.lerp(widget.color, Colors.black, 0.18)!,
+                  ],
                 ),
                 borderRadius: BorderRadius.circular(widget.compact ? 10 : 14),
                 boxShadow: [
@@ -87,7 +95,11 @@ class _AppStatCardState extends State<AppStatCard> {
                   ),
                 ],
               ),
-              child: Icon(widget.icon, color: Colors.white, size: widget.compact ? 20 : 26),
+              child: Icon(
+                widget.icon,
+                color: Colors.white,
+                size: widget.compact ? 20 : 26,
+              ),
             ),
             SizedBox(width: widget.compact ? 10 : 14),
             Expanded(

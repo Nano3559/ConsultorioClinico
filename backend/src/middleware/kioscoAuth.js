@@ -18,17 +18,18 @@ const { checkRole } = require('./roles');
  */
 const kioskAuth = (req, res, next) => {
   const clave = String(req.headers['x-kiosk-key'] || '');
+  // Camino 1: Kiosco físico con clave compartida (acceso directo, sin JWT)
   if (config.kiosco.apiKey !== '' && clave === config.kiosco.apiKey) {
     req.kiosco = true;
     return next();
   }
-  if (config.kiosco.apiKey === '') {
-    return verifyToken(req, res, (err) => {
-      if (err) return next(err);
-      return checkRole('admin', 'recepcion')(req, res, next);
-    });
-  }
-  return sendError(res, 'Acceso denegado: se requiere la clave del kiosco', 403);
+  // Camino 2: Personal autenticado con JWT (admin/recepcion) — siempre disponible
+  // para operar/depurar la sincronización desde el panel, independientemente de
+  // si existe KIOSK_API_KEY. Sigue exigiendo JWT válido con roles autorizados.
+  return verifyToken(req, res, (err) => {
+    if (err) return next(err);
+    return checkRole('admin', 'recepcion')(req, res, next);
+  });
 };
 
 module.exports = { kioskAuth };

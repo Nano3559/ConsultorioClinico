@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/google_map.dart';
@@ -14,7 +15,10 @@ class ContactSection extends StatelessWidget {
     final width = MediaQuery.of(context).size.width;
     final isMobile = width < 1000;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 48, vertical: 80),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 24 : 48,
+        vertical: 80,
+      ),
       child: Column(
         children: const [
           SectionHeader(
@@ -87,8 +91,20 @@ class _ContactInfo extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(label, style: const TextStyle(fontSize: 13, color: AppColors.muted)),
-                            Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark)),
+                            Text(
+                              label,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                            Text(
+                              value,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.dark,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -137,7 +153,11 @@ class _SocialIcon extends StatelessWidget {
         ),
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5)),
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: Icon(icon, color: Colors.white, size: 22),
@@ -171,7 +191,9 @@ class _ContactFormState extends State<_ContactForm> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mensaje enviado. Te contactaremos pronto.')),
+      const SnackBar(
+        content: Text('Mensaje enviado. Te contactaremos pronto.'),
+      ),
     );
     _name.clear();
     _email.clear();
@@ -187,19 +209,29 @@ class _ContactFormState extends State<_ContactForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Envíanos un mensaje', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
+            const Text(
+              'Envíanos un mensaje',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.dark,
+              ),
+            ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _name,
               decoration: const InputDecoration(labelText: 'Nombre'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'El nombre es requerido' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'El nombre es requerido'
+                  : null,
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _email,
               decoration: const InputDecoration(labelText: 'Correo'),
               keyboardType: TextInputType.emailAddress,
-              validator: (v) => (v == null || !v.contains('@')) ? 'Correo no válido' : null,
+              validator: (v) =>
+                  (v == null || !v.contains('@')) ? 'Correo no válido' : null,
             ),
             const SizedBox(height: 14),
             TextFormField(
@@ -212,7 +244,9 @@ class _ContactFormState extends State<_ContactForm> {
               controller: _message,
               decoration: const InputDecoration(labelText: 'Mensaje'),
               maxLines: 4,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'El mensaje es requerido' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'El mensaje es requerido'
+                  : null,
             ),
             const SizedBox(height: 20),
             SizedBox(

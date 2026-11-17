@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/hover_card.dart';
@@ -22,7 +23,10 @@ class DoctorsSection extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: const Color(0xFFF1F5F9),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 48, vertical: 80),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 24 : 48,
+        vertical: 80,
+      ),
       child: Column(
         children: [
           const SectionHeader(
@@ -44,7 +48,10 @@ class DoctorsSection extends StatelessWidget {
               alignment: WrapAlignment.center,
               children: [
                 for (final d in doctors)
-                  SizedBox(width: (width - 96 - 48) / 3, child: _DoctorCard(doctor: d)),
+                  SizedBox(
+                    width: (width - 96 - 48) / 3,
+                    child: _DoctorCard(doctor: d),
+                  ),
               ],
             ),
         ],
@@ -55,7 +62,11 @@ class DoctorsSection extends StatelessWidget {
 
 /// Fotografía del médico: si hay foto_url la muestra; si no, avatar con iniciales.
 class _DoctorPhoto extends StatelessWidget {
-  const _DoctorPhoto({required this.doctor, required this.specialty, this.size = 58});
+  const _DoctorPhoto({
+    required this.doctor,
+    required this.specialty,
+    this.size = 58,
+  });
 
   final Doctor doctor;
   final Specialty specialty;
@@ -63,7 +74,11 @@ class _DoctorPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fallback = AppAvatar(name: doctor.name, radius: size / 2, backgroundColor: specialty.color);
+    final fallback = AppAvatar(
+      name: doctor.name,
+      radius: size / 2,
+      backgroundColor: specialty.color,
+    );
     if (doctor.photoUrl.isEmpty) return fallback;
     return ClipRRect(
       borderRadius: BorderRadius.circular(size / 2),
@@ -89,7 +104,14 @@ class _DoctorCard extends StatelessWidget {
     final specialty = clinic.specialtyById(doctor.specialtyId);
     final specialtyColor = specialty?.color ?? AppColors.primaryDark;
     final specialtyName = specialty?.name ?? 'Sin especialidad';
-    final specialtyNonNull = specialty ?? Specialty(id: '', name: 'Sin especialidad', description: '', icon: Icons.medical_services_outlined);
+    final specialtyNonNull =
+        specialty ??
+        Specialty(
+          id: '',
+          name: 'Sin especialidad',
+          description: '',
+          icon: Icons.medical_services_outlined,
+        );
     return HoverCard(
       padding: const EdgeInsets.all(20),
       accent: specialtyColor,
@@ -105,13 +127,23 @@ class _DoctorCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [specialtyColor, specialtyColor.withValues(alpha: 0.35)],
+                    colors: [
+                      specialtyColor,
+                      specialtyColor.withValues(alpha: 0.35),
+                    ],
                   ),
                   boxShadow: [
-                    BoxShadow(color: specialtyColor.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4)),
+                    BoxShadow(
+                      color: specialtyColor.withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
-                child: _DoctorPhoto(doctor: doctor, specialty: specialtyNonNull),
+                child: _DoctorPhoto(
+                  doctor: doctor,
+                  specialty: specialtyNonNull,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -120,11 +152,19 @@ class _DoctorCard extends StatelessWidget {
                   children: [
                     Text(
                       doctor.displayName,
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.dark),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
+                      ),
                     ),
                     Text(
                       specialtyName,
-                      style: TextStyle(fontSize: 13, color: specialtyColor, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: specialtyColor,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -136,12 +176,20 @@ class _DoctorCard extends StatelessWidget {
             doctor.description,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.muted, height: 1.5, fontSize: 14),
+            style: const TextStyle(
+              color: AppColors.muted,
+              height: 1.5,
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.work_history_outlined, color: AppColors.muted, size: 16),
+              const Icon(
+                Icons.work_history_outlined,
+                color: AppColors.muted,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -155,7 +203,11 @@ class _DoctorCard extends StatelessWidget {
           const SizedBox(height: 12),
           const Text(
             'Horarios de atención',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.dark),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark,
+            ),
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -164,14 +216,20 @@ class _DoctorCard extends StatelessWidget {
             children: [
               for (final e in doctor.schedule.byDay.entries)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${e.key}  ${doctor.schedule.slotRanges(e.key).join(' · ')}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
                   ),
                 ),
             ],
@@ -204,7 +262,14 @@ class _DoctorCard extends StatelessWidget {
     final specialty = clinic.specialtyById(doctor.specialtyId);
     final specialtyColor = specialty?.color ?? AppColors.primaryDark;
     final specialtyName = specialty?.name ?? 'Sin especialidad';
-    final specialtyNonNull = specialty ?? Specialty(id: '', name: 'Sin especialidad', description: '', icon: Icons.medical_services_outlined);
+    final specialtyNonNull =
+        specialty ??
+        Specialty(
+          id: '',
+          name: 'Sin especialidad',
+          description: '',
+          icon: Icons.medical_services_outlined,
+        );
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -229,7 +294,10 @@ class _DoctorCard extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [specialtyColor, Color.lerp(specialtyColor, Colors.black, 0.28)!],
+                      colors: [
+                        specialtyColor,
+                        Color.lerp(specialtyColor, Colors.black, 0.28)!,
+                      ],
                     ),
                   ),
                   child: Column(
@@ -254,10 +322,18 @@ class _DoctorCard extends StatelessWidget {
                               shape: BoxShape.circle,
                               color: Colors.white.withValues(alpha: 0.22),
                               boxShadow: [
-                                BoxShadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 18, offset: const Offset(0, 6)),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.20),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 6),
+                                ),
                               ],
                             ),
-                            child: _DoctorPhoto(doctor: doctor, specialty: specialtyNonNull, size: 72),
+                            child: _DoctorPhoto(
+                              doctor: doctor,
+                              specialty: specialtyNonNull,
+                              size: 72,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -270,19 +346,32 @@ class _DoctorCard extends StatelessWidget {
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white,
-                                    shadows: [Shadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 3))],
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black26,
+                                        blurRadius: 12,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 5,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.22),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
                                     specialtyName,
-                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -302,35 +391,59 @@ class _DoctorCard extends StatelessWidget {
                       const SizedBox(height: 20),
                       const Text(
                         'Sobre el médico',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.dark),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         doctor.description.isEmpty
                             ? 'Médico del equipo del consultorio, dedicado a la atención y cuidado de sus pacientes.'
                             : doctor.description,
-                        style: const TextStyle(color: AppColors.muted, height: 1.6),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          height: 1.6,
+                        ),
                       ),
-                      if (doctor.phone.isNotEmpty || doctor.email.isNotEmpty) ...[
+                      if (doctor.phone.isNotEmpty ||
+                          doctor.email.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         const Text(
                           'Contacto',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.dark),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.dark,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         if (doctor.phone.isNotEmpty)
-                          _infoRow(Icons.phone_outlined, 'Teléfono', doctor.phone),
+                          _infoRow(
+                            Icons.phone_outlined,
+                            'Teléfono',
+                            doctor.phone,
+                          ),
                         if (doctor.email.isNotEmpty)
                           _infoRow(Icons.mail_outline, 'Correo', doctor.email),
                       ],
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          const Icon(Icons.schedule_outlined, color: AppColors.primary, size: 20),
+                          const Icon(
+                            Icons.schedule_outlined,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           const Text(
                             'Horarios de atención',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.dark),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.dark,
+                            ),
                           ),
                         ],
                       ),
@@ -341,7 +454,10 @@ class _DoctorCard extends StatelessWidget {
                         children: [
                           for (final e in doctor.schedule.byDay.entries)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.background,
                                 borderRadius: BorderRadius.circular(10),
@@ -349,14 +465,20 @@ class _DoctorCard extends StatelessWidget {
                               ),
                               child: Text(
                                 '${e.key}  ${doctor.schedule.slotRanges(e.key).join(' · ')}',
-                                style: const TextStyle(fontSize: 12.5, color: AppColors.dark, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.dark,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                         ],
                       ),
                       const SizedBox(height: 24),
                       FilledButton.icon(
-                        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                        ),
                         onPressed: () {
                           Navigator.of(ctx).pop();
                           context.push('/solicitar-cita?medico=${doctor.id}');
@@ -416,7 +538,13 @@ class _DoctorCard extends StatelessWidget {
     );
   }
 
-  Widget _statCard(IconData icon, String value, String label, Color color, {bool small = false}) {
+  Widget _statCard(
+    IconData icon,
+    String value,
+    String label,
+    Color color, {
+    bool small = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
@@ -443,7 +571,11 @@ class _DoctorCard extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10.5, color: AppColors.muted, height: 1.2),
+            style: const TextStyle(
+              fontSize: 10.5,
+              color: AppColors.muted,
+              height: 1.2,
+            ),
           ),
         ],
       ),
@@ -468,8 +600,17 @@ class _DoctorCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-                Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark)),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.dark,
+                  ),
+                ),
               ],
             ),
           ),

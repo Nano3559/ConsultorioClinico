@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
@@ -38,15 +39,18 @@ class PatientDetailPage extends StatelessWidget {
     // el botón se limita a esos roles para no ofrecer una acción que el backend
     // va a rechazar con 403.
     final role = auth.currentUser?.role;
-    final puedeRegistrarRostro = role == UserRole.admin || role == UserRole.recepcion;
-    final authorized = !isMedico || clinic.patients.any((p) => p.id == patientId);
+    final puedeRegistrarRostro =
+        role == UserRole.admin || role == UserRole.recepcion;
+    final authorized =
+        !isMedico || clinic.patients.any((p) => p.id == patientId);
     if (!authorized) {
       return Scaffold(
         appBar: AppBar(title: const Text('Acceso restringido')),
         body: const AppEmptyState(
           icon: Icons.lock_outline,
           title: 'Paciente no asignado',
-          subtitle: 'Solo puedes ver pacientes con citas o consultas a tu nombre.',
+          subtitle:
+              'Solo puedes ver pacientes con citas o consultas a tu nombre.',
         ),
       );
     }
@@ -60,7 +64,9 @@ class PatientDetailPage extends StatelessWidget {
               tooltip: 'Editar',
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => PatientFormPage(patient: patient)),
+                MaterialPageRoute(
+                  builder: (_) => PatientFormPage(patient: patient),
+                ),
               ),
             ),
             if (puedeRegistrarRostro)
@@ -81,7 +87,9 @@ class PatientDetailPage extends StatelessWidget {
                 tooltip: 'Nueva consulta',
                 icon: const Icon(Icons.add_box_outlined),
                 onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ConsultFormPage(patientId: patientId)),
+                  MaterialPageRoute(
+                    builder: (_) => ConsultFormPage(patientId: patientId),
+                  ),
                 ),
               ),
           ],
@@ -119,7 +127,11 @@ class _PatientData extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 700;
     final items = [
       (Icons.badge_outlined, 'CI', p.ci),
-      (Icons.cake_outlined, 'Nacimiento', '${AppFormatters.shortDate(p.birthDate)} ($age años)'),
+      (
+        Icons.cake_outlined,
+        'Nacimiento',
+        '${AppFormatters.shortDate(p.birthDate)} ($age años)',
+      ),
       (Icons.phone_outlined, 'Teléfono', p.phone),
       (Icons.mail_outline, 'Correo', p.email),
     ];
@@ -138,14 +150,28 @@ class _PatientData extends StatelessWidget {
           ),
           child: Row(
             children: [
-              AppAvatar(name: p.fullName, radius: 30, backgroundColor: Colors.white),
+              AppAvatar(
+                name: p.fullName,
+                radius: 30,
+                backgroundColor: Colors.white,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(p.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
-                    Text(p.email, style: const TextStyle(color: Color(0xFFE2E8F0))),
+                    Text(
+                      p.fullName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      p.email,
+                      style: const TextStyle(color: Color(0xFFE2E8F0)),
+                    ),
                   ],
                 ),
               ),
@@ -160,7 +186,10 @@ class _PatientData extends StatelessWidget {
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
           childAspectRatio: 3.4,
-          children: [for (final (icon, label, value) in items) _DataCard(icon: icon, label: label, value: value)],
+          children: [
+            for (final (icon, label, value) in items)
+              _DataCard(icon: icon, label: label, value: value),
+          ],
         ),
       ],
     );
@@ -168,7 +197,11 @@ class _PatientData extends StatelessWidget {
 }
 
 class _DataCard extends StatelessWidget {
-  const _DataCard({required this.icon, required this.label, required this.value});
+  const _DataCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   final IconData icon;
   final String label;
@@ -187,7 +220,10 @@ class _DataCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AppColors.primaryBg, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Icon(icon, color: AppColors.primary, size: 20),
           ),
           const SizedBox(width: 12),
@@ -196,8 +232,21 @@ class _DataCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 12, fontWeight: FontWeight.w600)),
-                Text(value, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                  ),
+                ),
               ],
             ),
           ),
@@ -220,7 +269,10 @@ class _PatientAppointments extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       children: [
         if (list.isEmpty)
-          const AppEmptyState(icon: Icons.event_note_outlined, title: 'Sin citas registradas')
+          const AppEmptyState(
+            icon: Icons.event_note_outlined,
+            title: 'Sin citas registradas',
+          )
         else
           for (final a in list)
             Card(
@@ -228,7 +280,9 @@ class _PatientAppointments extends StatelessWidget {
               child: ListTile(
                 leading: const Icon(Icons.event, color: AppColors.primary),
                 title: Text('${AppFormatters.shortDate(a.date)} · ${a.time}'),
-                subtitle: Text('${clinic.doctorName(a.doctorId)} — ${a.reason}'),
+                subtitle: Text(
+                  '${clinic.doctorName(a.doctorId)} — ${a.reason}',
+                ),
                 trailing: AppStatusBadge(status: a.status),
               ),
             ),
@@ -251,13 +305,31 @@ class _ClinicalHistory extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        _InfoBlock(title: 'Antecedentes', text: p.antecedentes.isEmpty ? 'Sin antecedentes registrados' : p.antecedentes),
+        _InfoBlock(
+          title: 'Antecedentes',
+          text: p.antecedentes.isEmpty
+              ? 'Sin antecedentes registrados'
+              : p.antecedentes,
+        ),
         const SizedBox(height: 10),
-        _InfoBlock(title: 'Alergias', text: p.alergias.isEmpty ? 'Sin alergias registradas' : p.alergias),
+        _InfoBlock(
+          title: 'Alergias',
+          text: p.alergias.isEmpty ? 'Sin alergias registradas' : p.alergias,
+        ),
         const SizedBox(height: 10),
-        _InfoBlock(title: 'Observaciones', text: p.observaciones.isEmpty ? 'Sin observaciones' : p.observaciones),
+        _InfoBlock(
+          title: 'Observaciones',
+          text: p.observaciones.isEmpty ? 'Sin observaciones' : p.observaciones,
+        ),
         const SizedBox(height: 20),
-        const Text('Consultas anteriores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark)),
+        const Text(
+          'Consultas anteriores',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.dark,
+          ),
+        ),
         const SizedBox(height: 12),
         if (consults.isEmpty)
           const AppEmptyState(
@@ -286,11 +358,18 @@ class _ClinicalHistory extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.medical_services_outlined, color: AppColors.primary, size: 20),
+                        const Icon(
+                          Icons.medical_services_outlined,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           '${AppFormatters.shortDate(c.date)} · ${clinic.doctorName(c.doctorId)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark,
+                          ),
                         ),
                       ],
                     ),
@@ -298,9 +377,13 @@ class _ClinicalHistory extends StatelessWidget {
                     _line('Motivo', c.motivo),
                     _line('Diagnóstico', c.diagnostico),
                     _line('Tratamiento', c.tratamiento),
-                    if (c.observaciones.isNotEmpty) _line('Observaciones', c.observaciones),
+                    if (c.observaciones.isNotEmpty)
+                      _line('Observaciones', c.observaciones),
                     if (c.proximoControl != null)
-                      _line('Próximo control', AppFormatters.shortDate(c.proximoControl!)),
+                      _line(
+                        'Próximo control',
+                        AppFormatters.shortDate(c.proximoControl!),
+                      ),
                   ],
                 ),
               ),
@@ -310,15 +393,30 @@ class _ClinicalHistory extends StatelessWidget {
   }
 
   Widget _line(String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(width: 110, child: Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w600))),
-            Expanded(child: Text(value, style: const TextStyle(color: AppColors.dark, height: 1.4))),
-          ],
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-      );
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: AppColors.dark, height: 1.4),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _InfoBlock extends StatelessWidget {
@@ -340,9 +438,18 @@ class _InfoBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(text, style: const TextStyle(color: AppColors.muted, height: 1.5)),
+          Text(
+            text,
+            style: const TextStyle(color: AppColors.muted, height: 1.5),
+          ),
         ],
       ),
     );

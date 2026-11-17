@@ -219,8 +219,10 @@ void main() {
       expect(catalogo.yaAceptado, isTrue);
       expect(catalogo.pacienteId, 7);
       expect(catalogo.consentimiento.noEsDiagnostico, isTrue);
-      expect(catalogo.preguntasDe('sintomas').map((p) => p.codigo).toList(),
-          ['dolor_inicio', 'dolor_intensidad']);
+      expect(catalogo.preguntasDe('sintomas').map((p) => p.codigo).toList(), [
+        'dolor_inicio',
+        'dolor_intensidad',
+      ]);
       expect(catalogo.preguntasDe('sintomas').first.opciones, hasLength(2));
       expect(catalogo.niveles.single.tiempo, 'Ahora');
     });

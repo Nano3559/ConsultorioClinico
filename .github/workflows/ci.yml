@@ -33,23 +33,23 @@ jobs:
 
       - name: Instalar dependencias Flutter
         working-directory: ./frontend
-        run: flutter pub get || true
+        run: flutter pub get
 
       - name: Verificar formato (dart format)
         working-directory: ./frontend
-        run: dart format --output=none --set-exit-if-changed lib/ test/ || true
+        run: dart format --output=none --set-exit-if-changed lib/ test/
 
       - name: Ejecutar flutter analyze
         working-directory: ./frontend
-        run: flutter analyze lib/ test/ || true
+        run: flutter analyze lib/ test/
 
       - name: Ejecutar pruebas Flutter
         working-directory: ./frontend
-        run: flutter test || true
+        run: flutter test
 
       - name: Compilar Flutter Web
         working-directory: ./frontend
-        run: flutter build web --release || true
+        run: flutter build web --release
 
       - name: Subir artefacto de build web
         uses: actions/upload-artifact@v4
@@ -79,11 +79,11 @@ jobs:
 
       - name: Instalar dependencias backend
         working-directory: ./backend
-        run: npm ci || true
+        run: npm ci
 
       - name: Ejecutar pruebas unitarias y de integración
         working-directory: ./backend
-        run: npm test || true
+        run: npm test
         env:
           NODE_ENV: development
           JWT_SECRET: test-secret-key-for-ci-only-do-not-use-in-production
@@ -94,7 +94,7 @@ jobs:
 
       - name: Validar configuración del backend
         working-directory: ./backend
-        run: node -e "require('./src/config/config'); console.log('Config OK');" || true
+        run: node -e "require('./src/config/config'); console.log('Config OK');"
 
   # =========================================================================
   # PYTHON - Microservicios (Visión + Cardiología IA) (no bloqueante)
@@ -117,22 +117,22 @@ jobs:
       - name: Instalar dependencias Python (Visión)
         working-directory: ./backend/vision
         run: |
-          pip install -r requirements.txt || true
+          pip install -r requirements.txt
 
       - name: Instalar dependencias Python (Cardiología IA)
         working-directory: ./CardiologiaEGC
         run: |
-          pip install -r requirements.txt || true
+          pip install -r requirements.txt
 
       - name: Ejecutar pruebas Python existentes
         working-directory: ./backend/vision
         run: |
-          python -m pytest test_preconsulta_metrics.py -v || echo "No hay pruebas pytest configuradas"
+          python -m pytest test_preconsulta_metrics.py -v
 
       - name: Verificar importación de módulos Python
         working-directory: ./CardiologiaEGC
         run: |
-          python -c "import app; print('CardiologiaEGC app importado correctamente')" || true
+          python -c "import app; print('CardiologiaEGC app importado correctamente')"
 
   # =========================================================================
   # SEGURIDAD - Detección de secretos expuestos (no bloqueante)

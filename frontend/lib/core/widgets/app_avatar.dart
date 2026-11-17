@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Avatar con iniciales, ligero (sin imágenes pesadas) y optimizado.
@@ -19,11 +20,11 @@ class AppAvatar extends StatelessWidget {
     final initials = name.trim().isEmpty
         ? '?'
         : name
-            .trim()
-            .split(RegExp(r'\s+'))
-            .take(2)
-            .map((p) => p[0].toUpperCase())
-            .join();
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((p) => p[0].toUpperCase())
+              .join();
     return CircleAvatar(
       radius: radius,
       backgroundColor: backgroundColor ?? AppColors.primary,

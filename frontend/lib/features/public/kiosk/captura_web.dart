@@ -4,6 +4,7 @@ import 'dart:js_interop';
 
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
+
 import 'dart:ui_web' as ui_web;
 
 import 'kiosk_camera_service.dart';
@@ -101,8 +102,9 @@ class CapturaWebDirecta {
   }
 
   Future<web.MediaStream> _abrir(Map<String, Object>? videoOpts) async {
-    final JSAny videoConstr =
-        videoOpts == null ? true.toJS : videoOpts.jsify() as JSAny;
+    final JSAny videoConstr = videoOpts == null
+        ? true.toJS
+        : videoOpts.jsify() as JSAny;
     final constraints = web.MediaStreamConstraints(
       video: videoConstr,
       audio: false.toJS,
@@ -172,7 +174,9 @@ class CapturaWebDirecta {
           'La cámara aún no está lista.',
         );
       }
-      final canvas = web.HTMLCanvasElement()..width = w..height = h;
+      final canvas = web.HTMLCanvasElement()
+        ..width = w
+        ..height = h;
       canvas.context2D.drawImage(video, 0, 0);
       final url = canvas.toDataURL('image/jpeg', 0.85.toJS);
       final b64 = url.split(',').last;

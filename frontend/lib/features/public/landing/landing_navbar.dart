@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 
 /// Barra de navegación de la página pública (responsiva).
 class LandingNavbar extends StatelessWidget {
-  const LandingNavbar({super.key, required this.onNavigate, required this.onRequest});
+  const LandingNavbar({
+    super.key,
+    required this.onNavigate,
+    required this.onRequest,
+  });
 
   final ValueChanged<String> onNavigate;
   final VoidCallback onRequest;
@@ -28,10 +33,17 @@ class LandingNavbar extends StatelessWidget {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: AppColors.border)),
         boxShadow: [
-          BoxShadow(color: AppColors.shadowSoft, blurRadius: 14, offset: Offset(0, 4)),
+          BoxShadow(
+            color: AppColors.shadowSoft,
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
         ],
       ),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 48, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 48,
+        vertical: 12,
+      ),
       child: Row(
         children: [
           Container(
@@ -44,10 +56,18 @@ class LandingNavbar extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4)),
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
-            child: const Icon(Icons.local_hospital, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.local_hospital,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 10),
           Flexible(
@@ -79,7 +99,10 @@ class LandingNavbar extends StatelessWidget {
                             minimumSize: const Size(0, 40),
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                           ),
-                          child: Text(item, style: const TextStyle(fontSize: 14)),
+                          child: Text(
+                            item,
+                            style: const TextStyle(fontSize: 14),
+                          ),
                         ),
                       ),
                   ],
@@ -91,12 +114,14 @@ class LandingNavbar extends StatelessWidget {
               onPressed: onRequest,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
               ),
               child: const Text('Solicitar cita'),
             ),
-          ]
-          else
+          ] else
             Builder(
               builder: (context) => IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.dark),
@@ -104,7 +129,9 @@ class LandingNavbar extends StatelessWidget {
                   context: context,
                   backgroundColor: Colors.white,
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
                   builder: (ctx) => SafeArea(
                     child: Column(
@@ -113,11 +140,15 @@ class LandingNavbar extends StatelessWidget {
                         const SizedBox(height: 8),
                         for (final item in [..._menu, 'Solicitar cita'])
                           ListTile(
-                            leading: const Icon(Icons.chevron_right,
-                                color: AppColors.primary),
+                            leading: const Icon(
+                              Icons.chevron_right,
+                              color: AppColors.primary,
+                            ),
                             title: Text(
                               item,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             onTap: () {
                               Navigator.of(ctx).pop();

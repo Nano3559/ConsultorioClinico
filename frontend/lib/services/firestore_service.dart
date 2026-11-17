@@ -49,11 +49,19 @@ class FirestoreService {
     return ref.id;
   }
 
-  Future<void> set(String collection, String id, Map<String, dynamic> data) async {
+  Future<void> set(
+    String collection,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     await _db.collection(collection).doc(id).set(_strip(data));
   }
 
-  Future<void> update(String collection, String id, Map<String, dynamic> data) async {
+  Future<void> update(
+    String collection,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     await _db.collection(collection).doc(id).update(_strip(data));
   }
 

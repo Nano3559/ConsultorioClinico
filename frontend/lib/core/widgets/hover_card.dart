@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Tarjeta "3D" con relieve multicapa y elevación al pasar el cursor.
@@ -43,7 +44,8 @@ class _HoverCardState extends State<HoverCard> {
         transformAlignment: Alignment.center,
         padding: widget.padding,
         decoration: BoxDecoration(
-          gradient: widget.gradient ??
+          gradient:
+              widget.gradient ??
               LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

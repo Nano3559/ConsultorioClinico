@@ -33,12 +33,7 @@ class EvaluacionFoto {
   /// gesto de la pose ejecutado (para frontal no hay gesto que verificar).
   /// `estable` exige 2 frames buenos seguidos (nunca dispara al primero).
   bool get lista =>
-      tieneRostro &&
-      centrado &&
-      iluminacionOk &&
-      nitida &&
-      estable &&
-      gestoOk;
+      tieneRostro && centrado && iluminacionOk && nitida && estable && gestoOk;
 
   final bool tieneRostro;
   final bool centrado;
@@ -78,7 +73,7 @@ class ReferenciaRostro {
 /// Servicio sin estado de UI: evalúa frames JPEG y decide si disparar.
 class AutoCapturaService {
   AutoCapturaService({this.anchoAnalisis = 160, bool? espejado})
-      : _espejado = espejado ?? kIsWeb;
+    : _espejado = espejado ?? kIsWeb;
 
   /// Ancho al que se reduce el frame para analizar (rapidez).
   final int anchoAnalisis;
@@ -130,10 +125,10 @@ class AutoCapturaService {
     // la presencia se relaja (el gesto se verifica aparte contra la
     // frontal). El estable usa esta misma presencia relajada.
     final esGiro = pose.trim().toLowerCase() != 'frontal';
-    final hayRostro =
-        esGiro ? actual.fraccionPiel > 0.12 : actual.tieneRostro;
+    final hayRostro = esGiro ? actual.fraccionPiel > 0.12 : actual.tieneRostro;
     final previo = _anterior;
-    final estable = previo != null &&
+    final estable =
+        previo != null &&
         previo.hayRostro &&
         hayRostro &&
         (previo.desplazamientoX - actual.desplazamientoX).abs() < 0.05 &&
@@ -141,21 +136,21 @@ class AutoCapturaService {
         (previo.fraccionPiel - actual.fraccionPiel).abs() < 0.08 &&
         (previo.lumaMedia - actual.lumaMedia).abs() < 15;
     _anterior = _Racha(
-        hayRostro: hayRostro,
-        desplazamientoX: actual.desplazamientoX,
-        desplazamientoY: actual.desplazamientoY,
-        fraccionPiel: actual.fraccionPiel,
-        lumaMedia: actual.lumaMedia);
+      hayRostro: hayRostro,
+      desplazamientoX: actual.desplazamientoX,
+      desplazamientoY: actual.desplazamientoY,
+      fraccionPiel: actual.fraccionPiel,
+      lumaMedia: actual.lumaMedia,
+    );
     final tieneRostro = hayRostro;
     final centrado = esGiro
         ? actual.desplazamientoX.abs() < 0.20 &&
-            actual.desplazamientoY.abs() < 0.20
+              actual.desplazamientoY.abs() < 0.20
         : actual.centrado;
     final iluminacionOk = esGiro
         ? actual.lumaPiel >= 50 && actual.lumaPiel <= 215
         : actual.iluminacionOk;
-    final nitida =
-        esGiro ? actual.varLapPiel > 8 : actual.nitida;
+    final nitida = esGiro ? actual.varLapPiel > 8 : actual.nitida;
 
     final String mensaje;
     var gestoOk = true;
@@ -165,8 +160,8 @@ class AutoCapturaService {
       mensaje = actual.desplazamientoX < -0.02
           ? 'Muévete un poco a tu derecha'
           : actual.desplazamientoX > 0.02
-              ? 'Muévete un poco a tu izquierda'
-              : 'Centra tu rostro en el óvalo';
+          ? 'Muévete un poco a tu izquierda'
+          : 'Centra tu rostro en el óvalo';
     } else if (!iluminacionOk) {
       mensaje = actual.lumaPiel < 50
           ? 'Hay poca luz: acércate a una luz'
@@ -396,13 +391,14 @@ class AutoCapturaService {
         final dx = (x - cx) / rx;
         final dy = (y - cy) / ry;
         if (dx * dx + dy * dy > 1) continue;
-        final lap = (grises[(y - 2) * w + x] +
-                grises[(y + 2) * w + x] +
-                grises[y * w + x - 2] +
-                grises[y * w + x + 2] -
-                4 * grises[y * w + x])
-            .abs()
-            .toDouble();
+        final lap =
+            (grises[(y - 2) * w + x] +
+                    grises[(y + 2) * w + x] +
+                    grises[y * w + x - 2] +
+                    grises[y * w + x + 2] -
+                    4 * grises[y * w + x])
+                .abs()
+                .toDouble();
         sumaLap += lap;
         sumaLap2 += lap * lap;
         nLap++;
@@ -518,4 +514,3 @@ class _Medicion {
   final double minY;
   final double maxY;
 }
-

@@ -27,7 +27,8 @@ class RostroPackService {
       throw RostroPackException(res.error ?? 'No se pudo buscar al paciente.');
     }
     return BusquedaPaciente.fromData(
-        (res.data?['data'] as Map<String, dynamic>?) ?? const {});
+      (res.data?['data'] as Map<String, dynamic>?) ?? const {},
+    );
   }
 
   /// Registra el pack facial multi-pose (una muestra por pose como mínimo).
@@ -59,7 +60,8 @@ class RostroPackService {
       throw RostroPackException(res.error ?? 'No se pudo registrar el rostro.');
     }
     return PackRegistrado.fromData(
-        (res.data?['data'] as Map<String, dynamic>?) ?? const {});
+      (res.data?['data'] as Map<String, dynamic>?) ?? const {},
+    );
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_empty_state.dart';
@@ -62,7 +63,8 @@ class _MySchedulePageState extends State<MySchedulePage> {
     if (_medicoId == null) return;
     final schedule = DoctorSchedule({
       for (final day in kDays)
-        if (_ranges[day]![1] != '--') day: _slotsBetween(_ranges[day]![0], _ranges[day]![1]),
+        if (_ranges[day]![1] != '--')
+          day: _slotsBetween(_ranges[day]![0], _ranges[day]![1]),
     });
     if (schedule.byDay.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,14 +78,12 @@ class _MySchedulePageState extends State<MySchedulePage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo guardar: $error')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No se pudo guardar: $error')));
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Horario actualizado')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Horario actualizado')));
     Navigator.of(context).pop();
   }
 

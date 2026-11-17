@@ -24,7 +24,9 @@ class KioskCita {
   });
 
   factory KioskCita.fromJson(dynamic json) {
-    if (json is! Map<String, dynamic>) return const KioskCita(id: 0, fecha: '', hora: '', estado: '');
+    if (json is! Map<String, dynamic>) {
+      return const KioskCita(id: 0, fecha: '', hora: '', estado: '');
+    }
     final medico = json['medicos'];
     final String medicoNombre;
     if (medico is Map<String, dynamic>) {
@@ -100,10 +102,9 @@ class KioskService {
   /// Lanza [KioskServiceException] si el rostro no se reconoce o el servicio
   /// no está disponible (el error lleva un mensaje apto para el paciente).
   Future<KioskVerificacion> verificarRostro(String imagenBase64) async {
-    final res = await _api.postJson(
-      '/kiosco/verificar-rostro',
-      {'imagen': imagenBase64},
-    );
+    final res = await _api.postJson('/kiosco/verificar-rostro', {
+      'imagen': imagenBase64,
+    });
     if (!res.isSuccess) {
       throw KioskServiceException(_mensaje(res.error));
     }

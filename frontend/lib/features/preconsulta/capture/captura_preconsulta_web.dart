@@ -11,6 +11,7 @@ import 'dart:js_interop';
 
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
+
 import 'dart:ui_web' as ui_web;
 
 import 'captura_preconsulta_tipos.dart';
@@ -33,19 +34,20 @@ class CamaraPreconsulta {
     }
     final List<web.MediaDeviceInfo> dispositivos;
     try {
-      dispositivos = (await web.window.navigator.mediaDevices
-              .enumerateDevices()
-              .toDart)
-          .toDart;
+      dispositivos =
+          (await web.window.navigator.mediaDevices.enumerateDevices().toDart)
+              .toDart;
     } catch (_) {
       throw const CapturaException(
         CapturaErrorKind.notSupported,
         'Este navegador no permite listar las cámaras. Prueba en Chrome o Edge.',
       );
     }
-    final videos =
-        dispositivos.where((d) => d.kind == 'videoinput').toList();
-    final patronFrontal = RegExp(r'front|frontal|user|selfie', caseSensitive: false);
+    final videos = dispositivos.where((d) => d.kind == 'videoinput').toList();
+    final patronFrontal = RegExp(
+      r'front|frontal|user|selfie',
+      caseSensitive: false,
+    );
     return [
       for (var i = 0; i < videos.length; i++)
         CamaraDisponible(
@@ -153,8 +155,9 @@ class CamaraPreconsulta {
   }
 
   Future<web.MediaStream> _abrir(Map<String, Object>? videoOpts) async {
-    final JSAny videoConstr =
-        videoOpts == null ? true.toJS : videoOpts.jsify() as JSAny;
+    final JSAny videoConstr = videoOpts == null
+        ? true.toJS
+        : videoOpts.jsify() as JSAny;
     final constraints = web.MediaStreamConstraints(
       video: videoConstr,
       audio: false.toJS,
@@ -257,16 +260,16 @@ class CamaraPreconsulta {
       } catch (_) {
         // Un frame perdido no invalida la captura.
       }
-      final progresoActual =
-          (reloj.elapsedMilliseconds / totalMs).clamp(0.0, 1.0);
+      final progresoActual = (reloj.elapsedMilliseconds / totalMs).clamp(
+        0.0,
+        1.0,
+      );
       progreso?.call(progresoActual);
       if (acumulado >= presupuesto) break;
 
       final objetivoMs = frames.length * intervaloMs;
       final espera = objetivoMs - reloj.elapsedMilliseconds;
-      await Future.delayed(
-        Duration(milliseconds: espera > 0 ? espera : 5),
-      );
+      await Future.delayed(Duration(milliseconds: espera > 0 ? espera : 5));
     }
     reloj.stop();
     progreso?.call(1);
