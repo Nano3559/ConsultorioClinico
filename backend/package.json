@@ -13,8 +13,9 @@
     "db:migrate:status": "node db/migrate.js --status",
     "db:init": "node db/index.js",
     "db:check": "node db/index.js --check",
-    "test": "node --test test/auth.test.js test/kiosco.test.js test/vision.test.js test/rostro.test.js",
-    "test:api": "node test/apiTest.js"
+    "test": "node --test test/auth.test.js test/kiosco.test.js test/vision.test.js test/rostro.test.js test/preconsulta.test.js",
+    "test:api": "node test/apiTest.js",
+    "preconsulta:smoke": "node scripts/preconsulta_smoke.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

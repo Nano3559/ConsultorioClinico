@@ -15,8 +15,11 @@ import 'features/public/login_page.dart';
 import 'features/public/reset_password_page.dart';
 import 'features/public/request_appointment_page.dart';
 import 'features/internal/internal_shell.dart';
+import 'features/preconsulta/preconsulta_wizard_page.dart';
+import 'features/preconsulta/preconsulta_detail_page.dart';
 import 'state/auth_provider.dart';
 import 'state/clinic_provider.dart';
+import 'state/preconsulta_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +31,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ClinicProvider()),
+        ChangeNotifierProvider(create: (_) => PreconsultaProvider()),
       ],
       child: const ConsultorioClinicoApp(),
     ),
@@ -149,6 +153,21 @@ final _router = GoRouter(
       // Kiosco de auto-check-in: pantalla de la tablet en la recepción.
       path: '/kiosco',
       builder: (context, state) => const KioskPage(),
+    ),
+    // PreConsulta IA: asistente de captura + cuestionario + triage.
+    GoRoute(
+      path: '/preconsulta',
+      redirect: (context, state) =>
+          context.read<AuthProvider>().isLogged ? null : '/login',
+      builder: (context, state) => const PreconsultaWizardPage(),
+    ),
+    GoRoute(
+      path: '/preconsulta/:id',
+      redirect: (context, state) =>
+          context.read<AuthProvider>().isLogged ? null : '/login',
+      builder: (context, state) => PreconsultaDetailPage(
+        id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+      ),
     ),
     GoRoute(
       path: '/app',

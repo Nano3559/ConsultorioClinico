@@ -1,0 +1,37 @@
+/// Tipos compartidos por las capturas de la PreConsulta IA.
+///
+/// La captura web envía una secuencia de frames JPEG; la nativa, un video
+/// corto. En ambos casos el resultado es solo memoria: nada se guarda en disco
+/// ni se retiene en el servidor.
+library;
+
+/// Motivo por el que la cámara no está disponible.
+enum CapturaErrorKind { denied, noCamera, busy, notSupported, unknown }
+
+class CapturaException implements Exception {
+  const CapturaException(this.kind, this.message);
+
+  final CapturaErrorKind kind;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Resultado de una captura completa (frames o video, en base64).
+class ResultadoCaptura {
+  const ResultadoCaptura({
+    this.frames = const [],
+    this.video,
+    required this.fps,
+    required this.duracionSeg,
+  });
+
+  final List<String> frames;
+  final String? video;
+  final double fps;
+  final double duracionSeg;
+
+  bool get vacia => frames.isEmpty && (video == null || video!.isEmpty);
+  int get unidades => video != null ? 1 : frames.length;
+}

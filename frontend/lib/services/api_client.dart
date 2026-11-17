@@ -44,6 +44,19 @@
 //     POST /api/analizar-ecg (multipart, CSV de 12 derivaciones)
 //          -> { diagnostico_principal, confianza, desglose, bpm,
 //               causas, recomendaciones }
+//   PreConsulta IA (rPPG + rostro + cuestionario)
+//     GET  /api/preconsulta/consentimiento             -> catálogo
+//     POST /api/preconsulta                            -> preconsulta
+//     POST /api/preconsulta/:id/analizar               -> análisis
+//     PUT  /api/preconsulta/:id/respuestas             -> respuestas
+//     POST /api/preconsulta/:id/finalizar              -> sin captura
+//     GET  /api/preconsulta/:id                        -> detalle
+//     GET  /api/preconsulta/cita/:citaId               -> por cita
+//     GET  /api/preconsulta/cola                       -> cola del día
+//     GET  /api/preconsulta/metricas                   -> agregados
+//     GET  /api/preconsulta/paciente/:id/tendencias    -> tendencias
+//     PATCH /api/preconsulta/:id/revision              -> revisión clínica
+//     GET  /api/preconsulta/:id/eventos                -> auditoría
 // ============================================================================
 
 import 'dart:convert';
@@ -96,6 +109,7 @@ class ApiClient {
     Map<String, String>? query,
     String? token,
     Map<String, String>? extraHeaders,
+    Duration? timeout,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(
@@ -103,7 +117,7 @@ class ApiClient {
       );
       final res = await _client
           .get(uri, headers: _headers(token: token, extra: extraHeaders))
-          .timeout(ApiConfig.timeout);
+          .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
       return ApiResult.failure('Sin conexión con el servidor');
@@ -115,6 +129,7 @@ class ApiClient {
     Map<String, dynamic> body, {
     String? token,
     Map<String, String>? extraHeaders,
+    Duration? timeout,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path');
@@ -122,7 +137,7 @@ class ApiClient {
           .post(uri,
               headers: _headers(token: token, extra: extraHeaders),
               body: jsonEncode(body))
-          .timeout(ApiConfig.timeout);
+          .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
       return ApiResult.failure('Sin conexión con el servidor');
@@ -133,12 +148,13 @@ class ApiClient {
     String path,
     Map<String, dynamic> body, {
     String? token,
+    Duration? timeout,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path');
       final res = await _client
           .put(uri, headers: _headers(token: token), body: jsonEncode(body))
-          .timeout(ApiConfig.timeout);
+          .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
       return ApiResult.failure('Sin conexión con el servidor');
@@ -149,12 +165,13 @@ class ApiClient {
     String path,
     Map<String, dynamic> body, {
     String? token,
+    Duration? timeout,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$path');
       final res = await _client
           .patch(uri, headers: _headers(token: token), body: jsonEncode(body))
-          .timeout(ApiConfig.timeout);
+          .timeout(timeout ?? ApiConfig.timeout);
       return _parse(res);
     } catch (e) {
       return ApiResult.failure('Sin conexión con el servidor');
@@ -188,6 +205,159 @@ class ApiClient {
     return ApiResult.failure(
         'Respuesta inesperada del servidor', res.statusCode);
   }
+
+  // ==========================================================================
+  // PreConsulta IA
+  // ==========================================================================
+
+  /// Catálogo de consentimiento, secciones, preguntas y niveles de triage.
+  Future<ApiResult<Map<String, dynamic>>> preconsultaCatalogo({
+    String? token,
+    int? pacienteId,
+  }) =>
+      getJson(
+        '/preconsulta/consentimiento',
+        token: token,
+        query: pacienteId == null ? null : {'paciente_id': '$pacienteId'},
+      );
+
+  /// Crea la preconsulta (consentimiento ya aceptado) antes de la captura.
+  Future<ApiResult<Map<String, dynamic>>> preconsultaCrear({
+    required int pacienteId,
+    required String consentimientoVersion,
+    String? token,
+    int? citaId,
+    int? medicoId,
+    String canal = 'web',
+    String? motivo,
+  }) =>
+      postJson(
+        '/preconsulta',
+        {
+          'paciente_id': pacienteId,
+          'consentimiento_aceptado': true,
+          'consentimiento_version': consentimientoVersion,
+          'cita_id': ?citaId,
+          'medico_id': ?medicoId,
+          'canal': canal,
+          if (motivo != null && motivo.trim().isNotEmpty) 'motivo': motivo.trim(),
+        },
+        token: token,
+      );
+
+  /// Envía la captura (frames JPEG en web o video corto en nativo) al
+  /// microservicio de visión. El análisis puede tardar; el timeout es amplio
+  /// y el backend responde 502/504 si el servicio no está disponible.
+  Future<ApiResult<Map<String, dynamic>>> preconsultaAnalizar({
+    required int id,
+    required String token,
+    List<String>? frames,
+    String? video,
+    double? fps,
+    double? duracionSeg,
+    String? mime,
+  }) =>
+      postJson(
+        '/preconsulta/$id/analizar',
+        {
+          if (frames != null && frames.isNotEmpty) 'frames': frames,
+          if (video != null && video.isNotEmpty) 'video': video,
+          'fps': ?fps,
+          'duracion_seg': ?duracionSeg,
+          'mime': ?mime,
+        },
+        token: token,
+        timeout: const Duration(seconds: 90),
+      );
+
+  /// Guarda las respuestas del cuestionario y recalcula el triage.
+  Future<ApiResult<Map<String, dynamic>>> preconsultaRespuestas({
+    required int id,
+    required String token,
+    required List<Map<String, dynamic>> respuestas,
+  }) =>
+      putJson(
+        '/preconsulta/$id/respuestas',
+        {'respuestas': respuestas},
+        token: token,
+      );
+
+  /// Finaliza sin cámara: solo cuestionario (degradación honesta).
+  Future<ApiResult<Map<String, dynamic>>> preconsultaFinalizar({
+    required int id,
+    required String token,
+    required List<Map<String, dynamic>> respuestas,
+  }) =>
+      postJson(
+        '/preconsulta/$id/finalizar',
+        {'respuestas': respuestas},
+        token: token,
+      );
+
+  Future<ApiResult<Map<String, dynamic>>> preconsultaDetalle({
+    required int id,
+    required String token,
+  }) =>
+      getJson('/preconsulta/$id', token: token);
+
+  Future<ApiResult<Map<String, dynamic>>> preconsultaPorCita({
+    required int citaId,
+    required String token,
+  }) =>
+      getJson('/preconsulta/cita/$citaId', token: token);
+
+  Future<ApiResult<Map<String, dynamic>>> preconsultaCola({
+    required String token,
+    String? fecha,
+    int? nivel,
+    String? estado,
+    String? medicoId,
+  }) =>
+      getJson(
+        '/preconsulta/cola',
+        token: token,
+        query: {
+          if (fecha != null && fecha.isNotEmpty) 'fecha': fecha,
+          if (nivel != null) 'nivel': '$nivel',
+          if (estado != null && estado.isNotEmpty) 'estado': estado,
+          if (medicoId != null && medicoId.isNotEmpty) 'medico_id': medicoId,
+        },
+      );
+
+  Future<ApiResult<Map<String, dynamic>>> preconsultaMetricas({
+    required String token,
+    int dias = 7,
+  }) =>
+      getJson('/preconsulta/metricas', token: token, query: {'dias': '$dias'});
+
+  Future<ApiResult<Map<String, dynamic>>> preconsultaTendencias({
+    required int pacienteId,
+    required String token,
+    int limite = 10,
+  }) =>
+      getJson(
+        '/preconsulta/paciente/$pacienteId/tendencias',
+        token: token,
+        query: {'limite': '$limite'},
+      );
+
+  Future<ApiResult<Map<String, dynamic>>> preconsultaRevisar({
+    required int id,
+    required String token,
+    required int nivelRevisado,
+    String nota = '',
+  }) =>
+      patchJson(
+        '/preconsulta/$id/revision',
+        {'nivel_revisado': nivelRevisado, 'nota': nota},
+        token: token,
+      );
+
+  Future<ApiResult<Map<String, dynamic>>> preconsultaEventos({
+    required int id,
+    required String token,
+  }) =>
+      getJson('/preconsulta/$id/eventos', token: token);
 
   void dispose() => _client.close();
 }

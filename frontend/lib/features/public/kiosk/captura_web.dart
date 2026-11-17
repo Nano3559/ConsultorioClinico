@@ -40,8 +40,9 @@ class CapturaWebDirecta {
       // 1) Intento frontal (selfies). 2) Cualquier cámara disponible.
       try {
         stream = await _abrir({'facingMode': 'user'});
-      } on web.DOMException catch (e) {
-        if (e.name == 'OverconstrainedError' || e.name == 'NotFoundError') {
+      } catch (e) {
+        final nombre = _domErrorName(e);
+        if (nombre == 'OverconstrainedError' || nombre == 'NotFoundError') {
           stream = await _abrir(null);
         } else {
           rethrow;
@@ -69,9 +70,6 @@ class CapturaWebDirecta {
           ..append(video);
         return wrap;
       });
-    } on web.DOMException catch (e) {
-      await _cerrarStream(stream);
-      throw _mapearDom(e.name);
     } on TimeoutException {
       await _cerrarStream(stream);
       throw const KioskCameraException(
@@ -80,12 +78,25 @@ class CapturaWebDirecta {
       );
     } on KioskCameraException {
       rethrow;
-    } catch (_) {
+    } catch (e) {
       await _cerrarStream(stream);
+      final nombre = _domErrorName(e);
+      if (nombre.isNotEmpty) throw _mapearDom(nombre);
       throw const KioskCameraException(
         KioskCameraError.notSupported,
         'Este navegador no permite usar la cámara. Prueba en Chrome.',
       );
+    }
+  }
+
+  /// Extrae el `name` de un DOMException sin chequeos de tipo JS interop.
+  String _domErrorName(Object error) {
+    try {
+      final dynamic dom = error;
+      final dynamic nombre = dom.name;
+      return nombre is String ? nombre : '';
+    } catch (_) {
+      return '';
     }
   }
 
@@ -196,10 +207,11 @@ class CapturaWebDirecta {
   /// Libera la cámara.
   Future<void> liberar() async {
     try {
-      final src = _video?.srcObject;
+      final dynamic src = _video?.srcObject;
       _video?.srcObject = null;
-      if (src is web.MediaStream) {
-        for (final track in src.getTracks().toDart) {
+      if (src != null) {
+        final stream = src as web.MediaStream;
+        for (final track in stream.getTracks().toDart) {
           track.stop();
         }
       }

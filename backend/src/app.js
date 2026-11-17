@@ -30,7 +30,9 @@ app.use(
       return callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    // `x-kiosk-key` la envía el kiosco al sincronizar plantillas biométricas;
+    // sin este header el navegador bloquea la petición en el preflight.
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-kiosk-key'],
     maxAge: 86400,
   })
 );
@@ -60,7 +62,8 @@ app.get('/', (req, res) => {
       reportes: '/api/reportes',
       dashboard: '/api/dashboard',
       kiosco: '/api/kiosco',
-      vision: '/api/vision'
+      vision: '/api/vision',
+      preconsulta: '/api/preconsulta'
     }
   });
 });
@@ -85,6 +88,7 @@ app.use('/api/reportes', require('./routes/reporteRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/kiosco', require('./routes/kioscoRoutes'));
 app.use('/api/vision', require('./routes/visionRoutes'));
+app.use('/api/preconsulta', require('./routes/preconsultaRoutes'));
 
 // Health check (info mínima, sin datos sensibles)
 app.get('/api/health', (req, res) => {

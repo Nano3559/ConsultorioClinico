@@ -13,6 +13,9 @@ import '../doctor_panel_page.dart';
 import '../my_schedule_page.dart';
 import '../patient_my_appointments_page.dart';
 import '../ecg/ecg_page.dart';
+import '../../preconsulta/preconsulta_queue_page.dart';
+import '../../preconsulta/preconsulta_metrics_page.dart';
+import '../../preconsulta/preconsulta_paciente_page.dart';
 
 /// Módulo de navegación del sistema interno. Cada módulo pertenece a un grupo
 /// para organizarlo en el sidebar web y el drawer móvil.
@@ -46,18 +49,21 @@ List<NavModule> navModulesFor(UserRole role, {bool esCardiologo = false}) {
       return const [
         NavModule('dashboard', 'Dashboard', Icons.dashboard_outlined, kGroupPrincipal, _dashboard),
         NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
+        NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupClinico, _preconsultaCola),
         NavModule('agenda', 'Agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
         NavModule('citas', 'Citas', Icons.event_note_outlined, kGroupClinico, _citas),
         NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
         NavModule('medicos', 'Médicos', Icons.medical_services_outlined, kGroupPersonas, _medicos),
         NavModule('pagos', 'Pagos', Icons.payments_outlined, kGroupFinanzas, _pagos),
         NavModule('reportes', 'Reportes', Icons.bar_chart_outlined, kGroupAnalisis, _reportes),
+        NavModule('preconsultaMetricas', 'Métricas IA', Icons.insights_outlined, kGroupAnalisis, _preconsultaMetricas),
         NavModule('configuracion', 'Configuración', Icons.settings_outlined, kGroupSistema, _settings),
       ];
     case UserRole.recepcion:
       return const [
         NavModule('agenda', 'Agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
         NavModule('citas', 'Citas', Icons.event_note_outlined, kGroupClinico, _citas),
+        NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupClinico, _preconsultaCola),
         NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
         NavModule('pagos', 'Pagos', Icons.payments_outlined, kGroupFinanzas, _pagos),
       ];
@@ -65,9 +71,11 @@ List<NavModule> navModulesFor(UserRole role, {bool esCardiologo = false}) {
       return [
         const NavModule('panel', 'Mi panel', Icons.medical_services_outlined, kGroupPrincipal, _panel),
         const NavModule('consulta', 'Consulta', Icons.medical_information_outlined, kGroupClinico, _consulta),
+        const NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupClinico, _preconsultaCola),
         const NavModule('miagenda', 'Mi agenda', Icons.calendar_view_day_outlined, kGroupClinico, _agenda),
         const NavModule('mishorarios', 'Mis horarios', Icons.schedule_outlined, kGroupClinico, _misHorarios),
         const NavModule('pacientes', 'Pacientes', Icons.group_outlined, kGroupPersonas, _pacientes),
+        const NavModule('preconsultaMetricas', 'Métricas IA', Icons.insights_outlined, kGroupAnalisis, _preconsultaMetricas),
         // Módulo exclusivo del médico cardiólogo. Se abre como una pestaña más
         // dentro de `/app` (mismo sidebar/topbar), no como ruta aparte.
         if (esCardiologo)
@@ -81,6 +89,7 @@ List<NavModule> navModulesFor(UserRole role, {bool esCardiologo = false}) {
       ];
     case UserRole.paciente:
       return const [
+        NavModule('preconsulta', 'PreConsulta IA', Icons.auto_awesome_outlined, kGroupPrincipal, _preconsultaPaciente),
         NavModule('miscitas', 'Mis citas', Icons.event_outlined, kGroupPrincipal, _myAppointments),
         NavModule('solicitar', 'Solicitar cita', Icons.add_circle_outline, kGroupPrincipal, _myAppointments, route: '/solicitar-cita'),
       ];
@@ -106,3 +115,6 @@ Widget _panel(BuildContext _) => const DoctorPanelPage();
 Widget _misHorarios(BuildContext _) => const MySchedulePage();
 Widget _myAppointments(BuildContext _) => const PatientMyAppointmentsPage();
 Widget _ecg(BuildContext _) => const CardioEcgPage();
+Widget _preconsultaCola(BuildContext _) => const PreconsultaQueuePage();
+Widget _preconsultaMetricas(BuildContext _) => const PreconsultaMetricsPage();
+Widget _preconsultaPaciente(BuildContext _) => const PreconsultaPacientePage();

@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require('express-validator');
+const config = require('../config/config');
 const { sendError } = require('../utils/helpers');
 const { ESTADOS_CITA, DIAS_SEMANA } = require('../utils/constants');
 
@@ -48,6 +49,10 @@ const medicoIdParamValidation = [
 
 const pacienteIdParamValidation = [
   param('pacienteId').isInt({ min: 1 }).withMessage('El ID del paciente debe ser un número entero válido'),
+];
+
+const citaIdParamValidation = [
+  param('citaId').isInt({ min: 1 }).withMessage('El ID de la cita debe ser un número entero válido'),
 ];
 
 const especialidadIdParamValidation = [
@@ -208,6 +213,155 @@ const buscarCedulaValidation = [
     .withMessage('La cédula debe tener entre 5 y 20 caracteres'),
 ];
 
+// --- PreConsulta IA ---------------------------------------------------------
+// La captura llega como secuencia de frames JPEG (web) o como video corto
+// (Android). Nunca se aceptan ambos. El límite total lo impone express.json
+// (25 MB); aquí se valida la forma y el tamaño por pieza para dar un 422 claro.
+
+const PRECONSULTA_CANALES = ['web', 'android', 'recepcion', 'tablet'];
+const PRECONSULTA_ESTADOS = [
+  'pendiente',
+  'analizando',
+  'completada',
+  'fallida',
+  'revisada',
+  'cancelada',
+];
+
+const preconsultaCreateValidation = [
+  body('paciente_id').isInt({ min: 1 }).withMessage('El paciente es obligatorio'),
+  body('cita_id').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('La cita debe ser un ID válido'),
+  body('medico_id').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('El médico debe ser un ID válido'),
+  body('motivo')
+    .optional({ values: 'falsy' })
+    .isLength({ min: 2, max: 500 })
+    .withMessage('El motivo debe tener entre 2 y 500 caracteres')
+    .customSanitizer(sanitizarTexto),
+  body('canal').optional().isIn(PRECONSULTA_CANALES).withMessage(`Canal inválido. Valores: ${PRECONSULTA_CANALES.join(', ')}`),
+  body('consentimiento_aceptado')
+    .isBoolean()
+    .withMessage('Debe indicar si acepta el consentimiento')
+    .custom((valor) => valor === true)
+    .withMessage('Debe aceptar el consentimiento informado para continuar'),
+  body('consentimiento_version')
+    .isString()
+    .withMessage('La versión del consentimiento es obligatoria')
+    .trim()
+    .isLength({ min: 1, max: 40 })
+    .withMessage('Versión de consentimiento inválida'),
+];
+
+const preconsultaAnalizarValidation = [
+  body('frames')
+    .optional()
+    .isArray({ max: 600 })
+    .withMessage('La secuencia no puede superar 600 fotogramas'),
+  body('video')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('El video debe ser base64')
+    .isLength({ max: config.preconsulta.maxPayloadBytes })
+    .withMessage('El video supera el límite de 4 MB del servidor. Acorte la grabación.'),
+  body('fps').optional().isFloat({ min: 1, max: 120 }).withMessage('fps inválido'),
+  body('timestamps')
+    .optional()
+    .isArray({ max: 600 })
+    .withMessage('timestamps no puede superar 600 valores'),
+  body('duracion_seg')
+    .optional()
+    .isFloat({ min: 0, max: 180 })
+    .withMessage('Duración de captura inválida'),
+  body('espejado').optional().isBoolean().withMessage('espejado debe ser booleano'),
+  body('identidad').optional().isBoolean().withMessage('identidad debe ser booleano'),
+  body().custom((_valor, { req }) => {
+    const frames = req.body.frames;
+    const video = req.body.video;
+    const hayFrames = Array.isArray(frames) && frames.length > 0;
+    const hayVideo = typeof video === 'string' && video.length > 0;
+    if (!hayFrames && !hayVideo) {
+      throw new Error('Debe enviar la secuencia de fotogramas o un video');
+    }
+    if (hayFrames && hayVideo) {
+      throw new Error('Envíe fotogramas o video, no ambos');
+    }
+    if (hayFrames) {
+      if (frames.length < 60) {
+        throw new Error('La captura debe tener al menos 60 fotogramas');
+      }
+      let total = 0;
+      for (let i = 0; i < frames.length; i++) {
+        const frame = frames[i];
+        if (typeof frame !== 'string' || frame.length === 0) {
+          throw new Error(`El fotograma ${i + 1} está vacío o no es base64`);
+        }
+        if (frame.length > config.preconsulta.maxFrameBytes) {
+          throw new Error(`El fotograma ${i + 1} supera el tamaño máximo permitido`);
+        }
+        total += frame.length;
+        if (total > config.preconsulta.maxPayloadBytes) {
+          throw new Error(
+            'La captura supera el límite de 4 MB del servidor. Repita la captura con el rostro más cerca o acorte la duración.'
+          );
+        }
+      }
+    }
+    return true;
+  }),
+];
+
+const preconsultaRespuestasValidation = [
+  body('respuestas')
+    .isArray({ max: 25 })
+    .withMessage('Las respuestas deben ser una lista de hasta 25 preguntas')
+    .custom((lista) => {
+      const codigos = new Set();
+      for (const item of lista) {
+        if (!item || typeof item !== 'object') return false;
+        if (typeof item.codigo !== 'string' || item.codigo.length === 0) return false;
+        if (item.codigo.length > 60) return false;
+        if (codigos.has(item.codigo)) return false;
+        codigos.add(item.codigo);
+      }
+      return true;
+    })
+    .withMessage('Formato de respuestas inválido o pregunta duplicada'),
+];
+
+const preconsultaRevisionValidation = [
+  body('nivel_revisado')
+    .isInt({ min: 1, max: 5 })
+    .withMessage('El nivel revisado debe estar entre 1 y 5'),
+  body('nota')
+    .optional({ values: 'falsy' })
+    .isLength({ max: 1000 })
+    .withMessage('La nota no puede superar 1000 caracteres')
+    .customSanitizer(sanitizarTexto),
+];
+
+const preconsultaFinalizarValidation = [
+  body('motivo')
+    .optional({ values: 'falsy' })
+    .isLength({ max: 300 })
+    .withMessage('El motivo no puede superar 300 caracteres')
+    .customSanitizer(sanitizarTexto),
+];
+
+const preconsultaColaQueryValidation = [
+  query('fecha').optional().isDate().withMessage('La fecha no es válida (YYYY-MM-DD)'),
+  query('estado')
+    .optional()
+    .isIn(PRECONSULTA_ESTADOS)
+    .withMessage(`Estado inválido. Valores: ${PRECONSULTA_ESTADOS.join(', ')}`),
+  query('nivel').optional().isInt({ min: 1, max: 5 }).withMessage('El nivel debe estar entre 1 y 5'),
+  query('limit').optional().isInt({ min: 1, max: 200 }).withMessage('limit debe estar entre 1 y 200'),
+];
+
+const preconsultaMetricasQueryValidation = [
+  query('dias').optional().isInt({ min: 1, max: 365 }).withMessage('dias debe estar entre 1 y 365'),
+  query('desde').optional().isDate().withMessage('La fecha desde no es válida (YYYY-MM-DD)'),
+  query('hasta').optional().isDate().withMessage('La fecha hasta no es válida (YYYY-MM-DD)'),
+];
+
 module.exports = {
   validate,
   passwordStrongValidation,
@@ -215,6 +369,7 @@ module.exports = {
   idParamValidation,
   medicoIdParamValidation,
   pacienteIdParamValidation,
+  citaIdParamValidation,
   especialidadIdParamValidation,
   fechaParamValidation,
   citaValidation,
@@ -228,4 +383,13 @@ module.exports = {
   paqueteRostroValidation,
   evaluarGestoValidation,
   buscarCedulaValidation,
+  preconsultaCreateValidation,
+  preconsultaAnalizarValidation,
+  preconsultaRespuestasValidation,
+  preconsultaRevisionValidation,
+  preconsultaFinalizarValidation,
+  preconsultaColaQueryValidation,
+  preconsultaMetricasQueryValidation,
+  PRECONSULTA_CANALES,
+  PRECONSULTA_ESTADOS,
 };

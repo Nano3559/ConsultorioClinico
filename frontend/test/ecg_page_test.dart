@@ -101,7 +101,7 @@ void main() {
     );
     // El resto de módulos del médico se conserva (incluye 'Mis horarios').
     expect(cardio.take(5).map((m) => m.key).toList(),
-        ['panel', 'consulta', 'miagenda', 'mishorarios', 'pacientes']);
+        ['panel', 'consulta', 'preconsulta', 'miagenda', 'mishorarios']);
   });
 
   test('Ningún otro rol ve el módulo de ECG con IA', () {

@@ -147,4 +147,46 @@ module.exports = {
     // persona: rostros/{cedula}_{nombre-slug}/pose_*.jpg (ver migración 013).
     rostroBucket: process.env.KIOSCO_ROSTRO_BUCKET || 'rostros',
   },
+
+  // PreConsulta IA: triage asistido multimodal (migración 015).
+  // Límites de captura, rate limiting y timeout del análisis. Todo
+  // configurable sin recompilar el frontend.
+  preconsulta: {
+    // Interruptor maestro: si es false, la API responde 503 en las rutas de
+    // creación/análisis (las lecturas siguen disponibles para no ocultar
+    // resultados históricos).
+    enabled: process.env.PRECONSULTA_ENABLED !== 'false',
+
+    // Versión del consentimiento informado. Cambiarla obliga a los
+    // pacientes a aceptar de nuevo antes de una nueva pre-consulta.
+    consentVersion: process.env.PRECONSULTA_CONSENT_VERSION || '2026-11',
+
+    // Captura: 60-600 fotogramas; 10-90 s. Coincide con el validador del
+    // backend y con los límites del microservicio de visión.
+    minFrames: Number(process.env.PRECONSULTA_MIN_FRAMES) || 60,
+    maxFrames: Number(process.env.PRECONSULTA_MAX_FRAMES) || 600,
+    // Presupuesto de payload compatible con Vercel Functions (4.5 MB):
+    // se apunta a 4.0 MB de base64 para dejar margen al JSON y a los
+    // encabezados. El cliente reduce resolución/fps para cumplirlo.
+    maxFrameBytes: Number(process.env.PRECONSULTA_MAX_FRAME_BYTES) || 600000,
+    maxPayloadBytes: Number(process.env.PRECONSULTA_MAX_PAYLOAD_BYTES) || 4000000,
+    maxVideoBytes: Number(process.env.PRECONSULTA_MAX_VIDEO_BYTES) || 3800000,
+    minSegundos: Number(process.env.PRECONSULTA_MIN_SEGUNDOS) || 10,
+    maxSegundos: Number(process.env.PRECONSULTA_MAX_SEGUNDOS) || 120,
+
+    // Timeout del análisis (rPPG + FaceMesh sobre hasta 600 frames).
+    analysisTimeoutMs: Number(process.env.PRECONSULTA_TIMEOUT_MS) || 90000,
+
+    // Rate limit por IP (ventana de 15 minutos). El análisis es la operación
+    // cara; la creación y las respuestas tienen límites más holgados.
+    analysisRateMax: Number(process.env.PRECONSULTA_RATE_MAX) || 12,
+    createRateMax: Number(process.env.PRECONSULTA_CREATE_RATE_MAX) || 30,
+    answersRateMax: Number(process.env.PRECONSULTA_ANSWERS_RATE_MAX) || 40,
+
+    // Sal para el hash de IP del consentimiento (nunca se guarda la IP).
+    ipSalt: process.env.PRECONSULTA_IP_SALT || '',
+
+    // Endpoint del microservicio de visión.
+    visionEndpoint: '/api/preconsulta/analizar',
+  },
 };

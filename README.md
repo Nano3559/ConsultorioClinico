@@ -1,6 +1,6 @@
 # 🏥 ConsultorioClínico
 
-Sistema integral de control médico y clínico con **IA (Visión por Computadora)**. Plataforma **full-stack** que gestiona consultorios médicos: agenda de citas, historias clínicas, pagos, médicos, pacientes, especialidades, reportes, panel administrativo y **kiosco de auto-check-in con reconocimiento facial** (OpenCV + LBPH) — disponible como **web** y **móvil (Android)**.
+Sistema integral de control médico y clínico con **IA (Visión por Computadora)**. Plataforma **full-stack** que gestiona consultorios médicos: agenda de citas, historias clínicas, pagos, médicos, pacientes, especialidades, reportes, panel administrativo, **kiosco de auto-check-in con reconocimiento facial** (OpenCV + LBPH) y **PreConsulta IA** (rPPG + análisis facial + triage explicable) — disponible como **web** y **móvil (Android)**.
 
 ---
 
@@ -15,12 +15,13 @@ Sistema integral de control médico y clínico con **IA (Visión por Computadora
 7. [Bases de datos](#-bases-de-datos)
 8. [Despliegue](#-despliegue)
 9. [Servicio de correo](#-servicio-de-correo)
-10. [Cuentas de demostración](#-cuentas-de-demostración)
-11. [Endpoints de la API](#-endpoints-de-la-api)
-12. [Tests](#-tests)
-13. [Agentes de desarrollo (OpenCode: GLM 5.3 · DeepSeek v4 Pro · GPT 5.6 Luna)](#-agentes-de-desarrollo-opencode-glm-53--deepseek-v4-pro--gpt-56-luna)
-14. [HITO 4: Integración de Predicción y Diagnóstico de ECG](#hito-4-integración-de-predicción-y-diagnóstico-de-ecg)
-15. [Notas de seguridad](#-notas-de-seguridad)
+10. [PreConsulta IA](#-preconsulta-ia)
+11. [Cuentas de demostración](#-cuentas-de-demostración)
+12. [Endpoints de la API](#-endpoints-de-la-api)
+13. [Tests](#-tests)
+14. [Agentes de desarrollo (OpenCode: GLM 5.3 · DeepSeek v4 Pro · GPT 5.6 Luna)](#-agentes-de-desarrollo-opencode-glm-53--deepseek-v4-pro--gpt-56-luna)
+15. [HITO 4: Integración de Predicción y Diagnóstico de ECG](#hito-4-integración-de-predicción-y-diagnóstico-de-ecg)
+16. [Notas de seguridad](#-notas-de-seguridad)
 
 > 🖥️ **¿PC nuevo?** Sigue la guía paso a paso completa (instalar Git, Node,
 > Flutter, clonar, configurar y correr):
@@ -62,13 +63,15 @@ Sistema integral de control médico y clínico con **IA (Visión por Computadora
 - **Supabase (PostgreSQL)** — base de datos principal del backend (migraciones SQL, RLS).
 - **Firebase Firestore** — base de datos principal del frontend (autenticación, reglas RBAC, datos en tiempo real).
 
-### Visión por Computadora (Kiosco de auto-check-in)
+### Visión por Computadora (kiosco + PreConsulta IA)
 | Tecnología | Uso |
 |---|---|
-| **Python** `3.10+` | Microservicio `backend/vision/` |
-| **OpenCV** (`opencv-contrib-python`) | Detección con **Haar Cascade** + reconocimiento con **LBPH** |
+| **Python** `3.10+` (3.11/3.12 recomendado) | Microservicio `backend/vision/` |
+| **OpenCV** (`opencv-contrib-python`) | Detección con **Haar Cascade / YuNet** + reconocimiento **SFace** |
+| **MediaPipe FaceMesh** | Mallas faciales para liveness y análisis de PreConsulta IA |
+| **rPPG (POS + CHROM)** | Estimación de pulso, HRV y respiración a partir de video |
 | **FastAPI** | API del microservicio de visión |
-| **NumPy** | Procesamiento de imágenes y descriptores faciales |
+| **NumPy** | Procesamiento de señales, imágenes y descriptores faciales |
 | **pgvector** (Supabase) | Columna `pacientes.rostro_embedding` de tipo `vector(128)` |
 
 ### Autenticación
@@ -116,7 +119,8 @@ ConsultorioClinico/
 │   │   ├── services/            # api_client.dart + firestore_service.dart
 │   │   ├── state/               # clinic_provider.dart + auth_provider.dart
 │   │   └── features/
-│   │       ├── public/          # landing, login, solicitar cita
+│   │       ├── public/          # landing, login, solicitar cita, kiosco
+│   │       ├── preconsulta/     # PreConsulta IA: wizard, cola, detalle, métricas
 │   │       └── internal/        # dashboard, pacientes, médicos, agenda,
 │   │                            # historia clínica, pagos, reportes, configuración
 │   ├── functions/               # Firebase Cloud Functions (correo)
@@ -141,14 +145,16 @@ ConsultorioClinico/
 │   │   ├── migrate.js           # aplica migraciones SQL
 │   │   ├── seed.js              # siembra usuarios por roles
 │   │   ├── seed_ficticio.js     # siembra datos demo vía API
-│   │   └── migrations/          # 12 migraciones SQL/PostgreSQL
+│   │   └── migrations/          # 15 migraciones SQL/PostgreSQL
 │   ├── vision/                  # Módulo de visión por computadora (Python)
-│   │   ├── face_service.py      # detección (Haar) y reconocimiento (LBPH)
+│   │   ├── face_service.py      # detección (Haar/YuNet) y reconocimiento (SFace)
+│   │   ├── preconsulta_service.py # pipeline rPPG + FaceMesh de PreConsulta IA
+│   │   ├── preconsulta_metrics.py # matemática pura (HR/HRV/respiración/rostro)
 │   │   ├── capture_faces.py     # registro de rostros (cámara web)
-│   │   ├── train_model.py       # entrenamiento del modelo LBPH
-│   │   ├── main.py              # FastAPI (verificar/registrar rostro)
+│   │   ├── train_model.py       # entrenamiento del modelo local
+│   │   ├── main.py              # FastAPI (kiosco + preconsulta)
 │   │   └── requirements.txt
-│   └── test/                    # suite QA de autenticación
+│   └── test/                    # suite QA (auth, kiosco, visión, preconsulta)
 ├── mail-service/         # Servicio de correo propio (Vercel + Gmail SMTP)
 │   └── api/
 │       ├── _lib/mail.js         # plantillas HTML
@@ -207,7 +213,7 @@ Ramas locales y remotas del repositorio `https://github.com/Nano3559/Consultorio
 |---|---|---|
 | **Git** | 2.40+ | https://git-scm.com/downloads |
 | **Flutter** | 3.47+ (Dart 3.13+) | https://docs.flutter.dev/get-started/install |
-| **Python** | 3.10+ (solo para el kiosco de visión) | https://www.python.org/downloads/ |
+| **Python** | 3.11/3.12 (microservicio de visión y PreConsulta IA) | https://www.python.org/downloads/ |
 | **Node.js** | 22.x (LTS) | https://nodejs.org |
 | **npm** | 10+ | (incluido con Node) |
 | **Android Studio** | para build de APK y licencias SDK | https://developer.android.com/studio |
@@ -252,6 +258,13 @@ Edita `backend/.env` con tus credenciales:
 | `VISION_CONFIDENCE_THRESHOLD` | Umbral LBPH (80): coincidencia = confianza ≤ umbral |
 | `VISION_CAPTURE_COUNT` | Fotos a capturar por paciente (20) |
 | `VISION_CASCADE_PATH` | Clasificador Haar (`haarcascade_frontalface_default.xml`) |
+| `PRECONSULTA_ENABLED` | Activa/desactiva crear/analizar preconsultas (`true`/`false`) |
+| `PRECONSULTA_CONSENT_VERSION` | Versión del consentimiento informado (defecto `2026-11`) |
+| `PRECONSULTA_MIN_FRAMES` / `MAX_FRAMES` | Límites de fotogramas por captura (60 / 600) |
+| `PRECONSULTA_MAX_PAYLOAD_BYTES` | Presupuesto de payload en base64 (~4 MB) |
+| `PRECONSULTA_TIMEOUT_MS` | Timeout del análisis rPPG + FaceMesh (90 s) |
+| `PRECONSULTA_RATE_MAX` | Análisis por IP cada 15 min (12) |
+| `PRECONSULTA_IP_SALT` | Sal del hash de IP del consentimiento |
 
 ### 3. Configuración Firebase del frontend
 Las credenciales de Firebase web y Android están en `frontend/lib/firebase_options.dart`
@@ -330,7 +343,7 @@ npm run vercel-build
 
 ### Supabase (PostgreSQL) — backend
 Base de datos principal de la API. Esquema gestionado mediante **migraciones SQL**
-en `backend/db/migrations/` (11 aplicadas: `001`…`010`):
+en `backend/db/migrations/` (15 migraciones: `001`…`015`):
 
 - Tablas: `usuarios`, `pacientes`, `medicos`, `horarios`, `citas`, `consultas`,
   `pagos`, `especialidades`, `sesiones`, `notificaciones`, `intentos_acceso`.
@@ -338,15 +351,18 @@ en `backend/db/migrations/` (11 aplicadas: `001`…`010`):
 - Roles (`enum`): `admin`, `medico`, `recepcion`, `paciente`.
 - Estados de cita: `programada`, `confirmada`, `en_curso`, `completada`, `cancelada`, `no_show`.
 - Estados de pago: `pendiente`, `pagado`, `cancelado`. Métodos: `efectivo`, `tarjeta`, `transferencia`, `otro`.
-- Columnas del kiosco (migración **`011`**, diseñada — pendiente de aplicar en KIO-04):
-  `pacientes.rostro_embedding` (vector(128)), `citas.confirmada_por_kiosco` (boolean)
-  y `citas.hora_checkin` (timestamp).
+- Columnas del kiosco (migraciones **`011`–`014`**): `pacientes.rostro_embedding`
+  (vector(128)), `citas.confirmada_por_kiosco`, `citas.hora_checkin` y seguridad
+  de intentos.
+- PreConsulta IA (migración **`015`**): `modelos_ia`,
+  `consentimientos_preconsulta`, `preconsultas`, `preconsulta_respuestas`,
+  `preconsulta_revisiones` y `preconsulta_eventos` (sin imágenes, con auditoría).
 - Protecciones a nivel de BD: índice único antidescuento (`uq_citas_medico_fecha_hora`),
   triggers de integridad, revocación de sesión vía `sesiones.token_id` y auditoría de login.
 
 ```bash
 cd backend
-npm run db:migrate        # aplica las 12 migraciones
+npm run db:migrate        # aplica las 15 migraciones
 npm run db:seed           # usuarios demo por roles
 ```
 
@@ -491,6 +507,41 @@ Endpoints:
 
 ---
 
+## 🧠 PreConsulta IA
+
+Módulo de **triage asistido** que combina visión por computadora y cuestionario
+clínico para priorizar la atención. El paciente (o recepción) completa un flujo
+de 5 pasos en ~1–2 minutos:
+
+1. **Consentimiento** informado y versionado (auditado con hash de IP).
+2. **Contexto**: cita/motivo y datos del paciente.
+3. **Captura** de 20–30 s con la cámara frontal (12,5 fps, 288 px, JPEG q0,5).
+4. **Cuestionario** clínico validado (síntomas, dolor, antecedentes).
+5. **Resultado**: nivel de prioridad 1–5 con **motivos ponderados**,
+   banderas, recomendaciones y confianza del dato.
+
+Pipeline:
+
+- **rPPG (POS + CHROM)** → pulso, HRV (RMSSD/SDNN/pNN50) y respiración.
+- **MediaPipe FaceMesh** → índices de dolor, estrés, fatiga, parpadeo y pose.
+- **Calidad de captura** 0–100 (cobertura, luz, nitidez, estabilidad).
+- **Triage determinista en Node**: pesos explicables + techos por banderas
+  rojas. `requiere_revision` permanece activo hasta que médico/admin revisa.
+- **Identidad opcional** (SFace), nunca bloqueante.
+
+Privacidad: la captura se procesa **en memoria**; no se guardan imágenes ni
+video. Solo persisten métricas derivadas, respuestas, consentimiento y
+auditoría. **No es diagnóstico** ni mide SpO₂/presión arterial.
+
+Interfaz:
+- Paciente: inicio, explicación, privacidad e historial con tendencias.
+- Recepción/médico: cola priorizada con filtros por fecha, nivel y estado.
+- Médico/admin: detalle, revisión del nivel y métricas agregadas 7/30/90 días.
+
+Documentación completa: **[`docs/PRECONSULTA.md`](docs/PRECONSULTA.md)**.
+
+---
+
 ## 👤 Cuentas de demostración
 
 El login del frontend autentica contra **Firebase Auth** y lee el rol desde **Firestore**.
@@ -551,6 +602,15 @@ La API autenticada requiere cabecera `Authorization: Bearer <JWT>`.
 | POST | `/api/kiosco/verificar-rostro` | `optionalAuth` + rate limit | Verifica el rostro (visión) y devuelve paciente + cita del día |
 | POST | `/api/kiosco/confirmar-cita` | admin, recepcion | Confirma la cita como check-in por kiosco |
 | POST | `/api/vision/registrar-rostro/:pacienteId` | admin, recepcion | Registra el rostro y reentrena el modelo LBPH |
+| GET | `/api/preconsulta/consentimiento` | autenticado | Consentimiento y catálogo del cuestionario |
+| POST | `/api/preconsulta` | paciente, recepción, médico, admin | Crea una PreConsulta IA |
+| POST | `/api/preconsulta/:id/analizar` | propietario / staff | Analiza la captura (rPPG + rostro) |
+| PUT | `/api/preconsulta/:id/respuestas` | propietario / staff | Guarda el cuestionario |
+| POST | `/api/preconsulta/:id/finalizar` | propietario / staff | Cierra sin captura (solo cuestionario) |
+| GET | `/api/preconsulta/:id` | propietario / staff | Detalle y explicabilidad del triage |
+| GET | `/api/preconsulta/cola` | recepción, médico, admin | Cola priorizada con filtros |
+| GET | `/api/preconsulta/metricas` | recepción, médico, admin | Métricas agregadas (7/30/90 días) |
+| PATCH | `/api/preconsulta/:id/revision` | médico, admin | Revisión clínica del nivel sugerido |
 | GET | `/api/test/db` | **solo dev** + admin | Diagnóstico de BD |
 
 ---
@@ -571,6 +631,15 @@ endpoints protegidos, usando un mock de Supabase en memoria
 cd frontend
 flutter test
 ```
+
+### Visión y PreConsulta IA
+```bash
+cd backend/vision
+python -m unittest test_preconsulta_metrics
+```
+Pruebas puras de la matemática de rPPG/HRV/respiración, índices faciales y
+calidad de captura (no requieren MediaPipe instalado). La suite del backend
+(`backend/test/preconsulta.test.js`) cubre API, RBAC, validaciones y triage.
 
 ---
 
@@ -771,6 +840,9 @@ Real: PVC                22           18            15              5         38
 - `docs/STACK.md` — stack tecnológico en detalle y decisiones técnicas.
 - `docs/AGENTES.md` — agentes (GLM 5.3, DeepSeek v4 Pro, GPT 5.6 Luna) y skills de OpenCode.
 - `docs/API.md` — Documentación de endpoints de la API.
+- `docs/PRECONSULTA.md` - **PreConsulta IA**: flujo clínico, pipeline de visión, reglas de triage, privacidad y configuración.
+- `errores.md` - **bitácora de errores, soluciones y prompts** del desarrollo (raíz del repo).
+- `docs/PROBAR_PRECONSULTA.md` - **cómo levantar y probar la PreConsulta IA en local** (Supabase, Firebase, visión y Flutter).
 - `docs/DEPLOY.md` — Guía de despliegue en Vercel.
 - `docs/TEAM.md` — Equipo y roles de trabajo.
 - `docs/SPRINT.md` — Plan de trabajo (Trello).
