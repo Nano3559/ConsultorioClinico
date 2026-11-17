@@ -11,21 +11,20 @@ void main() {
   Map<String, dynamic> respuestaFake({
     String diagnostico = 'Ritmo Sinusal Normal',
     double confianza = 93.5,
-  }) =>
-      {
-        'diagnostico_principal': diagnostico,
-        'confianza': confianza,
-        'desglose': {
-          'Ritmo Sinusal Normal': 93.5,
-          'Fibrilación Auricular (AFib)': 2.0,
-          'Isquemia / Infarto Agudo': 1.5,
-          'Bloqueo de Rama Izquierda (LBBB)': 1.0,
-          'Contracción Ventricular Prematura (PVC)': 2.0,
-        },
-        'bpm': '72 BPM (Ritmo Regular)',
-        'causas': ['Conducción eléctrica cardíaca fisiológica y estable.'],
-        'recomendaciones': ['Chequeos cardiológicos preventivos anuales.'],
-      };
+  }) => {
+    'diagnostico_principal': diagnostico,
+    'confianza': confianza,
+    'desglose': {
+      'Ritmo Sinusal Normal': 93.5,
+      'Fibrilación Auricular (AFib)': 2.0,
+      'Isquemia / Infarto Agudo': 1.5,
+      'Bloqueo de Rama Izquierda (LBBB)': 1.0,
+      'Contracción Ventricular Prematura (PVC)': 2.0,
+    },
+    'bpm': '72 BPM (Ritmo Regular)',
+    'causas': ['Conducción eléctrica cardíaca fisiológica y estable.'],
+    'recomendaciones': ['Chequeos cardiológicos preventivos anuales.'],
+  };
 
   test('EcgAnalysis.fromApi parsea la respuesta del servicio de IA', () {
     final r = EcgAnalysis.fromApi(respuestaFake());
@@ -36,7 +35,10 @@ void main() {
     expect(r.desglose['Contracción Ventricular Prematura (PVC)'], 2.0);
     expect(r.bpm, '72 BPM (Ritmo Regular)');
     expect(r.causas, hasLength(1));
-    expect(r.recomendaciones.first, 'Chequeos cardiológicos preventivos anuales.');
+    expect(
+      r.recomendaciones.first,
+      'Chequeos cardiológicos preventivos anuales.',
+    );
     expect(r.esNormal, isTrue);
     expect(r.esUrgencia, isFalse);
   });
@@ -49,7 +51,9 @@ void main() {
     expect(isquemia.esUrgencia, isTrue);
     expect(isquemia.esNormal || isquemia.esUrgencia, isTrue);
 
-    final afib = EcgAnalysis.fromApi(respuestaFake(diagnostico: 'Fibrilación Auricular (AFib)'));
+    final afib = EcgAnalysis.fromApi(
+      respuestaFake(diagnostico: 'Fibrilación Auricular (AFib)'),
+    );
     expect(afib.esNormal, isFalse);
     expect(afib.esUrgencia, isFalse);
   });
@@ -95,13 +99,20 @@ void main() {
     expect(ecg.route, isNull);
 
     expect(
-      stackModulesFor(UserRole.medico, esCardiologo: true)
-          .any((m) => m.key == 'ecg'),
+      stackModulesFor(
+        UserRole.medico,
+        esCardiologo: true,
+      ).any((m) => m.key == 'ecg'),
       isTrue,
     );
     // El resto de módulos del médico se conserva (incluye 'Mis horarios').
-    expect(cardio.take(5).map((m) => m.key).toList(),
-        ['panel', 'consulta', 'preconsulta', 'miagenda', 'mishorarios']);
+    expect(cardio.take(5).map((m) => m.key).toList(), [
+      'panel',
+      'consulta',
+      'preconsulta',
+      'miagenda',
+      'mishorarios',
+    ]);
   });
 
   test('Ningún otro rol ve el módulo de ECG con IA', () {
@@ -118,7 +129,9 @@ void main() {
     }
   });
 
-  testWidgets('Página de ECG de cardiología renderiza su vista interna', (tester) async {
+  testWidgets('Página de ECG de cardiología renderiza su vista interna', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MaterialApp(home: CardioEcgPage()));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));

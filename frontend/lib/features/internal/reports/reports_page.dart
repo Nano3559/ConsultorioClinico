@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_status_badge.dart';
@@ -28,8 +29,18 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
     final filtered = clinic.appointments.where((a) {
-      if (a.date.isBefore(DateTime(_desde.year, _desde.month, _desde.day))) return false;
-      if (a.date.isAfter(DateTime(_hasta.year, _hasta.month, _hasta.day).add(const Duration(days: 1)))) return false;
+      if (a.date.isBefore(DateTime(_desde.year, _desde.month, _desde.day))) {
+        return false;
+      }
+      if (a.date.isAfter(
+        DateTime(
+          _hasta.year,
+          _hasta.month,
+          _hasta.day,
+        ).add(const Duration(days: 1)),
+      )) {
+        return false;
+      }
       if (_doctorFilter != null && a.doctorId != _doctorFilter) return false;
       if (_specialtyFilter != null) {
         final d = clinic.doctorById(a.doctorId);
@@ -39,11 +50,13 @@ class _ReportsPageState extends State<ReportsPage> {
       return true;
     }).toList();
 
-    final ingresos = clinic.payments.where((p) {
-      if (p.status != PaymentStatus.pagado) return false;
-      if (p.date.isBefore(_desde) || p.date.isAfter(_hasta)) return false;
-      return true;
-    }).fold<double>(0, (s, p) => s + p.amount);
+    final ingresos = clinic.payments
+        .where((p) {
+          if (p.status != PaymentStatus.pagado) return false;
+          if (p.date.isBefore(_desde) || p.date.isAfter(_hasta)) return false;
+          return true;
+        })
+        .fold<double>(0, (s, p) => s + p.amount);
 
     final byDay = <DateTime, int>{};
     for (final a in filtered) {
@@ -52,7 +65,8 @@ class _ReportsPageState extends State<ReportsPage> {
     }
     final byDoctor = <String, int>{};
     for (final a in filtered) {
-      byDoctor[clinic.doctorName(a.doctorId)] = (byDoctor[clinic.doctorName(a.doctorId)] ?? 0) + 1;
+      byDoctor[clinic.doctorName(a.doctorId)] =
+          (byDoctor[clinic.doctorName(a.doctorId)] ?? 0) + 1;
     }
     final bySpecialty = <String, int>{};
     for (final a in filtered) {
@@ -89,8 +103,18 @@ class _ReportsPageState extends State<ReportsPage> {
         const SizedBox(height: 16),
         ResponsiveRow(
           children: [
-            _MetricCard(label: 'Citas en el rango', value: '${filtered.length}', icon: Icons.event_note_outlined, color: AppColors.info),
-            _MetricCard(label: 'Ingresos cobrados', value: AppFormatters.money(ingresos), icon: Icons.payments_outlined, color: AppColors.success),
+            _MetricCard(
+              label: 'Citas en el rango',
+              value: '${filtered.length}',
+              icon: Icons.event_note_outlined,
+              color: AppColors.info,
+            ),
+            _MetricCard(
+              label: 'Ingresos cobrados',
+              value: AppFormatters.money(ingresos),
+              icon: Icons.payments_outlined,
+              color: AppColors.success,
+            ),
           ],
         ),
         const SizedBox(height: 20),
@@ -99,10 +123,16 @@ class _ReportsPageState extends State<ReportsPage> {
           child: SizedBox(
             height: 240,
             child: byDay.isEmpty
-                ? const Center(child: Text('Sin datos en el rango', style: TextStyle(color: AppColors.muted)))
+                ? const Center(
+                    child: Text(
+                      'Sin datos en el rango',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
+                  )
                 : BarChart(
                     BarChartData(
-                      maxY: (byDay.values.reduce((a, b) => a > b ? a : b) + 2).toDouble(),
+                      maxY: (byDay.values.reduce((a, b) => a > b ? a : b) + 2)
+                          .toDouble(),
                       barGroups: [
                         for (final e in byDay.entries)
                           BarChartGroupData(
@@ -112,7 +142,9 @@ class _ReportsPageState extends State<ReportsPage> {
                                 toY: e.value.toDouble(),
                                 color: AppColors.primary,
                                 width: 18,
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(4),
+                                ),
                               ),
                             ],
                           ),
@@ -122,24 +154,39 @@ class _ReportsPageState extends State<ReportsPage> {
                           sideTitles: SideTitles(
                             showTitles: true,
                             getTitlesWidget: (v, meta) {
-                              final d = DateTime.fromMillisecondsSinceEpoch((v * 86400000).round());
+                              final d = DateTime.fromMillisecondsSinceEpoch(
+                                (v * 86400000).round(),
+                              );
                               return Padding(
                                 padding: const EdgeInsets.only(top: 6),
                                 child: Text(
                                   '${d.day}/${d.month}',
-                                  style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.muted,
+                                  ),
                                 ),
                               );
                             },
                           ),
                         ),
                         leftTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 28,
+                          ),
                         ),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                       ),
-                      gridData: const FlGridData(show: true, drawVerticalLine: false),
+                      gridData: const FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                      ),
                       borderData: FlBorderData(show: false),
                     ),
                   ),
@@ -154,30 +201,66 @@ class _ReportsPageState extends State<ReportsPage> {
               child: SizedBox(
                 height: 220,
                 child: byDoctor.isEmpty
-                    ? const Center(child: Text('Sin datos', style: TextStyle(color: AppColors.muted)))
+                    ? const Center(
+                        child: Text(
+                          'Sin datos',
+                          style: TextStyle(color: AppColors.muted),
+                        ),
+                      )
                     : ListView.builder(
                         itemCount: byDoctor.length,
                         itemBuilder: (ctx, i) {
                           final e = byDoctor.entries.elementAt(i);
-                          final max = byDoctor.values.reduce((a, b) => a > b ? a : b);
+                          final max = byDoctor.values.reduce(
+                            (a, b) => a > b ? a : b,
+                          );
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
                               children: [
-                                SizedBox(width: 90, child: Text(e.key, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12))),
+                                SizedBox(
+                                  width: 90,
+                                  child: Text(
+                                    e.key,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
                                 Expanded(
                                   child: Stack(
                                     children: [
-                                      Container(height: 18, decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(6))),
+                                      Container(
+                                        height: 18,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.background,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                      ),
                                       FractionallySizedBox(
                                         widthFactor: e.value / max,
-                                        child: Container(height: 18, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6))),
+                                        child: Container(
+                                          height: 18,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                                Text(
+                                  '${e.value}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ],
                             ),
                           );
@@ -190,7 +273,12 @@ class _ReportsPageState extends State<ReportsPage> {
               child: SizedBox(
                 height: 220,
                 child: bySpecialty.isEmpty
-                    ? const Center(child: Text('Sin datos', style: TextStyle(color: AppColors.muted)))
+                    ? const Center(
+                        child: Text(
+                          'Sin datos',
+                          style: TextStyle(color: AppColors.muted),
+                        ),
+                      )
                     : PieChart(
                         PieChartData(
                           sectionsSpace: 2,
@@ -198,10 +286,19 @@ class _ReportsPageState extends State<ReportsPage> {
                           sections: [
                             for (var i = 0; i < bySpecialty.entries.length; i++)
                               PieChartSectionData(
-                                value: bySpecialty.entries.elementAt(i).value.toDouble(),
+                                value: bySpecialty.entries
+                                    .elementAt(i)
+                                    .value
+                                    .toDouble(),
                                 title: bySpecialty.entries.elementAt(i).key,
-                                titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
-                                color: AppColors.accentPool[i % AppColors.accentPool.length],
+                                titleStyle: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                                color:
+                                    AppColors.accentPool[i %
+                                        AppColors.accentPool.length],
                                 radius: 46,
                               ),
                           ],
@@ -220,14 +317,32 @@ class _ReportsPageState extends State<ReportsPage> {
             children: [
               for (final e in byStatus.entries)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(color: e.key.bg, borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: e.key.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(e.key.label, style: TextStyle(color: e.key.color, fontWeight: FontWeight.w700)),
+                      Text(
+                        e.key.label,
+                        style: TextStyle(
+                          color: e.key.color,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark)),
+                      Text(
+                        '${e.value}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -346,7 +461,12 @@ class _Filters extends StatelessWidget {
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.label, required this.value, required this.icon, required this.color});
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   final String label;
   final String value;
@@ -370,8 +490,18 @@ class _MetricCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.dark)),
-                Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                ),
               ],
             ),
           ),
@@ -399,7 +529,14 @@ class _ChartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.dark)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
+          ),
           const SizedBox(height: 12),
           child,
         ],

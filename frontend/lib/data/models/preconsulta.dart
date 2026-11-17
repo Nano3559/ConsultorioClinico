@@ -201,12 +201,12 @@ class NivelTriage {
   }
 
   factory NivelTriage.fromJson(Map<String, dynamic> json) => NivelTriage(
-        nivel: _int(json['nivel']) ?? 5,
-        clave: (json['clave'] ?? '').toString(),
-        etiqueta: (json['etiqueta'] ?? '').toString(),
-        color: colorDesdeHex(json['color']?.toString()),
-        maxMinutos: _int(json['max_minutos']),
-      );
+    nivel: _int(json['nivel']) ?? 5,
+    clave: (json['clave'] ?? '').toString(),
+    etiqueta: (json['etiqueta'] ?? '').toString(),
+    color: colorDesdeHex(json['color']?.toString()),
+    maxMinutos: _int(json['max_minutos']),
+  );
 }
 
 class PreconsultaCatalogo {
@@ -233,10 +233,9 @@ class PreconsultaCatalogo {
   String get version => consentimiento.version;
 
   /// Preguntas de una sección, ya ordenadas.
-  List<PreconsultaPregunta> preguntasDe(String seccion) => preguntas
-      .where((p) => p.seccion == seccion)
-      .toList()
-    ..sort((a, b) => a.orden.compareTo(b.orden));
+  List<PreconsultaPregunta> preguntasDe(String seccion) =>
+      preguntas.where((p) => p.seccion == seccion).toList()
+        ..sort((a, b) => a.orden.compareTo(b.orden));
 
   factory PreconsultaCatalogo.fromJson(Map<String, dynamic> json) =>
       PreconsultaCatalogo(
@@ -297,12 +296,12 @@ class MotivoTriage {
   }
 
   factory MotivoTriage.fromJson(Map<String, dynamic> json) => MotivoTriage(
-        codigo: (json['codigo'] ?? '').toString(),
-        etiqueta: (json['etiqueta'] ?? '').toString(),
-        peso: _num(json['peso']) ?? 0,
-        detalle: (json['detalle'] ?? '').toString(),
-        fuente: (json['fuente'] ?? 'sistema').toString(),
-      );
+    codigo: (json['codigo'] ?? '').toString(),
+    etiqueta: (json['etiqueta'] ?? '').toString(),
+    peso: _num(json['peso']) ?? 0,
+    detalle: (json['detalle'] ?? '').toString(),
+    fuente: (json['fuente'] ?? 'sistema').toString(),
+  );
 }
 
 class BanderaTriage {
@@ -319,10 +318,10 @@ class BanderaTriage {
   bool get critica => severidad == 'critica';
 
   factory BanderaTriage.fromJson(Map<String, dynamic> json) => BanderaTriage(
-        codigo: (json['codigo'] ?? '').toString(),
-        severidad: (json['severidad'] ?? 'media').toString(),
-        texto: (json['texto'] ?? '').toString(),
-      );
+    codigo: (json['codigo'] ?? '').toString(),
+    severidad: (json['severidad'] ?? 'media').toString(),
+    texto: (json['texto'] ?? '').toString(),
+  );
 }
 
 class TriagePreconsulta {
@@ -373,14 +372,17 @@ class TriagePreconsulta {
         nivel: _int(json['nivel']),
         nivelEtiqueta: json['nivel_etiqueta']?.toString(),
         nivelClave: json['nivel_clave']?.toString(),
-        color: json['color'] == null ? null : colorDesdeHex(json['color']?.toString()),
+        color: json['color'] == null
+            ? null
+            : colorDesdeHex(json['color']?.toString()),
         confianza: _num(json['confianza']),
         motivos: _lista(json['motivos'])
             .whereType<Map<String, dynamic>>()
             .map(MotivoTriage.fromJson)
             .toList(),
-        recomendaciones:
-            _lista(json['recomendaciones']).map((e) => e.toString()).toList(),
+        recomendaciones: _lista(json['recomendaciones'])
+            .map((e) => e.toString())
+            .toList(),
         banderas: _lista(json['banderas'])
             .whereType<Map<String, dynamic>>()
             .map(BanderaTriage.fromJson)
@@ -424,16 +426,16 @@ class SignosVitales {
   bool get tienePulso => hrBpm != null && (hrConfianza ?? 0) >= 0.45;
 
   factory SignosVitales.fromJson(Map<String, dynamic> json) => SignosVitales(
-        hrBpm: _num(json['hr_bpm']),
-        hrConfianza: _num(json['hr_confianza']),
-        rmssdMs: _num(json['rmssd_ms']),
-        sdnnMs: _num(json['sdnn_ms']),
-        pnn50: _num(json['pnn50']),
-        hrvConfianza: _num(json['hrv_confianza']),
-        respiracionesRpm: _num(json['respiraciones_rpm']),
-        senalSnrDb: _num(json['senal_snr_db']),
-        senalConfianza: _num(json['senal_confianza']),
-      );
+    hrBpm: _num(json['hr_bpm']),
+    hrConfianza: _num(json['hr_confianza']),
+    rmssdMs: _num(json['rmssd_ms']),
+    sdnnMs: _num(json['sdnn_ms']),
+    pnn50: _num(json['pnn50']),
+    hrvConfianza: _num(json['hrv_confianza']),
+    respiracionesRpm: _num(json['respiraciones_rpm']),
+    senalSnrDb: _num(json['senal_snr_db']),
+    senalConfianza: _num(json['senal_confianza']),
+  );
 }
 
 class MetricasRostro {
@@ -477,17 +479,17 @@ class MetricasRostro {
   }
 
   factory MetricasRostro.fromJson(Map<String, dynamic> json) => MetricasRostro(
-        painScore: _num(json['pain_score']),
-        painConfianza: _num(json['pain_confianza']),
-        stressScore: _num(json['stress_score']),
-        fatigueScore: _num(json['fatigue_score']),
-        blinkRate: _num(json['blink_rate']),
-        expresionDominante: json['expresion_dominante']?.toString(),
-        microexpresiones: _lista(json['microexpresiones'])
-            .whereType<Map<String, dynamic>>()
-            .toList(),
-        poseEstabilidad: _num(json['pose_estabilidad']),
-      );
+    painScore: _num(json['pain_score']),
+    painConfianza: _num(json['pain_confianza']),
+    stressScore: _num(json['stress_score']),
+    fatigueScore: _num(json['fatigue_score']),
+    blinkRate: _num(json['blink_rate']),
+    expresionDominante: json['expresion_dominante']?.toString(),
+    microexpresiones: _lista(json['microexpresiones'])
+        .whereType<Map<String, dynamic>>()
+        .toList(),
+    poseEstabilidad: _num(json['pose_estabilidad']),
+  );
 }
 
 class CapturaPreconsulta {
@@ -612,7 +614,8 @@ class PacienteResumen {
   final String cedula;
   final int? edad;
 
-  factory PacienteResumen.fromJson(Map<String, dynamic> json) => PacienteResumen(
+  factory PacienteResumen.fromJson(Map<String, dynamic> json) =>
+      PacienteResumen(
         id: _int(json['id']) ?? 0,
         nombre: (json['nombre'] ?? '').toString(),
         cedula: (json['cedula'] ?? '').toString(),
@@ -874,7 +877,8 @@ class MotivoFrecuente {
   factory MotivoFrecuente.fromJson(Map<String, dynamic> json) =>
       MotivoFrecuente(
         codigo: (json['codigo'] ?? '').toString(),
-        etiqueta: (json['etiqueta'] ?? json['texto'] ?? json['codigo'] ?? '').toString(),
+        etiqueta: (json['etiqueta'] ?? json['texto'] ?? json['codigo'] ?? '')
+            .toString(),
         total: _int(json['total']) ?? 0,
       );
 }
@@ -1030,19 +1034,19 @@ class PuntoTendencia {
   final bool rostroDetectado;
 
   factory PuntoTendencia.fromJson(Map<String, dynamic> json) => PuntoTendencia(
-        id: _int(json['id']) ?? 0,
-        fecha: _fecha(json['fecha']),
-        hrBpm: _num(json['hr_bpm']),
-        hrConfianza: _num(json['hr_confianza']),
-        rmssdMs: _num(json['rmssd_ms']),
-        painScore: _num(json['pain_score']),
-        stressScore: _num(json['stress_score']),
-        fatigueScore: _num(json['fatigue_score']),
-        triageNivel: _int(json['triage_nivel']),
-        resumen: (json['resumen'] ?? '').toString(),
-        calidadCaptura: _num(json['calidad_captura']),
-        rostroDetectado: json['rostro_detectado'] == true,
-      );
+    id: _int(json['id']) ?? 0,
+    fecha: _fecha(json['fecha']),
+    hrBpm: _num(json['hr_bpm']),
+    hrConfianza: _num(json['hr_confianza']),
+    rmssdMs: _num(json['rmssd_ms']),
+    painScore: _num(json['pain_score']),
+    stressScore: _num(json['stress_score']),
+    fatigueScore: _num(json['fatigue_score']),
+    triageNivel: _int(json['triage_nivel']),
+    resumen: (json['resumen'] ?? '').toString(),
+    calidadCaptura: _num(json['calidad_captura']),
+    rostroDetectado: json['rostro_detectado'] == true,
+  );
 }
 
 class TendenciasPaciente {

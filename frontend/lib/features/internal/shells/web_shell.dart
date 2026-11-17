@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/ambient_background.dart';
 import '../../../core/widgets/app_avatar.dart';
@@ -43,8 +44,10 @@ class _WebShellState extends State<WebShell> {
     final user = auth.currentUser!;
     // El módulo de ECG con IA solo aparece para el médico cardiólogo.
     final clinic = context.watch<ClinicProvider>();
-    final modules =
-        stackModulesFor(user.role, esCardiologo: clinic.esCardiologo(user.doctorId));
+    final modules = stackModulesFor(
+      user.role,
+      esCardiologo: clinic.esCardiologo(user.doctorId),
+    );
     final ecgIndex = modules.indexWhere((m) => m.key == 'ecg');
     if (!_ecgDefaultApplied && !_userSelected && ecgIndex >= 0) {
       _ecgDefaultApplied = true;
@@ -80,7 +83,9 @@ class _WebShellState extends State<WebShell> {
                       child: FadeSlide(
                         child: IndexedStack(
                           index: _index,
-                          children: [for (final m in modules) m.builder(context)],
+                          children: [
+                            for (final m in modules) m.builder(context),
+                          ],
                         ),
                       ),
                     ),
@@ -119,7 +124,11 @@ class _Sidebar extends StatelessWidget {
           colors: AppColors.gradientSidebar,
         ),
         boxShadow: [
-          BoxShadow(color: AppColors.shadowStrong, blurRadius: 20, offset: Offset(4, 0)),
+          BoxShadow(
+            color: AppColors.shadowStrong,
+            blurRadius: 20,
+            offset: Offset(4, 0),
+          ),
         ],
       ),
       child: SafeArea(
@@ -139,10 +148,18 @@ class _Sidebar extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
-                        BoxShadow(color: AppColors.primary.withValues(alpha: 0.5), blurRadius: 12, offset: const Offset(0, 4)),
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.5),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
-                    child: const Icon(Icons.local_hospital, color: Colors.white, size: 22),
+                    child: const Icon(
+                      Icons.local_hospital,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -152,7 +169,13 @@ class _Sidebar extends StatelessWidget {
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
-                        shadows: [Shadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))],
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -162,7 +185,10 @@ class _Sidebar extends StatelessWidget {
             const Divider(height: 1, color: Colors.white12),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 children: _groupedItems(context),
               ),
             ),
@@ -181,29 +207,42 @@ class _Sidebar extends StatelessWidget {
       final m = modules[i];
       if (m.group != lastGroup) {
         lastGroup = m.group;
-        children.add(Padding(
-          padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
-          child: Text(
-            m.group.toUpperCase(),
-            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white60, letterSpacing: 1.2),
+        children.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
+            child: Text(
+              m.group.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: Colors.white60,
+                letterSpacing: 1.2,
+              ),
+            ),
           ),
-        ));
+        );
       }
-      children.add(Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: _SidebarItem(
-          module: m,
-          selected: i == selectedIndex,
-          onTap: () => onSelect(i, m),
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: _SidebarItem(
+            module: m,
+            selected: i == selectedIndex,
+            onTap: () => onSelect(i, m),
+          ),
         ),
-      ));
+      );
     }
     return children;
   }
 }
 
 class _SidebarItem extends StatelessWidget {
-  const _SidebarItem({required this.module, required this.selected, required this.onTap});
+  const _SidebarItem({
+    required this.module,
+    required this.selected,
+    required this.onTap,
+  });
 
   final NavModule module;
   final bool selected;
@@ -212,7 +251,9 @@ class _SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? Colors.white.withValues(alpha: 0.14) : Colors.transparent,
+      color: selected
+          ? Colors.white.withValues(alpha: 0.14)
+          : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -221,7 +262,9 @@ class _SidebarItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: selected
               ? BoxDecoration(
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 )
               : null,
@@ -232,7 +275,12 @@ class _SidebarItem extends StatelessWidget {
                 color: selected ? Colors.white : Colors.white70,
                 size: 21,
                 shadows: [
-                  if (selected) Shadow(color: AppColors.primary.withValues(alpha: 0.6), blurRadius: 14, offset: const Offset(0, 3)),
+                  if (selected)
+                    Shadow(
+                      color: AppColors.primary.withValues(alpha: 0.6),
+                      blurRadius: 14,
+                      offset: const Offset(0, 3),
+                    ),
                 ],
               ),
               const SizedBox(width: 12),
@@ -254,7 +302,12 @@ class _SidebarItem extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primaryLight,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: AppColors.primaryLight.withValues(alpha: 0.9), blurRadius: 8)],
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryLight.withValues(alpha: 0.9),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                 ),
             ],
@@ -282,8 +335,22 @@ class _SidebarFooter extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13)),
-                Text(user.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                Text(
+                  user.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontSize: 13,
+                  ),
+                ),
+                Text(
+                  user.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: Colors.white60),
+                ),
               ],
             ),
           ),
@@ -314,7 +381,11 @@ class _WebTopBar extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         boxShadow: [
-          BoxShadow(color: AppColors.shadowSoft, blurRadius: 12, offset: Offset(0, 3)),
+          BoxShadow(
+            color: AppColors.shadowSoft,
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
         ],
       ),
       child: Row(
@@ -325,11 +396,18 @@ class _WebTopBar extends StatelessWidget {
               children: [
                 Text(
                   'ConsultorioClínico',
-                  style: TextStyle(color: AppColors.muted.withValues(alpha: 0.8), fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.muted.withValues(alpha: 0.8),
+                    fontSize: 12,
+                  ),
                 ),
                 Text(
                   title,
-                  style: const TextStyle(color: AppColors.dark, fontWeight: FontWeight.w800, fontSize: 20),
+                  style: const TextStyle(
+                    color: AppColors.dark,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                  ),
                 ),
               ],
             ),
@@ -344,12 +422,20 @@ class _WebTopBar extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
-                BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 3)),
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
               ],
             ),
             child: Text(
               user.role.label,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -358,8 +444,17 @@ class _WebTopBar extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-              Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+              Text(
+                user.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dark,
+                ),
+              ),
+              Text(
+                user.email,
+                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
             ],
           ),
         ],

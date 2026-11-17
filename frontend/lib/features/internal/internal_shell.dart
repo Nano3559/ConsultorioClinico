@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../state/auth_provider.dart';
 import 'shells/mobile_shell.dart';
 import 'shells/web_shell.dart';

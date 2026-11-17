@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/utils/app_validators.dart';
@@ -40,9 +41,13 @@ class _PatientFormPageState extends State<PatientFormPage> {
     _ci = TextEditingController(text: widget.patient?.ci ?? '');
     _phone = TextEditingController(text: widget.patient?.phone ?? '');
     _email = TextEditingController(text: widget.patient?.email ?? '');
-    _antecedentes = TextEditingController(text: widget.patient?.antecedentes ?? '');
+    _antecedentes = TextEditingController(
+      text: widget.patient?.antecedentes ?? '',
+    );
     _alergias = TextEditingController(text: widget.patient?.alergias ?? '');
-    _observaciones = TextEditingController(text: widget.patient?.observaciones ?? '');
+    _observaciones = TextEditingController(
+      text: widget.patient?.observaciones ?? '',
+    );
     _birthDate = widget.patient?.birthDate;
   }
 
@@ -68,32 +73,36 @@ class _PatientFormPageState extends State<PatientFormPage> {
 
     try {
       if (_isEdit) {
-        final errorUpdate = await clinic.updatePatient(widget.patient!.copyWith(
-          firstName: _name.text.trim(),
-          lastName: _lastName.text.trim(),
-          ci: _ci.text.trim(),
-          birthDate: _birthDate!,
-          phone: _phone.text.trim(),
-          email: _email.text.trim(),
-          antecedentes: _antecedentes.text.trim(),
-          alergias: _alergias.text.trim(),
-          observaciones: _observaciones.text.trim(),
-        ));
+        final errorUpdate = await clinic.updatePatient(
+          widget.patient!.copyWith(
+            firstName: _name.text.trim(),
+            lastName: _lastName.text.trim(),
+            ci: _ci.text.trim(),
+            birthDate: _birthDate!,
+            phone: _phone.text.trim(),
+            email: _email.text.trim(),
+            antecedentes: _antecedentes.text.trim(),
+            alergias: _alergias.text.trim(),
+            observaciones: _observaciones.text.trim(),
+          ),
+        );
         exito = errorUpdate == null;
         mensaje = errorUpdate;
       } else {
-        final creado = await clinic.addPatient(Patient(
-          id: 'p${DateTime.now().millisecondsSinceEpoch}',
-          firstName: _name.text.trim(),
-          lastName: _lastName.text.trim(),
-          ci: _ci.text.trim(),
-          birthDate: _birthDate!,
-          phone: _phone.text.trim(),
-          email: _email.text.trim(),
-          antecedentes: _antecedentes.text.trim(),
-          alergias: _alergias.text.trim(),
-          observaciones: _observaciones.text.trim(),
-        ));
+        final creado = await clinic.addPatient(
+          Patient(
+            id: 'p${DateTime.now().millisecondsSinceEpoch}',
+            firstName: _name.text.trim(),
+            lastName: _lastName.text.trim(),
+            ci: _ci.text.trim(),
+            birthDate: _birthDate!,
+            phone: _phone.text.trim(),
+            email: _email.text.trim(),
+            antecedentes: _antecedentes.text.trim(),
+            alergias: _alergias.text.trim(),
+            observaciones: _observaciones.text.trim(),
+          ),
+        );
         exito = creado != null;
         mensaje = exito ? null : clinic.error;
       }
@@ -114,7 +123,8 @@ class _PatientFormPageState extends State<PatientFormPage> {
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'Cerrar',
-            onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+            onPressed: () =>
+                ScaffoldMessenger.of(context).hideCurrentSnackBar(),
           ),
         ),
       );
@@ -124,7 +134,9 @@ class _PatientFormPageState extends State<PatientFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Editar paciente' : 'Registrar paciente')),
+      appBar: AppBar(
+        title: Text(_isEdit ? 'Editar paciente' : 'Registrar paciente'),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Center(
@@ -136,9 +148,17 @@ class _PatientFormPageState extends State<PatientFormPage> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: _field(_name, 'Nombre', AppValidators.required)),
+                      Expanded(
+                        child: _field(_name, 'Nombre', AppValidators.required),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _field(_lastName, 'Apellido', AppValidators.required)),
+                      Expanded(
+                        child: _field(
+                          _lastName,
+                          'Apellido',
+                          AppValidators.required,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -152,9 +172,13 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: _field(_phone, 'Teléfono', AppValidators.phone)),
+                      Expanded(
+                        child: _field(_phone, 'Teléfono', AppValidators.phone),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _field(_email, 'Correo', AppValidators.email)),
+                      Expanded(
+                        child: _field(_email, 'Correo', AppValidators.email),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -164,22 +188,26 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   const SizedBox(height: 14),
                   _field(_observaciones, 'Observaciones', null),
                   const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _guardando ? null : _save,
-                        child: _guardando
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(_isEdit ? 'Guardar cambios' : 'Registrar paciente'),
-                      ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _guardando ? null : _save,
+                      child: _guardando
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              _isEdit
+                                  ? 'Guardar cambios'
+                                  : 'Registrar paciente',
+                            ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -189,7 +217,11 @@ class _PatientFormPageState extends State<PatientFormPage> {
     );
   }
 
-  Widget _field(TextEditingController c, String label, String? Function(String?)? validator) {
+  Widget _field(
+    TextEditingController c,
+    String label,
+    String? Function(String?)? validator,
+  ) {
     return TextFormField(
       controller: c,
       decoration: InputDecoration(labelText: label),

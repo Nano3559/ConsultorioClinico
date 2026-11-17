@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/utils/app_formatters.dart';
@@ -29,19 +30,35 @@ class PatientMyAppointmentsPage extends StatelessWidget {
         break;
       }
     }
-    if (patient == null && clinic.patients.isNotEmpty) patient = clinic.patients.first;
-    final List<Appointment> list =
-        patient == null ? const [] : clinic.appointmentsOfPatient(patient.id);
+    if (patient == null && clinic.patients.isNotEmpty) {
+      patient = clinic.patients.first;
+    }
+    final List<Appointment> list = patient == null
+        ? const []
+        : clinic.appointmentsOfPatient(patient.id);
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text('Mis citas', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.dark)),
+        const Text(
+          'Mis citas',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: AppColors.dark,
+          ),
+        ),
         const SizedBox(height: 4),
-        const Text('Consulta y gestiona tus turnos.', style: TextStyle(color: AppColors.muted)),
+        const Text(
+          'Consulta y gestiona tus turnos.',
+          style: TextStyle(color: AppColors.muted),
+        ),
         const SizedBox(height: 16),
         if (patient == null)
-          const AppEmptyState(icon: Icons.person_off_outlined, title: 'Paciente no encontrado')
+          const AppEmptyState(
+            icon: Icons.person_off_outlined,
+            title: 'Paciente no encontrado',
+          )
         else if (list.isEmpty)
           const AppEmptyState(
             icon: Icons.event_busy_outlined,
@@ -49,9 +66,8 @@ class PatientMyAppointmentsPage extends StatelessWidget {
             subtitle: 'Solicita una cita para empezar.',
             action: null,
           )
-          else
-          for (final a in list)
-            _buildCitaCard(context, clinic, a),
+        else
+          for (final a in list) _buildCitaCard(context, clinic, a),
         const SizedBox(height: 8),
         FilledButton.icon(
           onPressed: () => context.push('/solicitar-cita'),
@@ -62,9 +78,14 @@ class PatientMyAppointmentsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCitaCard(BuildContext context, ClinicProvider clinic, Appointment a) {
+  Widget _buildCitaCard(
+    BuildContext context,
+    ClinicProvider clinic,
+    Appointment a,
+  ) {
     final consulta = _consultaDe(clinic, a);
-    final canCancel = a.status == AppointmentStatus.pendiente ||
+    final canCancel =
+        a.status == AppointmentStatus.pendiente ||
         a.status == AppointmentStatus.confirmada;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -85,13 +106,32 @@ class PatientMyAppointmentsPage extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(a.time, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
-                    Text('${a.date.day}/${a.date.month}', style: const TextStyle(fontSize: 11, color: AppColors.primaryDark)),
+                    Text(
+                      a.time,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                    Text(
+                      '${a.date.day}/${a.date.month}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            title: Text(clinic.doctorName(a.doctorId), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+            title: Text(
+              clinic.doctorName(a.doctorId),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
+            ),
             subtitle: Text(a.reason),
             trailing: AppStatusBadge(status: a.status),
           ),
@@ -106,7 +146,10 @@ class PatientMyAppointmentsPage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
                 onPressed: () => _confirmCancel(context, clinic, a.id),
-                child: const Text('Cancelar', style: TextStyle(fontSize: 13, color: AppColors.danger)),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(fontSize: 13, color: AppColors.danger),
+                ),
               ),
             ),
         ],
@@ -124,12 +167,17 @@ class PatientMyAppointmentsPage extends StatelessWidget {
           const Divider(),
           const Text(
             'Tratamiento indicado',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryDark,
+            ),
           ),
           const SizedBox(height: 6),
           _row('Diagnóstico', c.diagnostico),
           _row('Tratamiento', c.tratamiento),
-          if (c.observaciones.isNotEmpty) _row('Observaciones', c.observaciones),
+          if (c.observaciones.isNotEmpty)
+            _row('Observaciones', c.observaciones),
           if (c.proximoControl != null)
             _row('Próximo control', AppFormatters.shortDate(c.proximoControl!)),
         ],
@@ -138,20 +186,20 @@ class PatientMyAppointmentsPage extends StatelessWidget {
   }
 
   Widget _row(String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: RichText(
-          text: TextSpan(
-            style: const TextStyle(color: AppColors.dark, height: 1.4),
-            children: [
-              TextSpan(
-                text: '$label: ',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              TextSpan(text: value),
-            ],
+    padding: const EdgeInsets.only(bottom: 4),
+    child: RichText(
+      text: TextSpan(
+        style: const TextStyle(color: AppColors.dark, height: 1.4),
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-        ),
-      );
+          TextSpan(text: value),
+        ],
+      ),
+    ),
+  );
 
   ConsultRecord? _consultaDe(ClinicProvider clinic, Appointment a) {
     for (final c in clinic.consults) {
@@ -174,9 +222,14 @@ class PatientMyAppointmentsPage extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancelar cita'),
-        content: const Text('¿Deseas cancelar esta cita? El horario quedará disponible para otros pacientes.'),
+        content: const Text(
+          '¿Deseas cancelar esta cita? El horario quedará disponible para otros pacientes.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('No'),
+          ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);

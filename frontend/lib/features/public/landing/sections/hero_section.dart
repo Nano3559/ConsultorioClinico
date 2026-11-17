@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/widgets/ambient_background.dart';
@@ -24,7 +25,10 @@ class HeroSection extends StatelessWidget {
     final isMobile = width < 1000;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 48, vertical: 64),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 24 : 48,
+        vertical: 64,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -83,7 +87,10 @@ class HeroSection extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.primaryDark,
-                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 16,
+                          ),
                         ),
                         child: const Text('Ver médicos'),
                       ),
@@ -109,7 +116,10 @@ class HeroSection extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
                             side: const BorderSide(color: Colors.white54),
-                            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 26,
+                              vertical: 14,
+                            ),
                           ),
                           icon: const Icon(Icons.people_outline),
                           label: const Text('Ver médicos'),
@@ -140,7 +150,10 @@ class _HeroText extends StatelessWidget {
         SizedBox(
           width: 96,
           height: 96,
-          child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json', repeat: false),
+          child: Lottie.asset(
+            'assets/lottie/Heartbeat Lottie Animation.json',
+            repeat: false,
+          ),
         ),
         const SizedBox(height: 16),
         Text(
@@ -167,7 +180,10 @@ class _HeroText extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: AppColors.primaryDark,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 16,
+                ),
               ),
               child: const Text('Solicitar cita'),
             ),
@@ -186,7 +202,11 @@ class _HeroText extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 30, offset: const Offset(0, 12)),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
               ],
             ),
             child: Image.network(
@@ -205,7 +225,11 @@ class _HeroText extends StatelessWidget {
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: const Center(
-                  child: Icon(Icons.local_hospital, color: Colors.white, size: 72),
+                  child: Icon(
+                    Icons.local_hospital,
+                    color: Colors.white,
+                    size: 72,
+                  ),
                 ),
               ),
             ),
@@ -234,17 +258,18 @@ class _HeroCard extends StatelessWidget {
         final t = DateTime.now();
         return DateTime(t.year, t.month, t.day);
       }();
-      final upcoming = clinic.appointments.where((a) {
-        if (a.status == AppointmentStatus.cancelada || a.status == AppointmentStatus.noAsistio) {
-          return false;
-        }
-        return !a.date.isBefore(startOfToday);
-      }).toList()
-        ..sort((a, b) {
-          final d = a.date.compareTo(b.date);
-          if (d != 0) return d;
-          return a.time.compareTo(b.time);
-        });
+      final upcoming =
+          clinic.appointments.where((a) {
+            if (a.status == AppointmentStatus.cancelada ||
+                a.status == AppointmentStatus.noAsistio) {
+              return false;
+            }
+            return !a.date.isBefore(startOfToday);
+          }).toList()..sort((a, b) {
+            final d = a.date.compareTo(b.date);
+            if (d != 0) return d;
+            return a.time.compareTo(b.time);
+          });
       if (upcoming.isNotEmpty) next = upcoming.first;
     }
 
@@ -278,20 +303,34 @@ class _HeroCard extends StatelessWidget {
 
     final cita = next;
     final doctor = clinic.doctorById(cita.doctorId);
-    final specialty = doctor != null ? clinic.specialtyById(doctor.specialtyId) : null;
-    final mainLine = isMedico ? clinic.patientName(cita.patientId) : (doctor?.displayName ?? 'Médico');
-    final subLine = isMedico ? 'Paciente' : '${specialty?.name ?? 'Sin especialidad'} · ${doctor?.displayName ?? ''}';
+    final specialty = doctor != null
+        ? clinic.specialtyById(doctor.specialtyId)
+        : null;
+    final mainLine = isMedico
+        ? clinic.patientName(cita.patientId)
+        : (doctor?.displayName ?? 'Médico');
+    final subLine = isMedico
+        ? 'Paciente'
+        : '${specialty?.name ?? 'Sin especialidad'} · ${doctor?.displayName ?? ''}';
 
     return _CardBox(
       children: [
         Row(
           children: [
-            const Icon(Icons.event_available, color: AppColors.primary, size: 28),
+            const Icon(
+              Icons.event_available,
+              color: AppColors.primary,
+              size: 28,
+            ),
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
                 'Próxima cita',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dark,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -312,8 +351,22 @@ class _HeroCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(mainLine, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark), overflow: TextOverflow.ellipsis),
-                  Text(subLine, style: const TextStyle(color: AppColors.muted, fontSize: 13), overflow: TextOverflow.ellipsis),
+                  Text(
+                    mainLine,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.dark,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    subLine,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -328,15 +381,26 @@ class _HeroCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.calendar_month, color: AppColors.primary, size: 22),
+              const Icon(
+                Icons.calendar_month,
+                color: AppColors.primary,
+                size: 22,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   '${AppFormatters.shortDate(cita.date)} · ${cita.time}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.dark),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.dark,
+                  ),
                 ),
               ),
-              Icon(isMedico ? Icons.person : Icons.videocam, color: AppColors.primary, size: 22),
+              Icon(
+                isMedico ? Icons.person : Icons.videocam,
+                color: AppColors.primary,
+                size: 22,
+              ),
             ],
           ),
         ),
@@ -399,7 +463,11 @@ class _TitleRow extends StatelessWidget {
         Expanded(
           child: Text(
             'Próxima cita',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),

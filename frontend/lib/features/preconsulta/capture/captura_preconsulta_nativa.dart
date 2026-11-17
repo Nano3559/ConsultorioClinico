@@ -24,8 +24,9 @@ class CamaraPreconsulta {
   /// escritorio, las webcams que reporte el sistema.
   Future<List<CamaraDisponible>> listarCamaras() async {
     try {
-      _descripciones =
-          await availableCameras().timeout(const Duration(seconds: 25));
+      _descripciones = await availableCameras().timeout(
+        const Duration(seconds: 25),
+      );
     } on CameraException catch (e) {
       throw _mapear(e.code, e.description);
     } on TimeoutException {
@@ -117,7 +118,9 @@ class CamaraPreconsulta {
         'No se detectó una cámara conectada a este dispositivo.',
       );
     }
-    if (code == 'NotReadableError' || d.contains('busy') || d.contains('in use')) {
+    if (code == 'NotReadableError' ||
+        d.contains('busy') ||
+        d.contains('in use')) {
       return const CapturaException(
         CapturaErrorKind.busy,
         'La cámara está ocupada por otra app. Ciérrala y reintenta.',
@@ -164,9 +167,9 @@ class CamaraPreconsulta {
 
     while (reloj.elapsedMilliseconds < totalMs) {
       try {
-        final archivo = await controller
-            .takePicture()
-            .timeout(const Duration(seconds: 8));
+        final archivo = await controller.takePicture().timeout(
+          const Duration(seconds: 8),
+        );
         final bytes = await archivo.readAsBytes();
         final original = img.decodeImage(bytes);
         if (original != null) {
@@ -178,9 +181,7 @@ class CamaraPreconsulta {
       } catch (_) {
         // Un frame perdido no invalida la captura.
       }
-      progreso?.call(
-        (reloj.elapsedMilliseconds / totalMs).clamp(0.0, 1.0),
-      );
+      progreso?.call((reloj.elapsedMilliseconds / totalMs).clamp(0.0, 1.0));
       if (acumulado >= presupuesto) break;
       await Future.delayed(const Duration(milliseconds: 20));
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Cabecera uniforme para las vistas de registros/datos del sistema interno.
@@ -66,7 +67,10 @@ class PageHeader extends StatelessWidget {
                   if (count != null) ...[
                     const SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryBg,
                         borderRadius: BorderRadius.circular(20),
@@ -87,16 +91,16 @@ class PageHeader extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle!,
-                  style: TextStyle(color: AppColors.muted, fontSize: isMobile ? 12 : 13),
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: isMobile ? 12 : 13,
+                  ),
                 ),
               ],
             ],
           ),
         ),
-        if (actions != null) ...[
-          const SizedBox(width: 12),
-          ...actions!,
-        ],
+        if (actions != null) ...[const SizedBox(width: 12), ...actions!],
       ],
     );
   }

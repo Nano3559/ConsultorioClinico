@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
@@ -83,9 +84,14 @@ class _PatientsPageState extends State<PatientsPage> {
                   TableText(_lastAppointmentOf(clinic, p.id)),
                   IconButton(
                     tooltip: 'Ver detalle',
-                    icon: const Icon(Icons.chevron_right, color: AppColors.muted),
+                    icon: const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.muted,
+                    ),
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => PatientDetailPage(patientId: p.id)),
+                      MaterialPageRoute(
+                        builder: (_) => PatientDetailPage(patientId: p.id),
+                      ),
                     ),
                   ),
                 ],
@@ -99,7 +105,9 @@ class _PatientsPageState extends State<PatientsPage> {
 
   String _lastAppointmentOf(ClinicProvider clinic, String patientId) {
     final appts = clinic.appointmentsOfPatient(patientId);
-    return appts.isEmpty ? 'Sin citas' : AppFormatters.shortDate(appts.first.date);
+    return appts.isEmpty
+        ? 'Sin citas'
+        : AppFormatters.shortDate(appts.first.date);
   }
 }
 
@@ -112,12 +120,20 @@ class _PatientTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final clinic = context.read<ClinicProvider>();
     final appts = clinic.appointmentsOfPatient(patient.id);
-    final last = appts.isEmpty ? 'Sin citas' : AppFormatters.shortDate(appts.first.date);
+    final last = appts.isEmpty
+        ? 'Sin citas'
+        : AppFormatters.shortDate(appts.first.date);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         leading: AppAvatar(name: patient.fullName, radius: 22),
-        title: Text(patient.fullName, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+        title: Text(
+          patient.fullName,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.dark,
+          ),
+        ),
         subtitle: Text(
           'CI ${patient.ci} · ${patient.phone}\nÚltima cita: $last',
           maxLines: 2,
@@ -128,11 +144,15 @@ class _PatientTile extends StatelessWidget {
           tooltip: 'Ver detalle',
           icon: const Icon(Icons.chevron_right, color: AppColors.muted),
           onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => PatientDetailPage(patientId: patient.id)),
+            MaterialPageRoute(
+              builder: (_) => PatientDetailPage(patientId: patient.id),
+            ),
           ),
         ),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PatientDetailPage(patientId: patient.id)),
+          MaterialPageRoute(
+            builder: (_) => PatientDetailPage(patientId: patient.id),
+          ),
         ),
       ),
     );

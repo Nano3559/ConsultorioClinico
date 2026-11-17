@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/hover_card.dart';
 import '../../../../core/widgets/section_header.dart';
@@ -22,7 +23,9 @@ class SpecialtiesSection extends StatelessWidget {
         final isMobile = constraints.maxWidth < 1000;
         final padding = isMobile ? 24.0 : 48.0;
         final avail = constraints.maxWidth - padding * 2;
-        final cardWidth = columns == 1 ? avail : (avail - (columns - 1) * 24) / columns;
+        final cardWidth = columns == 1
+            ? avail
+            : (avail - (columns - 1) * 24) / columns;
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: padding, vertical: 80),
           child: Column(
@@ -60,7 +63,11 @@ class SpecialtiesSection extends StatelessWidget {
 }
 
 class _SpecialtyCard extends StatelessWidget {
-  const _SpecialtyCard({required this.specialty, required this.doctor, required this.onRequest});
+  const _SpecialtyCard({
+    required this.specialty,
+    required this.doctor,
+    required this.onRequest,
+  });
 
   final Specialty specialty;
   final Doctor? doctor;
@@ -87,7 +94,10 @@ class _SpecialtyCard extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [specialty.color.withValues(alpha: 0.75), specialty.color],
+                      colors: [
+                        specialty.color.withValues(alpha: 0.75),
+                        specialty.color,
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -104,7 +114,10 @@ class _SpecialtyCard extends StatelessWidget {
               if (doctor != null)
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
@@ -116,7 +129,11 @@ class _SpecialtyCard extends StatelessWidget {
                     child: Text(
                       doctor!.displayName,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -125,7 +142,11 @@ class _SpecialtyCard extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             specialty.name,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -136,7 +157,11 @@ class _SpecialtyCard extends StatelessWidget {
             const SizedBox(height: 16),
             const Text(
               'Horarios disponibles',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.dark),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -145,14 +170,20 @@ class _SpecialtyCard extends StatelessWidget {
               children: [
                 for (final entry in doctor!.schedule.byDay.entries)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '${entry.key} ${doctor!.schedule.slotRanges(entry.key).join(' · ')}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
                     ),
                   ),
               ],

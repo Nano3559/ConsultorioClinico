@@ -28,7 +28,8 @@ class PatientFaceRegisterPage extends StatefulWidget {
   final String patientName;
 
   @override
-  State<PatientFaceRegisterPage> createState() => _PatientFaceRegisterPageState();
+  State<PatientFaceRegisterPage> createState() =>
+      _PatientFaceRegisterPageState();
 }
 
 class _PatientFaceRegisterPageState extends State<PatientFaceRegisterPage> {
@@ -110,8 +111,7 @@ class _PatientFaceRegisterPageState extends State<PatientFaceRegisterPage> {
     return _poses[idx].$2;
   }
 
-  int _conteoPose(_Pose pose) =>
-      _muestras.where((m) => m.pose == pose).length;
+  int _conteoPose(_Pose pose) => _muestras.where((m) => m.pose == pose).length;
 
   Future<void> _capturar() async {
     if (_enviando) return;
@@ -183,9 +183,9 @@ class _PatientFaceRegisterPageState extends State<PatientFaceRegisterPage> {
         _ok = resultado.registrado;
         _mensaje = resultado.registrado
             ? 'Rostro registrado: ${resultado.imagenesGuardadas} muestras '
-                'multi-pose guardadas en la nube.$detalleRechazo'
+                  'multi-pose guardadas en la nube.$detalleRechazo'
             : 'Las muestras se recibieron, pero la calidad no alcanzó para '
-                'generar la plantilla. Repita las poses con mejor luz.$detalleRechazo';
+                  'generar la plantilla. Repita las poses con mejor luz.$detalleRechazo';
       });
       await _consultarEstado();
     } on VisionException catch (e) {
@@ -227,8 +227,8 @@ class _PatientFaceRegisterPageState extends State<PatientFaceRegisterPage> {
       body: _initializing
           ? const Center(child: CircularProgressIndicator())
           : _camaraError != null
-              ? _ErrorCamara(error: _camaraError!, onRetry: _init)
-              : _buildCaptura(suficiente),
+          ? _ErrorCamara(error: _camaraError!, onRetry: _init)
+          : _buildCaptura(suficiente),
     );
   }
 
@@ -290,7 +290,9 @@ class _PatientFaceRegisterPageState extends State<PatientFaceRegisterPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                suficiente ? 'Pack completo. Revise y registre.' : 'Paso ${_muestras.length + 1}/$_objetivoMuestras: $_instruccionActual',
+                suficiente
+                    ? 'Pack completo. Revise y registre.'
+                    : 'Paso ${_muestras.length + 1}/$_objetivoMuestras: $_instruccionActual',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),

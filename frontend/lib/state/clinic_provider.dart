@@ -92,7 +92,9 @@ class ClinicProvider extends ChangeNotifier {
             .collection('usuarios')
             .doc(_uid)
             .get();
-        if (u.exists) _role = UserRole.fromApi(u.data()!['rol']?.toString() ?? '');
+        if (u.exists) {
+          _role = UserRole.fromApi(u.data()!['rol']?.toString() ?? '');
+        }
       }
       try {
         _apiToken = await FirebaseAuth.instance.currentUser?.getIdToken();
@@ -173,7 +175,8 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   static String _occKey(String m, String f, String h) => '$m|$f|$h';
-  bool _isOccupied(String m, String f, String h) => _occupied.contains(_occKey(m, f, h));
+  bool _isOccupied(String m, String f, String h) =>
+      _occupied.contains(_occKey(m, f, h));
 
   Future<void> _loadEspecialidades() async {
     final res = await _api.getJson('/especialidades');
@@ -181,9 +184,11 @@ class ClinicProvider extends ChangeNotifier {
     final data = res.data?['data'];
     _specialties
       ..clear()
-      ..addAll((data as List? ?? [])
-          .whereType<Map>()
-          .map((e) => Specialty.fromApi(Map<String, dynamic>.from(e))));
+      ..addAll(
+        (data as List? ?? []).whereType<Map>().map(
+          (e) => Specialty.fromApi(Map<String, dynamic>.from(e)),
+        ),
+      );
   }
 
   Future<void> _loadHorarios() async {
@@ -220,8 +225,10 @@ class ClinicProvider extends ChangeNotifier {
         // Respaldo por nombre para filas sin FK (creadas antes de la
         // migración 004): si no se resuelve, el médico sería invisible al
         // filtrar por especialidad.
-        final nombreEsp =
-            (mm['especialidad'] ?? '').toString().trim().toLowerCase();
+        final nombreEsp = (mm['especialidad'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
         for (final s in _specialties) {
           if (s.name.trim().toLowerCase() == nombreEsp) {
             sid = s.id;
@@ -229,11 +236,13 @@ class ClinicProvider extends ChangeNotifier {
           }
         }
       }
-      _doctors.add(Doctor.fromApi(
-        mm,
-        specialtyId: sid,
-        schedule: _schedules[mm['id'].toString()] ?? const DoctorSchedule({}),
-      ));
+      _doctors.add(
+        Doctor.fromApi(
+          mm,
+          specialtyId: sid,
+          schedule: _schedules[mm['id'].toString()] ?? const DoctorSchedule({}),
+        ),
+      );
     }
   }
 
@@ -262,9 +271,11 @@ class ClinicProvider extends ChangeNotifier {
     final data = res.data?['data'];
     _patients
       ..clear()
-      ..addAll((data as List? ?? [])
-          .whereType<Map>()
-          .map((e) => Patient.fromApi(Map<String, dynamic>.from(e))));
+      ..addAll(
+        (data as List? ?? []).whereType<Map>().map(
+          (e) => Patient.fromApi(Map<String, dynamic>.from(e)),
+        ),
+      );
   }
 
   // Un médico solo debe ver los pacientes que tienen citas o consultas a su nombre.
@@ -308,9 +319,11 @@ class ClinicProvider extends ChangeNotifier {
         final list = (data is Map ? data['citas'] : null) ?? data;
         _appointments
           ..clear()
-          ..addAll((list as List? ?? [])
-              .whereType<Map>()
-              .map((e) => Appointment.fromApi(Map<String, dynamic>.from(e))));
+          ..addAll(
+            (list as List? ?? []).whereType<Map>().map(
+              (e) => Appointment.fromApi(Map<String, dynamic>.from(e)),
+            ),
+          );
         return;
       }
       if (!_esAuthError(res)) throw Exception(res.error);
@@ -337,9 +350,11 @@ class ClinicProvider extends ChangeNotifier {
         final data = res.data?['data'];
         _consults
           ..clear()
-          ..addAll((data as List? ?? [])
-              .whereType<Map>()
-              .map((e) => ConsultRecord.fromApi(Map<String, dynamic>.from(e))));
+          ..addAll(
+            (data as List? ?? []).whereType<Map>().map(
+              (e) => ConsultRecord.fromApi(Map<String, dynamic>.from(e)),
+            ),
+          );
         return;
       }
       if (!_esAuthError(res)) throw Exception(res.error);
@@ -368,13 +383,13 @@ class ClinicProvider extends ChangeNotifier {
         final medicoDeCita = {for (final a in _appointments) a.id: a.doctorId};
         _payments
           ..clear()
-          ..addAll((data as List? ?? []).whereType<Map>().map((e) {
-            final p = Payment.fromApi(Map<String, dynamic>.from(e));
-            final d = medicoDeCita[p.appointmentId];
-            return (d == null || d.isEmpty)
-                ? p
-                : p.copyWith(doctorId: d);
-          }));
+          ..addAll(
+            (data as List? ?? []).whereType<Map>().map((e) {
+              final p = Payment.fromApi(Map<String, dynamic>.from(e));
+              final d = medicoDeCita[p.appointmentId];
+              return (d == null || d.isEmpty) ? p : p.copyWith(doctorId: d);
+            }),
+          );
         return;
       }
       if (!_esAuthError(res)) throw Exception(res.error);
@@ -521,18 +536,20 @@ class ClinicProvider extends ChangeNotifier {
       _appointments.where((a) => a.patientId == patientId).toList()
         ..sort((a, b) => b.date.compareTo(a.date));
 
-  List<Appointment> appointmentsOfDay(DateTime day) => _appointments
-      .where((a) =>
-          a.date.year == day.year &&
-          a.date.month == day.month &&
-          a.date.day == day.day)
-      .toList()
-    ..sort((a, b) => a.time.compareTo(b.time));
+  List<Appointment> appointmentsOfDay(DateTime day) =>
+      _appointments
+          .where(
+            (a) =>
+                a.date.year == day.year &&
+                a.date.month == day.month &&
+                a.date.day == day.day,
+          )
+          .toList()
+        ..sort((a, b) => a.time.compareTo(b.time));
 
-  List<ConsultRecord> historyOf(String patientId) => _consults
-      .where((c) => c.patientId == patientId)
-      .toList()
-    ..sort((a, b) => b.date.compareTo(a.date));
+  List<ConsultRecord> historyOf(String patientId) =>
+      _consults.where((c) => c.patientId == patientId).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
 
   /// Devuelve el pago vinculado a una cita, o null si no tiene.
   Payment? paymentOfAppointment(String appointmentId) {
@@ -554,15 +571,17 @@ class ClinicProvider extends ChangeNotifier {
     final dayName = _weekdayName(date.weekday);
     if (!doctor.schedule.forDay(dayName).contains(time)) return false;
 
-    final occupied = _appointments.any((a) =>
-        a.doctorId == doctorId &&
-        a.date.year == date.year &&
-        a.date.month == date.month &&
-        a.date.day == date.day &&
-        a.time == time &&
-        a.status != AppointmentStatus.cancelada &&
-        a.status != AppointmentStatus.noAsistio &&
-        a.id != excludeAppointmentId);
+    final occupied = _appointments.any(
+      (a) =>
+          a.doctorId == doctorId &&
+          a.date.year == date.year &&
+          a.date.month == date.month &&
+          a.date.day == date.day &&
+          a.time == time &&
+          a.status != AppointmentStatus.cancelada &&
+          a.status != AppointmentStatus.noAsistio &&
+          a.id != excludeAppointmentId,
+    );
     if (occupied) return false;
     if (_isOccupied(doctorId, _fmt(date), time)) return false;
     return true;
@@ -579,14 +598,14 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   static String _weekdayName(int weekday) => switch (weekday) {
-        1 => 'Lun',
-        2 => 'Mar',
-        3 => 'Mié',
-        4 => 'Jue',
-        5 => 'Vie',
-        6 => 'Sáb',
-        _ => 'Lun',
-      };
+    1 => 'Lun',
+    2 => 'Mar',
+    3 => 'Mié',
+    4 => 'Jue',
+    5 => 'Vie',
+    6 => 'Sáb',
+    _ => 'Lun',
+  };
 
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -659,7 +678,8 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   /// Nombre largo del día para la API (horarios.dia_semana).
-  static String _diaLargo(String short) => const {
+  static String _diaLargo(String short) =>
+      const {
         'Lun': 'Lunes',
         'Mar': 'Martes',
         'Mié': 'Miércoles',
@@ -667,12 +687,14 @@ class ClinicProvider extends ChangeNotifier {
         'Vie': 'Viernes',
         'Sáb': 'Sábado',
         'Dom': 'Domingo',
-      }[short] ?? short;
+      }[short] ??
+      short;
 
   /// Suma 30 min a un 'HH:mm' (para cerrar el rango del último slot).
   static String _mas30(String t) {
     final p = t.split(':');
-    final total = (int.tryParse(p[0]) ?? 0) * 60 + (int.tryParse(p[1]) ?? 0) + 30;
+    final total =
+        (int.tryParse(p[0]) ?? 0) * 60 + (int.tryParse(p[1]) ?? 0) + 30;
     return '${((total ~/ 60) % 24).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
   }
 
@@ -682,8 +704,14 @@ class ClinicProvider extends ChangeNotifier {
   /// conservan su horario (nunca se pierde todo el horario del médico).
   /// Devuelve mensaje de error o null.
   Future<String?> _reemplazarHorariosApi(
-      String medicoId, DoctorSchedule schedule, String token) async {
-    final actual = await _api.getJson('/medicos/$medicoId/horarios', token: token);
+    String medicoId,
+    DoctorSchedule schedule,
+    String token,
+  ) async {
+    final actual = await _api.getJson(
+      '/medicos/$medicoId/horarios',
+      token: token,
+    );
     if (!actual.isSuccess) return actual.error.toString();
     final existentes = <String, List<String>>{}; // dia corto -> ids de horarios
     for (final h in (actual.data?['data'] as List? ?? [])) {
@@ -700,15 +728,11 @@ class ClinicProvider extends ChangeNotifier {
         final del = await _api.deleteJson('/horarios/$previo', token: token);
         if (!del.isSuccess) return del.error.toString();
       }
-      final ins = await _api.postJson(
-        '/medicos/$medicoId/horarios',
-        {
-          'dia_semana': _diaLargo(entry.key),
-          'hora_inicio': slots.first,
-          'hora_fin': _mas30(slots.last),
-        },
-        token: token,
-      );
+      final ins = await _api.postJson('/medicos/$medicoId/horarios', {
+        'dia_semana': _diaLargo(entry.key),
+        'hora_inicio': slots.first,
+        'hora_fin': _mas30(slots.last),
+      }, token: token);
       if (!ins.isSuccess) return ins.error.toString();
     }
     // Días que quedaron sin atención (no están en el nuevo horario).
@@ -733,15 +757,11 @@ class ClinicProvider extends ChangeNotifier {
       final token = await _token();
       if (token == null) throw Exception('Sin sesión');
       final na = _nombreApellido(d.name);
-      final res = await _api.postJson(
-        '/medicos',
-        {
-          ...d.toApiJson(especialidad: specialtyById(d.specialtyId)?.name ?? ''),
-          'nombre': na[0],
-          'apellido': na[1],
-        },
-        token: token,
-      );
+      final res = await _api.postJson('/medicos', {
+        ...d.toApiJson(especialidad: specialtyById(d.specialtyId)?.name ?? ''),
+        'nombre': na[0],
+        'apellido': na[1],
+      }, token: token);
       if (!res.isSuccess) throw Exception(res.error);
       final row = Map<String, dynamic>.from(res.data?['data'] as Map);
       final id = row['id'].toString();
@@ -749,8 +769,7 @@ class ClinicProvider extends ChangeNotifier {
       if (herr != null) throw Exception(herr);
       final created = Doctor.fromApi(
         row,
-        specialtyId:
-            (row['especialidad_id'] ?? d.specialtyId).toString(),
+        specialtyId: (row['especialidad_id'] ?? d.specialtyId).toString(),
         schedule: d.schedule,
       );
       _doctors.add(created);
@@ -768,18 +787,14 @@ class ClinicProvider extends ChangeNotifier {
       final token = await _token();
       if (token == null) throw Exception('Sin sesión');
       final na = _nombreApellido(d.name);
-      final res = await _api.putJson(
-        '/medicos/${d.id}',
-        {
-          'nombre': na[0],
-          'apellido': na[1],
-          'especialidad': specialtyById(d.specialtyId)?.name ?? '',
-          'titulo': d.title,
-          'descripcion': d.description,
-          'anios_experiencia': d.yearsExperience,
-        },
-        token: token,
-      );
+      final res = await _api.putJson('/medicos/${d.id}', {
+        'nombre': na[0],
+        'apellido': na[1],
+        'especialidad': specialtyById(d.specialtyId)?.name ?? '',
+        'titulo': d.title,
+        'descripcion': d.description,
+        'anios_experiencia': d.yearsExperience,
+      }, token: token);
       if (!res.isSuccess) throw Exception(res.error);
       var row = Map<String, dynamic>.from(res.data?['data'] as Map);
       // El formulario también edita el flag activo (PUT no lo toca):
@@ -787,7 +802,11 @@ class ClinicProvider extends ChangeNotifier {
       final quiereActivo = d.active;
       final quedoActivo = row['activo'] ?? true;
       if ((quedoActivo == true) != quiereActivo) {
-        final tog = await _api.patchJson('/medicos/${d.id}/estado', {}, token: token);
+        final tog = await _api.patchJson(
+          '/medicos/${d.id}/estado',
+          {},
+          token: token,
+        );
         if (!tog.isSuccess) throw Exception(tog.error);
         row = Map<String, dynamic>.from(tog.data?['data'] as Map);
       }
@@ -797,8 +816,7 @@ class ClinicProvider extends ChangeNotifier {
       if (i >= 0) {
         _doctors[i] = Doctor.fromApi(
           row,
-          specialtyId:
-              (row['especialidad_id'] ?? d.specialtyId).toString(),
+          specialtyId: (row['especialidad_id'] ?? d.specialtyId).toString(),
           schedule: d.schedule,
         );
       }
@@ -815,8 +833,7 @@ class ClinicProvider extends ChangeNotifier {
     try {
       final token = await _token();
       if (token == null) throw Exception('Sin sesión');
-      final res =
-          await _api.patchJson('/medicos/$id/estado', {}, token: token);
+      final res = await _api.patchJson('/medicos/$id/estado', {}, token: token);
       if (!res.isSuccess) throw Exception(res.error);
       final row = Map<String, dynamic>.from(res.data?['data'] as Map);
       final i = _doctors.indexWhere((x) => x.id == id);
@@ -839,7 +856,10 @@ class ClinicProvider extends ChangeNotifier {
 
   /// El médico reemplaza sus propios horarios (días y franjas) vía API.
   /// Devuelve null en éxito o el mensaje de error.
-  Future<String?> updateMySchedule(String medicoId, DoctorSchedule schedule) async {
+  Future<String?> updateMySchedule(
+    String medicoId,
+    DoctorSchedule schedule,
+  ) async {
     try {
       final token = await _token();
       if (token == null) throw Exception('Sin sesión');
@@ -871,17 +891,13 @@ class ClinicProvider extends ChangeNotifier {
     // (401/403) se conserva el camino legacy en Firestore.
     final token = await _token();
     if (token != null) {
-      final res = await _api.postJson(
-        '/citas',
-        {
-          'paciente_id': patientId,
-          'medico_id': medicoId,
-          'fecha': fecha,
-          'hora': time,
-          'motivo': reason,
-        },
-        token: token,
-      );
+      final res = await _api.postJson('/citas', {
+        'paciente_id': patientId,
+        'medico_id': medicoId,
+        'fecha': fecha,
+        'hora': time,
+        'motivo': reason,
+      }, token: token);
       if (res.isSuccess) {
         final cita = Appointment.fromApi(
           Map<String, dynamic>.from(res.data?['data'] as Map),
@@ -923,14 +939,15 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> setAppointmentStatus(String id, AppointmentStatus status) async {
+  Future<String?> setAppointmentStatus(
+    String id,
+    AppointmentStatus status,
+  ) async {
     final token = await _token();
     if (token != null) {
-      final res = await _api.patchJson(
-        '/citas/$id/estado',
-        {'estado': status.toApi()},
-        token: token,
-      );
+      final res = await _api.patchJson('/citas/$id/estado', {
+        'estado': status.toApi(),
+      }, token: token);
       if (res.isSuccess) {
         final updated = Appointment.fromApi(
           Map<String, dynamic>.from(res.data?['data'] as Map),
@@ -972,7 +989,8 @@ class ClinicProvider extends ChangeNotifier {
         final i = _appointments.indexWhere((a) => a.id == id);
         if (i >= 0) {
           _occupied.remove(
-              _occKey(updated.doctorId, _fmt(updated.date), updated.time));
+            _occKey(updated.doctorId, _fmt(updated.date), updated.time),
+          );
           _appointments[i] = updated;
         }
         notifyListeners();
@@ -987,13 +1005,16 @@ class ClinicProvider extends ChangeNotifier {
     final i = _appointments.indexWhere((a) => a.id == id);
     final old = i >= 0 ? _appointments[i] : null;
     try {
-      await _fs.update('citas', id, {'estado': AppointmentStatus.cancelada.toApi()});
+      await _fs.update('citas', id, {
+        'estado': AppointmentStatus.cancelada.toApi(),
+      });
       if (old != null) {
         _occupied.remove(_occKey(old.doctorId, _fmt(old.date), old.time));
       }
       if (i >= 0) {
-        _appointments[i] =
-            _appointments[i].copyWith(status: AppointmentStatus.cancelada);
+        _appointments[i] = _appointments[i].copyWith(
+          status: AppointmentStatus.cancelada,
+        );
       }
       notifyListeners();
       return null;
@@ -1004,7 +1025,11 @@ class ClinicProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> rescheduleAppointment(String id, DateTime date, String time) async {
+  Future<String?> rescheduleAppointment(
+    String id,
+    DateTime date,
+    String time,
+  ) async {
     final i = _appointments.indexWhere((a) => a.id == id);
     final old = i >= 0 ? _appointments[i] : null;
     final medicoId = old?.doctorId ?? _uid ?? '';
@@ -1013,21 +1038,20 @@ class ClinicProvider extends ChangeNotifier {
     // a programada en el servidor, igual que abajo).
     final token = await _token();
     if (token != null) {
-      final res = await _api.putJson(
-        '/citas/$id',
-        {'fecha': nuevaFecha, 'hora': time},
-        token: token,
-      );
+      final res = await _api.putJson('/citas/$id', {
+        'fecha': nuevaFecha,
+        'hora': time,
+      }, token: token);
       if (res.isSuccess) {
         final updated = Appointment.fromApi(
           Map<String, dynamic>.from(res.data?['data'] as Map),
         );
         if (old != null) {
-          _occupied.remove(
-              _occKey(old.doctorId, _fmt(old.date), old.time));
+          _occupied.remove(_occKey(old.doctorId, _fmt(old.date), old.time));
         }
         _occupied.add(
-            _occKey(updated.doctorId, _fmt(updated.date), updated.time));
+          _occKey(updated.doctorId, _fmt(updated.date), updated.time),
+        );
         if (i >= 0) _appointments[i] = updated;
         notifyListeners();
         return null;
@@ -1050,7 +1074,10 @@ class ClinicProvider extends ChangeNotifier {
       _occupied.add(_occKey(medicoId, nuevaFecha, time));
       if (i >= 0) {
         _appointments[i] = _appointments[i].copyWith(
-            date: date, time: time, status: AppointmentStatus.pendiente);
+          date: date,
+          time: time,
+          status: AppointmentStatus.pendiente,
+        );
       }
       notifyListeners();
       return null;
@@ -1065,11 +1092,17 @@ class ClinicProvider extends ChangeNotifier {
     // Vía API (un médico archiva bajo su perfil en el servidor).
     final token = await _token();
     if (token != null) {
-      final res = await _api.postJson('/consultas', c.toApiJson(), token: token);
+      final res = await _api.postJson(
+        '/consultas',
+        c.toApiJson(),
+        token: token,
+      );
       if (res.isSuccess) {
-        _consults.add(ConsultRecord.fromApi(
-          Map<String, dynamic>.from(res.data?['data'] as Map),
-        ));
+        _consults.add(
+          ConsultRecord.fromApi(
+            Map<String, dynamic>.from(res.data?['data'] as Map),
+          ),
+        );
         notifyListeners();
         return null;
       }
@@ -1098,16 +1131,12 @@ class ClinicProvider extends ChangeNotifier {
     // no tiene columna de médico: el doctorId se deriva de la cita).
     final token = await _token();
     if (token != null) {
-      final res = await _api.postJson(
-        '/pagos',
-        {
-          'paciente_id': p.patientId,
-          'cita_id': p.appointmentId.isEmpty ? null : p.appointmentId,
-          'monto': p.amount,
-          'metodo_pago': p.method.toApi(),
-        },
-        token: token,
-      );
+      final res = await _api.postJson('/pagos', {
+        'paciente_id': p.patientId,
+        'cita_id': p.appointmentId.isEmpty ? null : p.appointmentId,
+        'monto': p.amount,
+        'metodo_pago': p.method.toApi(),
+      }, token: token);
       if (res.isSuccess) {
         var created = Payment.fromApi(
           Map<String, dynamic>.from(res.data?['data'] as Map),
@@ -1152,11 +1181,9 @@ class ClinicProvider extends ChangeNotifier {
   Future<String?> setPaymentStatus(String id, PaymentStatus status) async {
     final token = await _token();
     if (token != null) {
-      final res = await _api.patchJson(
-        '/pagos/$id/estado',
-        {'estado': status.toApi()},
-        token: token,
-      );
+      final res = await _api.patchJson('/pagos/$id/estado', {
+        'estado': status.toApi(),
+      }, token: token);
       if (res.isSuccess) {
         final updated = Payment.fromApi(
           Map<String, dynamic>.from(res.data?['data'] as Map),
@@ -1164,8 +1191,7 @@ class ClinicProvider extends ChangeNotifier {
         final i = _payments.indexWhere((x) => x.id == id);
         if (i >= 0) {
           final d = _payments[i].doctorId;
-          _payments[i] =
-              (d.isEmpty) ? updated : updated.copyWith(doctorId: d);
+          _payments[i] = (d.isEmpty) ? updated : updated.copyWith(doctorId: d);
         }
         notifyListeners();
         return null;
@@ -1212,28 +1238,37 @@ class ClinicProvider extends ChangeNotifier {
         return true;
       }).length;
 
-  int citasPorEstadoEnRango(DateTime desde, DateTime hasta, AppointmentStatus s) =>
-      _appointments
-          .where((a) =>
-              a.status == s &&
-              !a.date.isBefore(desde) &&
-              !a.date.isAfter(hasta))
-          .length;
+  int citasPorEstadoEnRango(
+    DateTime desde,
+    DateTime hasta,
+    AppointmentStatus s,
+  ) => _appointments
+      .where(
+        (a) =>
+            a.status == s && !a.date.isBefore(desde) && !a.date.isAfter(hasta),
+      )
+      .length;
 
   double ingresosEnRango(DateTime desde, DateTime hasta) => _payments
-      .where((p) =>
-          p.status == PaymentStatus.pagado &&
-          !p.date.isBefore(desde) &&
-          !p.date.isAfter(hasta))
+      .where(
+        (p) =>
+            p.status == PaymentStatus.pagado &&
+            !p.date.isBefore(desde) &&
+            !p.date.isAfter(hasta),
+      )
       .fold(0, (acc, p) => acc + p.amount);
 
   Map<Doctor, int> citasPorDoctorEnRango(DateTime desde, DateTime hasta) {
     final map = <Doctor, int>{};
     for (final d in _doctors) {
-      map[d] = _appointments.where((a) =>
-          a.doctorId == d.id &&
-          !a.date.isBefore(desde) &&
-          !a.date.isAfter(hasta)).length;
+      map[d] = _appointments
+          .where(
+            (a) =>
+                a.doctorId == d.id &&
+                !a.date.isBefore(desde) &&
+                !a.date.isAfter(hasta),
+          )
+          .length;
     }
     return map;
   }

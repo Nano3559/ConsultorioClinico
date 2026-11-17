@@ -92,7 +92,8 @@ class Doctor {
       name: '$nombre $apellido'.trim(),
       specialtyId: specialtyId,
       description: (json['descripcion'] ?? '').toString(),
-      yearsExperience: int.tryParse((json['anios_experiencia'] ?? '0').toString()) ?? 0,
+      yearsExperience:
+          int.tryParse((json['anios_experiencia'] ?? '0').toString()) ?? 0,
       schedule: schedule,
       active: json['activo'] ?? true,
       title: titulo.isEmpty ? 'Dr./Dra.' : titulo,

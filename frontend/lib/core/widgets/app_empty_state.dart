@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Estado vacío para listas y búsquedas sin resultados.
@@ -50,10 +51,7 @@ class AppEmptyState extends StatelessWidget {
                 style: const TextStyle(color: AppColors.muted, fontSize: 13),
               ),
             ],
-            if (action != null) ...[
-              const SizedBox(height: 16),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 16), action!],
           ],
         ),
       ),

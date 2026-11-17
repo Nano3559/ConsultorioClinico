@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_status_badge.dart';
@@ -29,7 +30,11 @@ class DoctorPanelPage extends StatelessWidget {
             SizedBox(height: 12),
             Text(
               'Sin médico asignado',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
             ),
             Text(
               'Tu perfil de Firebase no tiene un médico vinculado.',
@@ -55,7 +60,11 @@ class DoctorPanelPage extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               'Error al cargar el panel',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.danger),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.danger,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -80,11 +89,19 @@ class DoctorPanelPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.medical_services_outlined, size: 48, color: AppColors.muted),
+            Icon(
+              Icons.medical_services_outlined,
+              size: 48,
+              color: AppColors.muted,
+            ),
             SizedBox(height: 12),
             Text(
               'Médico no encontrado',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
             ),
             Text(
               'El registro del médico aún no se ha sincronizado con el sistema.',
@@ -95,15 +112,18 @@ class DoctorPanelPage extends StatelessWidget {
       );
     }
 
-    final today = clinic
-        .appointmentsOfDoctor(doctorId)
-        .where((a) =>
-            a.date.year == DateTime.now().year &&
-            a.date.month == DateTime.now().month &&
-            a.date.day == DateTime.now().day &&
-            a.status != AppointmentStatus.cancelada)
-        .toList()
-      ..sort((a, b) => a.time.compareTo(b.time));
+    final today =
+        clinic
+            .appointmentsOfDoctor(doctorId)
+            .where(
+              (a) =>
+                  a.date.year == DateTime.now().year &&
+                  a.date.month == DateTime.now().month &&
+                  a.date.day == DateTime.now().day &&
+                  a.status != AppointmentStatus.cancelada,
+            )
+            .toList()
+          ..sort((a, b) => a.time.compareTo(b.time));
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -111,7 +131,9 @@ class DoctorPanelPage extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primaryLight]),
+            gradient: const LinearGradient(
+              colors: [AppColors.primaryDark, AppColors.primaryLight],
+            ),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -119,21 +141,38 @@ class DoctorPanelPage extends StatelessWidget {
               const CircleAvatar(
                 radius: 28,
                 backgroundColor: Colors.white,
-                child: Icon(Icons.medical_services_outlined, color: AppColors.primaryDark, size: 28),
+                child: Icon(
+                  Icons.medical_services_outlined,
+                  color: AppColors.primaryDark,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Bienvenido/a', style: const TextStyle(color: Color(0xFFD1FAE5), fontSize: 13)),
+                    Text(
+                      'Bienvenido/a',
+                      style: const TextStyle(
+                        color: Color(0xFFD1FAE5),
+                        fontSize: 13,
+                      ),
+                    ),
                     Text(
                       doctor.displayName,
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     Text(
                       'Tienes ${today.length} cita(s) hoy',
-                      style: const TextStyle(color: Color(0xFFD1FAE5), fontSize: 14),
+                      style: const TextStyle(
+                        color: Color(0xFFD1FAE5),
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -144,7 +183,14 @@ class DoctorPanelPage extends StatelessWidget {
         const SizedBox(height: 20),
         // Acceso directo al módulo exclusivo del cardiólogo (ECG con IA).
         if (clinic.esCardiologo(doctorId)) _TarjetaEcg(),
-        const Text('Citas de hoy', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
+        const Text(
+          'Citas de hoy',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: AppColors.dark,
+          ),
+        ),
         const SizedBox(height: 12),
         if (today.isEmpty)
           const AppEmptyState(
@@ -174,7 +220,11 @@ class _TarjetaEcg extends StatelessWidget {
             color: AppColors.danger.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.monitor_heart_outlined, color: AppColors.danger, size: 26),
+          child: const Icon(
+            Icons.monitor_heart_outlined,
+            color: AppColors.danger,
+            size: 26,
+          ),
         ),
         title: const Text(
           'Evaluación de ECG con IA',
@@ -211,14 +261,20 @@ class _AppointmentCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryBg,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       appointment.time,
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryDark,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -228,11 +284,17 @@ class _AppointmentCard extends StatelessWidget {
                       children: [
                         Text(
                           'Paciente no disponible',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark,
+                          ),
                         ),
                         Text(
                           'El registro del paciente no se ha sincronizado.',
-                          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -248,11 +310,13 @@ class _AppointmentCard extends StatelessWidget {
 
     final hasPendingConsult = !clinic
         .historyOf(patient.id)
-        .any((c) =>
-            c.doctorId == appointment.doctorId &&
-            c.date.year == appointment.date.year &&
-            c.date.month == appointment.date.month &&
-            c.date.day == appointment.date.day);
+        .any(
+          (c) =>
+              c.doctorId == appointment.doctorId &&
+              c.date.year == appointment.date.year &&
+              c.date.month == appointment.date.month &&
+              c.date.day == appointment.date.day,
+        );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -264,14 +328,20 @@ class _AppointmentCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     appointment.time,
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -279,8 +349,20 @@ class _AppointmentCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(patient.fullName, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
-                      Text(appointment.reason, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                      Text(
+                        patient.fullName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      Text(
+                        appointment.reason,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -294,7 +376,8 @@ class _AppointmentCard extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => PatientDetailPage(patientId: patient.id),
+                        builder: (_) =>
+                            PatientDetailPage(patientId: patient.id),
                       ),
                     ),
                     icon: const Icon(Icons.folder_open_outlined),
@@ -306,10 +389,11 @@ class _AppointmentCard extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: hasPendingConsult
                         ? () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => ConsultFormPage(patientId: patient.id),
-                              ),
-                            )
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ConsultFormPage(patientId: patient.id),
+                            ),
+                          )
                         : null,
                     icon: const Icon(Icons.edit_note),
                     label: const Text('Registrar consulta'),

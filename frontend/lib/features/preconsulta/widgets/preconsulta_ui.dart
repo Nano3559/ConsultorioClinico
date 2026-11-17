@@ -337,8 +337,8 @@ class MetricaTile extends StatelessWidget {
                   confianza! >= 0.6
                       ? color
                       : confianza! >= 0.35
-                          ? AppColors.warning
-                          : AppColors.danger,
+                      ? AppColors.warning
+                      : AppColors.danger,
                 ),
               ),
             ),
@@ -397,7 +397,9 @@ class ScoreBar extends StatelessWidget {
               ),
             ),
             Text(
-              valor == null ? '—' : '${v.toStringAsFixed(max > 10 ? 0 : 1)}$sufijo',
+              valor == null
+                  ? '—'
+                  : '${v.toStringAsFixed(max > 10 ? 0 : 1)}$sufijo',
               style: const TextStyle(
                 color: AppColors.dark,
                 fontSize: 12,
@@ -495,8 +497,11 @@ class AvisoClinico extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.health_and_safety_outlined,
-              size: 18, color: AppColors.info),
+          const Icon(
+            Icons.health_and_safety_outlined,
+            size: 18,
+            color: AppColors.info,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

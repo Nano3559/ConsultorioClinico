@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_empty_state.dart';
@@ -35,12 +36,13 @@ class _PaymentsPageState extends State<PaymentsPage> {
     final list = clinic.payments.where((p) {
       if (_filter != null && p.status != _filter) return false;
       if (q.isNotEmpty) {
-        final hay = '${clinic.patientName(p.patientId)} ${clinic.doctorName(p.doctorId)} ${p.method.label}'.toLowerCase();
+        final hay =
+            '${clinic.patientName(p.patientId)} ${clinic.doctorName(p.doctorId)} ${p.method.label}'
+                .toLowerCase();
         if (!hay.contains(q)) return false;
       }
       return true;
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    }).toList()..sort((a, b) => b.date.compareTo(a.date));
     final total = clinic.payments
         .where((p) => p.status == PaymentStatus.pagado)
         .fold<double>(0, (s, p) => s + p.amount);
@@ -75,11 +77,21 @@ class _PaymentsPageState extends State<PaymentsPage> {
               const Icon(Icons.payments_outlined, color: AppColors.success),
               const SizedBox(width: 12),
               const Expanded(
-                child: Text('Ingresos cobrados (pagados)', style: TextStyle(color: AppColors.dark, fontWeight: FontWeight.w700)),
+                child: Text(
+                  'Ingresos cobrados (pagados)',
+                  style: TextStyle(
+                    color: AppColors.dark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               Text(
                 AppFormatters.money(total),
-                style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w800, fontSize: 18),
+                style: const TextStyle(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
               ),
             ],
           ),
@@ -114,11 +126,21 @@ class _PaymentsPageState extends State<PaymentsPage> {
         if (list.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 48),
-            child: AppEmptyState(icon: Icons.receipt_long_outlined, title: 'Sin pagos registrados'),
+            child: AppEmptyState(
+              icon: Icons.receipt_long_outlined,
+              title: 'Sin pagos registrados',
+            ),
           )
         else if (isWide)
           AppTable(
-            headers: const ['Fecha', 'Paciente', 'Médico', 'Método', 'Monto', 'Estado'],
+            headers: const [
+              'Fecha',
+              'Paciente',
+              'Médico',
+              'Método',
+              'Monto',
+              'Estado',
+            ],
             rows: [
               for (final p in list)
                 [
@@ -139,7 +161,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 leading: Icon(p.method.icon, color: AppColors.primary),
                 title: Text(
                   '${clinic.patientName(p.patientId)} — ${AppFormatters.money(p.amount)}',
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                  ),
                 ),
                 subtitle: Text(
                   '${AppFormatters.shortDate(p.date)} · ${clinic.doctorName(p.doctorId)} · ${p.method.label}',
@@ -156,7 +181,9 @@ class _PaymentsPageState extends State<PaymentsPage> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -166,7 +193,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   '${clinic.patientName(p.patientId)} — ${p.method.label}',
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                  ),
                 ),
               ),
               for (final s in PaymentStatus.values)
@@ -186,7 +216,6 @@ class _PaymentsPageState extends State<PaymentsPage> {
       ),
     );
   }
-
 }
 
 class _PaymentStatusChip extends StatelessWidget {
@@ -198,8 +227,18 @@ class _PaymentStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: status.bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(status.label, style: TextStyle(color: status.color, fontSize: 12, fontWeight: FontWeight.w700)),
+      decoration: BoxDecoration(
+        color: status.bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status.label,
+        style: TextStyle(
+          color: status.color,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }

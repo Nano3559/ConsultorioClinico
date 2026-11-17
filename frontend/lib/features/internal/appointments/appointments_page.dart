@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/app_avatar.dart';
@@ -36,13 +37,16 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   @override
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
-    final all = clinic.appointments.toList()..sort((a, b) => b.date.compareTo(a.date));
+    final all = clinic.appointments.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
     final list = all.where((a) {
       if (_statusFilter != null && a.status != _statusFilter) return false;
       if (_doctorFilter != null && a.doctorId != _doctorFilter) return false;
       final q = _search.text.trim().toLowerCase();
       if (q.isNotEmpty) {
-        final hay = '${clinic.patientName(a.patientId)} ${a.reason} ${clinic.doctorName(a.doctorId)}'.toLowerCase();
+        final hay =
+            '${clinic.patientName(a.patientId)} ${a.reason} ${clinic.doctorName(a.doctorId)}'
+                .toLowerCase();
         if (!hay.contains(q)) return false;
       }
       return true;
@@ -109,14 +113,25 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         if (list.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 48),
-            child: AppEmptyState(icon: Icons.event_note_outlined, title: 'Sin citas con esos filtros'),
+            child: AppEmptyState(
+              icon: Icons.event_note_outlined,
+              title: 'Sin citas con esos filtros',
+            ),
           )
         else if (isWide)
           AppTable(
-            headers: const ['Fecha', 'Hora', 'Paciente', 'Médico', 'Motivo', 'Tratamiento', 'Cobro', 'Estado', ''],
-            rows: [
-              for (final a in list) _appointmentRow(context, clinic, a),
+            headers: const [
+              'Fecha',
+              'Hora',
+              'Paciente',
+              'Médico',
+              'Motivo',
+              'Tratamiento',
+              'Cobro',
+              'Estado',
+              '',
             ],
+            rows: [for (final a in list) _appointmentRow(context, clinic, a)],
           )
         else
           for (final a in list) _AppointmentTile(appointment: a),
@@ -154,55 +169,76 @@ class _AppointmentTile extends StatelessWidget {
                     children: [
                       Text(
                         clinic.patientName(a.patientId),
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.dark, fontSize: 15),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                          fontSize: 15,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${clinic.doctorName(a.doctorId)} · ${a.reason}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${AppFormatters.shortDate(a.date)} · ${a.time}',
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark, fontSize: 12),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (pagado)
-                      Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.successBg,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Pagado',
-                          style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w700),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${AppFormatters.shortDate(a.date)} · ${a.time}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryDark,
+                          fontSize: 12,
                         ),
                       ),
-                    AppStatusBadge(status: a.status),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (pagado)
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.successBg,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Pagado',
+                              style: TextStyle(
+                                color: AppColors.success,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        AppStatusBadge(status: a.status),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
                 IconButton(
                   icon: const Icon(Icons.more_vert, color: AppColors.muted),
                   onPressed: () => showAppointmentActions(context, clinic, a),
@@ -235,7 +271,11 @@ ConsultRecord? _consultaDe(ClinicProvider clinic, Appointment a) {
   return null;
 }
 
-List<Widget> _appointmentRow(BuildContext context, ClinicProvider clinic, Appointment a) {
+List<Widget> _appointmentRow(
+  BuildContext context,
+  ClinicProvider clinic,
+  Appointment a,
+) {
   final c = _consultaDe(clinic, a);
   final pagado = clinic.paymentOfAppointment(a.id) != null;
   return [
@@ -268,13 +308,26 @@ Widget _treatmentBlock(ConsultRecord c) {
       children: [
         const Text(
           'Tratamiento indicado',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryDark,
+          ),
         ),
         const SizedBox(height: 4),
-        Text('Diagnóstico: ${c.diagnostico}', style: const TextStyle(fontSize: 13, height: 1.4)),
-        Text('Tratamiento: ${c.tratamiento}', style: const TextStyle(fontSize: 13, height: 1.4)),
+        Text(
+          'Diagnóstico: ${c.diagnostico}',
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
+        Text(
+          'Tratamiento: ${c.tratamiento}',
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
         if (c.observaciones.isNotEmpty)
-          Text('Observaciones: ${c.observaciones}', style: const TextStyle(fontSize: 13, height: 1.4)),
+          Text(
+            'Observaciones: ${c.observaciones}',
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          ),
       ],
     ),
   );

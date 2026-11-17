@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../services/api_client.dart';
@@ -15,7 +16,14 @@ class SettingsPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text('Configuración', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.dark)),
+        const Text(
+          'Configuración',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: AppColors.dark,
+          ),
+        ),
         const SizedBox(height: 20),
         const _Section(
           title: 'Consultorio',
@@ -43,7 +51,11 @@ class SettingsPage extends StatelessWidget {
                 'El frontend está listo para conectarse al backend de Node.js. '
                 'Los endpoints esperados están documentados en lib/services/api_client.dart '
                 'y los datos actuales son ficticios para el ejercicio académico.',
-                style: const TextStyle(color: AppColors.muted, height: 1.5, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  height: 1.5,
+                  fontSize: 13,
+                ),
               ),
             ),
           ],
@@ -65,7 +77,9 @@ class SettingsPage extends StatelessWidget {
                 onPressed: () {
                   clinic.resetDemo();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Datos de demostración restablecidos')),
+                    const SnackBar(
+                      content: Text('Datos de demostración restablecidos'),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.restart_alt),
@@ -80,7 +94,10 @@ class SettingsPage extends StatelessWidget {
           children: [
             _InfoRow(label: 'Versión', value: '1.0.0'),
             _InfoRow(label: 'Plataforma', value: 'Flutter (App móvil + Web)'),
-            _InfoRow(label: 'Sistema operativo mínimo', value: 'Android 7 (2016)'),
+            _InfoRow(
+              label: 'Sistema operativo mínimo',
+              value: 'Android 7 (2016)',
+            ),
           ],
         ),
       ],
@@ -107,7 +124,14 @@ class _Section extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.dark)),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.dark,
+              ),
+            ),
           ),
           const Divider(height: 1),
           ...children,
@@ -118,7 +142,11 @@ class _Section extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value, this.highlight = false});
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
 
   final String label;
   final String value;
@@ -131,7 +159,16 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600))),
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           Expanded(
             child: Text(
               value,

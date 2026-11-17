@@ -169,8 +169,7 @@ class PreconsultaProvider extends ChangeNotifier {
       if (data is Map<String, dynamic>) {
         _detalle = PreconsultaDetalle.fromJson(data);
         if (_detalle?.captura.rostroDetectado == false) {
-          _aviso =
-              'No se detectó un rostro estable. El triage usará solo el cuestionario.';
+          _aviso = 'No se detectó un rostro estable. El triage usará solo el cuestionario.';
         }
         return true;
       }

@@ -123,7 +123,12 @@ class _KioskPageState extends State<KioskPage> {
 
   void _startCountdown() {
     _stopCountdown();
-    if (_photo != null || _error != null || _extraBusy || _stage != _KioskStage.idle) return;
+    if (_photo != null ||
+        _error != null ||
+        _extraBusy ||
+        _stage != _KioskStage.idle) {
+      return;
+    }
     setState(() => _countdown = _countdownFrom);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return timer.cancel();
@@ -211,8 +216,10 @@ class _KioskPageState extends State<KioskPage> {
   }
 
   bool _esFalloRostro(String mensaje) {
-    return RegExp(r'no reconocid|no se pudo reconocer', caseSensitive: false)
-        .hasMatch(mensaje);
+    return RegExp(
+      r'no reconocid|no se pudo reconocer',
+      caseSensitive: false,
+    ).hasMatch(mensaje);
   }
 
   void _retry() {
@@ -236,7 +243,11 @@ class _KioskPageState extends State<KioskPage> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.support_agent, color: AppColors.primary, size: 52),
+        icon: const Icon(
+          Icons.support_agent,
+          color: AppColors.primary,
+          size: 52,
+        ),
         title: const Text('Pase a recepción'),
         content: const Text(
           'Nuestro personal del consultorio lo atenderá y confirmará su turno '
@@ -363,11 +374,23 @@ class _KioskPageState extends State<KioskPage> {
               ),
             ),
             const SizedBox(height: 28),
-            _stepRow(icon: Icons.face_retouching_natural, step: '1', label: 'Mire a la cámara'),
+            _stepRow(
+              icon: Icons.face_retouching_natural,
+              step: '1',
+              label: 'Mire a la cámara',
+            ),
             const SizedBox(height: 16),
-            _stepRow(icon: Icons.verified_user_outlined, step: '2', label: 'Espere la confirmación'),
+            _stepRow(
+              icon: Icons.verified_user_outlined,
+              step: '2',
+              label: 'Espere la confirmación',
+            ),
             const SizedBox(height: 16),
-            _stepRow(icon: Icons.event_seat_outlined, step: '3', label: 'Pase a sala de espera'),
+            _stepRow(
+              icon: Icons.event_seat_outlined,
+              step: '3',
+              label: 'Pase a sala de espera',
+            ),
             const SizedBox(height: 36),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -378,13 +401,21 @@ class _KioskPageState extends State<KioskPage> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.privacy_tip_outlined, color: Color(0xFF99F6E4), size: 20),
+                  Icon(
+                    Icons.privacy_tip_outlined,
+                    color: Color(0xFF99F6E4),
+                    size: 20,
+                  ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Sus datos biométricos se procesan de forma local y '
                       'solo se usan para su check-in del día.',
-                      style: TextStyle(color: Color(0xFFCCFBF1), fontSize: 12.5, height: 1.4),
+                      style: TextStyle(
+                        color: Color(0xFFCCFBF1),
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
@@ -396,7 +427,11 @@ class _KioskPageState extends State<KioskPage> {
     );
   }
 
-  Widget _stepRow({required IconData icon, required String step, required String label}) {
+  Widget _stepRow({
+    required IconData icon,
+    required String step,
+    required String label,
+  }) {
     return Row(
       children: [
         Container(
@@ -441,7 +476,9 @@ class _KioskPageState extends State<KioskPage> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             gradient: inverse
-                ? const LinearGradient(colors: [Color(0xFF2DD4BF), Color(0xFF14B8A6)])
+                ? const LinearGradient(
+                    colors: [Color(0xFF2DD4BF), Color(0xFF14B8A6)],
+                  )
                 : const LinearGradient(colors: AppColors.gradientPrimary),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
@@ -477,9 +514,7 @@ class _KioskPageState extends State<KioskPage> {
         padding: const EdgeInsets.all(16),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: wide ? 520 : 460),
-          child: FadeSlide(
-            child: _panel(wide),
-          ),
+          child: FadeSlide(child: _panel(wide)),
         ),
       ),
     );
@@ -494,7 +529,11 @@ class _KioskPageState extends State<KioskPage> {
           const Text(
             'Bienvenido, por favor mire a la cámara',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.dark),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
           ),
           const SizedBox(height: 6),
           const Text(
@@ -510,7 +549,11 @@ class _KioskPageState extends State<KioskPage> {
           const Text(
             'Bienvenido, por favor mire a la cámara',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.dark),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
           ),
           const SizedBox(height: 6),
           const Text(
@@ -522,7 +565,8 @@ class _KioskPageState extends State<KioskPage> {
         ],
         _controls(),
         const SizedBox(height: 14),
-        if (_stage != _KioskStage.idle && _stage != _KioskStage.verifying) _resultadoCard(),
+        if (_stage != _KioskStage.idle && _stage != _KioskStage.verifying)
+          _resultadoCard(),
         const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -530,9 +574,11 @@ class _KioskPageState extends State<KioskPage> {
             TextButton.icon(
               onPressed: _passToReception,
               icon: const Icon(Icons.support_agent, size: 18),
-              label: Text(_stage == _KioskStage.idle
-                  ? '¿Problemas? Pase a recepción'
-                  : 'Pase a recepción'),
+              label: Text(
+                _stage == _KioskStage.idle
+                    ? '¿Problemas? Pase a recepción'
+                    : 'Pase a recepción',
+              ),
             ),
           ],
         ),
@@ -573,11 +619,7 @@ class _KioskPageState extends State<KioskPage> {
           // rostro (techo, pared), probablemente está activa la cámara
           // equivocada. Requiere reiniciar la vista previa.
           if (_photo == null && ready && !_extraBusy)
-            Positioned(
-              top: 56,
-              right: 12,
-              child: _botonCamara(),
-            ),
+            Positioned(top: 56, right: 12, child: _botonCamara()),
           if (_photo == null && ready && !_extraBusy)
             Positioned(
               bottom: 14,
@@ -621,8 +663,11 @@ class _KioskPageState extends State<KioskPage> {
           color: Colors.black.withValues(alpha: 0.55),
           border: Border.all(color: Colors.white70),
         ),
-        child: const Icon(Icons.cameraswitch_outlined,
-            size: 22, color: Colors.white),
+        child: const Icon(
+          Icons.cameraswitch_outlined,
+          size: 22,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -650,10 +695,15 @@ class _KioskPageState extends State<KioskPage> {
             ? const Padding(
                 padding: EdgeInsets.all(22),
                 child: CircularProgressIndicator(
-                    strokeWidth: 3, color: AppColors.primary),
+                  strokeWidth: 3,
+                  color: AppColors.primary,
+                ),
               )
-            : const Icon(Icons.photo_camera,
-                size: 36, color: AppColors.primaryDark),
+            : const Icon(
+                Icons.photo_camera,
+                size: 36,
+                color: AppColors.primaryDark,
+              ),
       ),
     );
   }
@@ -715,7 +765,9 @@ class _KioskPageState extends State<KioskPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: AppColors.shadowStrong, blurRadius: 18)],
+            boxShadow: [
+              BoxShadow(color: AppColors.shadowStrong, blurRadius: 18),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -774,7 +826,9 @@ class _KioskPageState extends State<KioskPage> {
                 child: SizedBox(
                   width: inner * 0.72,
                   height: inner * 0.72,
-                  child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json'),
+                  child: Lottie.asset(
+                    'assets/lottie/Heartbeat Lottie Animation.json',
+                  ),
                 ),
               ),
             ),
@@ -790,10 +844,30 @@ class _KioskPageState extends State<KioskPage> {
     return IgnorePointer(
       child: Stack(
         children: [
-          _corner(alignment: Alignment.topLeft, length: len, pads: pads, flipped: false),
-          _corner(alignment: Alignment.topRight, length: len, pads: pads, flipped: true),
-          _corner(alignment: Alignment.bottomLeft, length: len, pads: pads, flipped: true),
-          _corner(alignment: Alignment.bottomRight, length: len, pads: pads, flipped: false),
+          _corner(
+            alignment: Alignment.topLeft,
+            length: len,
+            pads: pads,
+            flipped: false,
+          ),
+          _corner(
+            alignment: Alignment.topRight,
+            length: len,
+            pads: pads,
+            flipped: true,
+          ),
+          _corner(
+            alignment: Alignment.bottomLeft,
+            length: len,
+            pads: pads,
+            flipped: true,
+          ),
+          _corner(
+            alignment: Alignment.bottomRight,
+            length: len,
+            pads: pads,
+            flipped: false,
+          ),
         ],
       ),
     );
@@ -819,10 +893,7 @@ class _KioskPageState extends State<KioskPage> {
             height: length,
             decoration: BoxDecoration(
               border: flipped
-                  ? Border(
-                      bottom: borderStyle.bottom,
-                      right: borderStyle.top,
-                    )
+                  ? Border(bottom: borderStyle.bottom, right: borderStyle.top)
                   : borderStyle,
             ),
           ),
@@ -869,31 +940,76 @@ class _KioskPageState extends State<KioskPage> {
 
   (IconData, String, Color, Color) _statusData() {
     if (_error != null) {
-      return (Icons.error_outline, _error!.message, AppColors.danger, AppColors.dangerBg);
+      return (
+        Icons.error_outline,
+        _error!.message,
+        AppColors.danger,
+        AppColors.dangerBg,
+      );
     }
     if (_stage == _KioskStage.verifying) {
-      return (Icons.verified_user_outlined, 'Verificando…', AppColors.info, AppColors.infoBg);
+      return (
+        Icons.verified_user_outlined,
+        'Verificando…',
+        AppColors.info,
+        AppColors.infoBg,
+      );
     }
     if (_stage == _KioskStage.success) {
-      return (Icons.check_circle, 'Check-in confirmado', AppColors.success, AppColors.successBg);
+      return (
+        Icons.check_circle,
+        'Check-in confirmado',
+        AppColors.success,
+        AppColors.successBg,
+      );
     }
     if (_stage == _KioskStage.unrecognized) {
-      return (Icons.face_retouching_off, 'Rostro no reconocido', AppColors.warning, AppColors.warningBg);
+      return (
+        Icons.face_retouching_off,
+        'Rostro no reconocido',
+        AppColors.warning,
+        AppColors.warningBg,
+      );
     }
     if (_stage == _KioskStage.noCita) {
-      return (Icons.event_busy, 'Sin cita hoy', AppColors.warning, AppColors.warningBg);
+      return (
+        Icons.event_busy,
+        'Sin cita hoy',
+        AppColors.warning,
+        AppColors.warningBg,
+      );
     }
     if (_stage == _KioskStage.error) {
-      return (Icons.error_outline, 'Error en el check-in', AppColors.danger, AppColors.dangerBg);
+      return (
+        Icons.error_outline,
+        'Error en el check-in',
+        AppColors.danger,
+        AppColors.dangerBg,
+      );
     }
     if (_photo != null) {
-      return (Icons.check_circle, 'Foto tomada', AppColors.success, AppColors.successBg);
+      return (
+        Icons.check_circle,
+        'Foto tomada',
+        AppColors.success,
+        AppColors.successBg,
+      );
     }
     if (_initializing) {
-      return (Icons.camera_roll_outlined, 'Iniciando cámara…', AppColors.info, AppColors.infoBg);
+      return (
+        Icons.camera_roll_outlined,
+        'Iniciando cámara…',
+        AppColors.info,
+        AppColors.infoBg,
+      );
     }
     if (_extraBusy) {
-      return (Icons.photo_camera, 'Capturando…', AppColors.warning, AppColors.warningBg);
+      return (
+        Icons.photo_camera,
+        'Capturando…',
+        AppColors.warning,
+        AppColors.warningBg,
+      );
     }
     return (
       Icons.face_retouching_natural,
@@ -912,7 +1028,11 @@ class _KioskPageState extends State<KioskPage> {
       ),
       child: const Text(
         'Manténgase dentro del recuadro y mire fijamente',
-        style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -936,7 +1056,10 @@ class _KioskPageState extends State<KioskPage> {
           icon: const SizedBox(
             width: 18,
             height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
           ),
           label: const Text('Verificando identidad…'),
         );
@@ -1015,7 +1138,10 @@ class _KioskPageState extends State<KioskPage> {
             width: 44,
             height: 44,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.16), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(width: 14),
@@ -1086,7 +1212,8 @@ class _KioskPageState extends State<KioskPage> {
           AppColors.danger,
           AppColors.dangerBg,
           'No fue posible confirmar su check-in',
-          _resultadoMensaje ?? 'Intente de nuevo en unos momentos o pase a recepción.',
+          _resultadoMensaje ??
+              'Intente de nuevo en unos momentos o pase a recepción.',
         );
       case _KioskStage.verifying:
       case _KioskStage.idle:

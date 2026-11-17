@@ -9,13 +9,17 @@ import 'kiosk_camera_service.dart';
 /// condicional y mantener el resto del flujo intacto.
 class CapturaWebDirecta {
   Future<void> iniciar() async {
-    throw UnsupportedError('La captura web solo está disponible en el navegador.');
+    throw UnsupportedError(
+      'La captura web solo está disponible en el navegador.',
+    );
   }
 
   Widget vistaPrevia() => const SizedBox.shrink();
 
   Future<KioskPhoto> capturarFoto() async {
-    throw UnsupportedError('La captura web solo está disponible en el navegador.');
+    throw UnsupportedError(
+      'La captura web solo está disponible en el navegador.',
+    );
   }
 
   Future<void> liberar() async {}

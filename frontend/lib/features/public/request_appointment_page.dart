@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_formatters.dart';
 import '../../core/utils/app_validators.dart';
@@ -121,15 +122,21 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     final doctors = isMedico
         ? clinic.doctors.where((d) => d.id == _doctorId).toList()
         : clinic.doctors
-            .where((d) =>
-                d.active &&
-                (_specialtyId == null || d.specialtyId == _specialtyId))
-            .toList();
+              .where(
+                (d) =>
+                    d.active &&
+                    (_specialtyId == null || d.specialtyId == _specialtyId),
+              )
+              .toList();
     // Mantener el médico seleccionado coherente con la especialidad.
-    if (!isMedico && _doctorId != null && !doctors.any((d) => d.id == _doctorId)) {
+    if (!isMedico &&
+        _doctorId != null &&
+        !doctors.any((d) => d.id == _doctorId)) {
       _doctorId = null;
     }
-    final slots = _doctorId == null ? const <String>[] : clinic.availableSlots(_doctorId!, _date);
+    final slots = _doctorId == null
+        ? const <String>[]
+        : clinic.availableSlots(_doctorId!, _date);
     if (_time != null && !slots.contains(_time)) _time = null;
 
     return Scaffold(
@@ -150,21 +157,47 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Datos del paciente', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
+                  const Text(
+                    'Datos del paciente',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: _field(_name, 'Nombre', AppValidators.required)),
+                      Expanded(
+                        child: _field(_name, 'Nombre', AppValidators.required),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _field(_lastName, 'Apellido', AppValidators.required)),
+                      Expanded(
+                        child: _field(
+                          _lastName,
+                          'Apellido',
+                          AppValidators.required,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(flex: 1, child: _field(_ci, 'CI', AppValidators.ci, onChanged: _onCiChanged)),
+                      Expanded(
+                        flex: 1,
+                        child: _field(
+                          _ci,
+                          'CI',
+                          AppValidators.ci,
+                          onChanged: _onCiChanged,
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(flex: 2, child: _field(_phone, 'Teléfono', AppValidators.phone)),
+                      Expanded(
+                        flex: 2,
+                        child: _field(_phone, 'Teléfono', AppValidators.phone),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -172,7 +205,9 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                     children: [
                       Expanded(child: _birthField()),
                       const SizedBox(width: 12),
-                      Expanded(child: _field(_email, 'Correo', AppValidators.email)),
+                      Expanded(
+                        child: _field(_email, 'Correo', AppValidators.email),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -190,15 +225,16 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                           Text(
                             'Verificando tu registro en el sistema...',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.muted),
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   if (_fotoRequerida)
                     FacePhotoField(
-                      onChanged: (m) =>
-                          setState(() => _faceMuestras = m ?? []),
+                      onChanged: (m) => setState(() => _faceMuestras = m ?? []),
                     )
                   else
                     Container(
@@ -209,8 +245,10 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.verified_user_outlined,
-                              color: AppColors.success),
+                          Icon(
+                            Icons.verified_user_outlined,
+                            color: AppColors.success,
+                          ),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -223,13 +261,23 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                       ),
                     ),
                   const SizedBox(height: 28),
-                  const Text('Datos de la cita', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.dark)),
+                  const Text(
+                    'Datos de la cita',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    initialValue: clinic.specialties.any((s) => s.id == _specialtyId)
+                    initialValue:
+                        clinic.specialties.any((s) => s.id == _specialtyId)
                         ? _specialtyId
                         : null,
-                    decoration: const InputDecoration(labelText: 'Especialidad'),
+                    decoration: const InputDecoration(
+                      labelText: 'Especialidad',
+                    ),
                     items: [
                       for (final s in clinic.specialties)
                         DropdownMenuItem(value: s.id, child: Text(s.name)),
@@ -239,7 +287,9 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                       final matches = clinic.doctors
                           .where((d) => d.active && d.specialtyId == v)
                           .toList();
-                      final firstId = matches.isNotEmpty ? matches.first.id : null;
+                      final firstId = matches.isNotEmpty
+                          ? matches.first.id
+                          : null;
                       setState(() {
                         _specialtyId = v;
                         _doctorId = firstId;
@@ -250,23 +300,29 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    initialValue:
-                        doctors.any((d) => d.id == _doctorId) ? _doctorId : null,
+                    initialValue: doctors.any((d) => d.id == _doctorId)
+                        ? _doctorId
+                        : null,
                     decoration: InputDecoration(
                       labelText: 'Médico',
-                      helperText: isMedico ? 'Solo puedes agendar citas para ti.' : null,
+                      helperText: isMedico
+                          ? 'Solo puedes agendar citas para ti.'
+                          : null,
                     ),
                     items: [
                       for (final d in doctors)
-                        DropdownMenuItem(value: d.id, child: Text(d.displayName)),
+                        DropdownMenuItem(
+                          value: d.id,
+                          child: Text(d.displayName),
+                        ),
                     ],
                     onChanged: isMedico
                         ? null
                         : (v) => setState(() {
-                              _doctorId = v;
-                              _time = null;
-                              _loadAvail();
-                            }),
+                            _doctorId = v;
+                            _time = null;
+                            _loadAvail();
+                          }),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -287,18 +343,27 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                         children: [
                           Text(
                             'Horario: ${AppFormatters.day(_date)}, ${_date.day}/${_date.month} · ${_doctorName(clinic)}',
-                            style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 13,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           if (slots.isEmpty)
                             const Text(
                               'No hay turnos disponibles ese día (el médico no atiende o están todos ocupados).',
-                              style: TextStyle(color: AppColors.danger, fontSize: 13),
+                              style: TextStyle(
+                                color: AppColors.danger,
+                                fontSize: 13,
+                              ),
                             )
                           else
                             Text(
                               'Turnos disponibles: ${slots.join(', ')}',
-                              style: const TextStyle(color: AppColors.success, fontSize: 13),
+                              style: const TextStyle(
+                                color: AppColors.success,
+                                fontSize: 13,
+                              ),
                             ),
                         ],
                       ),
@@ -308,14 +373,21 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: _submitting ? null : _submit,
-                      child: Text(_submitting ? 'Verificando disponibilidad...' : 'Solicitar cita'),
+                      child: Text(
+                        _submitting
+                            ? 'Verificando disponibilidad...'
+                            : 'Solicitar cita',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Al confirmar, el horario queda reservado y aparecerá en la agenda del consultorio.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.muted.withValues(alpha: 0.9),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -420,7 +492,8 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
           });
         }
       },
-      validator: (v) => _birthDate == null ? 'Fecha de nacimiento requerida' : null,
+      validator: (v) =>
+          _birthDate == null ? 'Fecha de nacimiento requerida' : null,
     );
   }
 
@@ -444,7 +517,8 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
           _loadAvail();
         }
       },
-      validator: (_) => _date.isBefore(DateTime.now()) ? 'Fecha no válida' : null,
+      validator: (_) =>
+          _date.isBefore(DateTime.now()) ? 'Fecha no válida' : null,
     );
   }
 
@@ -456,14 +530,13 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
         for (final t in slots) DropdownMenuItem(value: t, child: Text(t)),
       ],
       hint: const Text('Seleccionar'),
-      onChanged: slots.isEmpty
-          ? null
-          : (v) => setState(() => _time = v),
+      onChanged: slots.isEmpty ? null : (v) => setState(() => _time = v),
     );
   }
 
-  String _doctorName(ClinicProvider clinic) =>
-        _doctorId == null ? '' : (clinic.doctorById(_doctorId!)?.displayName ?? '');
+  String _doctorName(ClinicProvider clinic) => _doctorId == null
+      ? ''
+      : (clinic.doctorById(_doctorId!)?.displayName ?? '');
 
   /// Comprime la foto FRONTAL del pack (sin procesar) a base64 para
   /// guardarla en Firestore. Funciona sin facturación (sin Storage).
@@ -496,21 +569,29 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     // se exigen las 5 poses del pack (una foto fija no sirve contra suplantación).
     if (_fotoRequerida && _faceMuestras.length < 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa las 5 fotos guiadas del rostro para continuar')),
+        const SnackBar(
+          content: Text(
+            'Completa las 5 fotos guiadas del rostro para continuar',
+          ),
+        ),
       );
       return;
     }
     if (_doctorId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona un médico')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Selecciona un médico')));
       return;
     }
     if (_time == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona un horario disponible')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona un horario disponible')),
+      );
       return;
     }
     final clinic = context.read<ClinicProvider>();
     final auth = context.read<AuthProvider>();
-    final staff = auth.isLogged &&
+    final staff =
+        auth.isLogged &&
         (auth.role == UserRole.recepcion ||
             auth.role == UserRole.admin ||
             auth.role == UserRole.medico);
@@ -559,7 +640,8 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
           }
         } else {
           setState(() => _submitting = false);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(err)));
           return;
         }
       } else {
@@ -578,7 +660,8 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     // Foto del rostro: se guarda en Firestore (compatibilidad) y, si se
@@ -591,7 +674,11 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       await clinic.setPatientFace(patientId, face);
     } else if (_fotoRequerida) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cita registrada, pero no se pudo guardar la foto. Avísalo en recepción.')),
+        const SnackBar(
+          content: Text(
+            'Cita registrada, pero no se pudo guardar la foto. Avísalo en recepción.',
+          ),
+        ),
       );
     }
     if (_faceMuestras.isNotEmpty && _fotoRequerida) {
@@ -600,7 +687,11 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
     }
     if (staff) {
       // Personal interno: ya está dentro del sistema.
-      clinic.setAuthToken(auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+      clinic.setAuthToken(
+        auth.token,
+        perfilTipo: auth.perfilTipo,
+        perfilId: auth.perfilId,
+      );
       clinic.loadAll();
       if (!mounted) return;
       context.go('/app');
@@ -608,15 +699,17 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       // Visitante: NO se reutiliza una sesión previa (ej. recepcionista
       // persisted en el navegador). El paciente entra con SU cuenta
       // (CI + fecha de nacimiento) o regresa al inicio.
-      _showSuccess(Patient(
-        id: patientId,
-        firstName: _name.text.trim(),
-        lastName: _lastName.text.trim(),
-        ci: _ci.text.trim(),
-        birthDate: _birthDate!,
-        phone: _phone.text.trim(),
-        email: _email.text.trim(),
-      ));
+      _showSuccess(
+        Patient(
+          id: patientId,
+          firstName: _name.text.trim(),
+          lastName: _lastName.text.trim(),
+          ci: _ci.text.trim(),
+          birthDate: _birthDate!,
+          phone: _phone.text.trim(),
+          email: _email.text.trim(),
+        ),
+      );
     }
   }
 
@@ -668,7 +761,11 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: AppColors.success, size: 56),
+        icon: const Icon(
+          Icons.check_circle,
+          color: AppColors.success,
+          size: 56,
+        ),
         title: const Text('¡Cita registrada!', textAlign: TextAlign.center),
         content: Text(
           '${patient.fullName}, tu cita quedó reservada. '
@@ -682,7 +779,10 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
             onPressed: () async {
               final auth = ctx.read<AuthProvider>();
               final clinic = ctx.read<ClinicProvider>();
-              final err = await auth.loginPatient(patient.ci, patient.birthDate);
+              final err = await auth.loginPatient(
+                patient.ci,
+                patient.birthDate,
+              );
               if (!ctx.mounted) return;
               if (err != null) {
                 ScaffoldMessenger.of(ctx)
@@ -690,7 +790,10 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
                 return;
               }
               clinic.setAuthToken(
-                  auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+                auth.token,
+                perfilTipo: auth.perfilTipo,
+                perfilId: auth.perfilId,
+              );
               clinic.loadAll();
               Navigator.of(ctx).pop();
               if (!mounted) return;

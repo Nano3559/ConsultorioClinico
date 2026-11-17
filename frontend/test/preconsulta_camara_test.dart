@@ -15,8 +15,11 @@ void main() {
 
     test('la frontal tiene prioridad sobre la trasera', () {
       const trasera = CamaraDisponible(id: 'a', nombre: 'Trasera');
-      const frontal =
-          CamaraDisponible(id: 'b', nombre: 'Frontal', frontal: true);
+      const frontal = CamaraDisponible(
+        id: 'b',
+        nombre: 'Frontal',
+        frontal: true,
+      );
       expect(CamaraDisponible.preferida(const [trasera, frontal]), frontal);
     });
 

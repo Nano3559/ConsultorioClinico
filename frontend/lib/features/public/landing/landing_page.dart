@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/widgets/ambient_background.dart';
 import 'landing_navbar.dart';
 import 'landing_footer.dart';
@@ -79,9 +80,9 @@ class _LandingPageState extends State<LandingPage> {
                 onRequest: () => _scrollTo(_heroKey),
               ),
               HeroSection(
-              key: _heroKey,
-              onViewDoctors: () => _scrollTo(_doctorsKey),
-            ),
+                key: _heroKey,
+                onViewDoctors: () => _scrollTo(_doctorsKey),
+              ),
               SpecialtiesSection(key: _specialtiesKey),
               DoctorsSection(key: _doctorsKey),
               ServicesSection(key: _servicesKey),

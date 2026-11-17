@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_validators.dart';
@@ -36,8 +37,12 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     super.initState();
     _name = TextEditingController(text: widget.doctor?.name ?? '');
     _title = TextEditingController(text: widget.doctor?.title ?? 'Dr.');
-    _description = TextEditingController(text: widget.doctor?.description ?? '');
-    _experience = TextEditingController(text: '${widget.doctor?.yearsExperience ?? 1}');
+    _description = TextEditingController(
+      text: widget.doctor?.description ?? '',
+    );
+    _experience = TextEditingController(
+      text: '${widget.doctor?.yearsExperience ?? 1}',
+    );
     _specialtyId = widget.doctor?.specialtyId;
     _active = widget.doctor?.active ?? true;
     _ranges = {};
@@ -75,43 +80,49 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_specialtyId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona una especialidad')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona una especialidad')),
+      );
       return;
     }
     final schedule = DoctorSchedule({
       for (final day in kDays)
-        if (_ranges[day]![1] != '--') day: _slotsBetween(_ranges[day]![0], _ranges[day]![1]),
+        if (_ranges[day]![1] != '--')
+          day: _slotsBetween(_ranges[day]![0], _ranges[day]![1]),
     });
     final clinic = context.read<ClinicProvider>();
     String? error;
     if (_isEdit) {
-      error = await clinic.updateDoctor(widget.doctor!.copyWith(
-        name: _name.text.trim(),
-        title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),
-        specialtyId: _specialtyId,
-        description: _description.text.trim(),
-        yearsExperience: int.tryParse(_experience.text) ?? 1,
-        schedule: schedule,
-        active: _active,
-      ));
+      error = await clinic.updateDoctor(
+        widget.doctor!.copyWith(
+          name: _name.text.trim(),
+          title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),
+          specialtyId: _specialtyId,
+          description: _description.text.trim(),
+          yearsExperience: int.tryParse(_experience.text) ?? 1,
+          schedule: schedule,
+          active: _active,
+        ),
+      );
     } else {
-      final created = await clinic.addDoctor(Doctor(
-        id: 'd${DateTime.now().millisecondsSinceEpoch}',
-        name: _name.text.trim(),
-        title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),
-        specialtyId: _specialtyId!,
-        description: _description.text.trim(),
-        yearsExperience: int.tryParse(_experience.text) ?? 1,
-        schedule: schedule,
-        active: _active,
-      ));
+      final created = await clinic.addDoctor(
+        Doctor(
+          id: 'd${DateTime.now().millisecondsSinceEpoch}',
+          name: _name.text.trim(),
+          title: _title.text.trim().isEmpty ? 'Dr.' : _title.text.trim(),
+          specialtyId: _specialtyId!,
+          description: _description.text.trim(),
+          yearsExperience: int.tryParse(_experience.text) ?? 1,
+          schedule: schedule,
+          active: _active,
+        ),
+      );
       if (created == null) error = clinic.error ?? 'No se pudo guardar';
     }
     if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo guardar: $error')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No se pudo guardar: $error')));
       return;
     }
     Navigator.of(context).pop();
@@ -121,7 +132,9 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Editar médico' : 'Registrar médico')),
+      appBar: AppBar(
+        title: Text(_isEdit ? 'Editar médico' : 'Registrar médico'),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Center(
@@ -134,15 +147,26 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
                 children: [
                   Row(
                     children: [
-                      SizedBox(width: 90, child: _field(_title, 'Título', null)),
+                      SizedBox(
+                        width: 90,
+                        child: _field(_title, 'Título', null),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _field(_name, 'Nombre completo', AppValidators.required)),
+                      Expanded(
+                        child: _field(
+                          _name,
+                          'Nombre completo',
+                          AppValidators.required,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: _specialtyId,
-                    decoration: const InputDecoration(labelText: 'Especialidad'),
+                    decoration: const InputDecoration(
+                      labelText: 'Especialidad',
+                    ),
                     items: [
                       for (final s in clinic.specialties)
                         DropdownMenuItem(value: s.id, child: Text(s.name)),
@@ -152,21 +176,33 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _experience,
-                    decoration: const InputDecoration(labelText: 'Años de experiencia'),
+                    decoration: const InputDecoration(
+                      labelText: 'Años de experiencia',
+                    ),
                     keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || int.tryParse(v) == null) ? 'Valor numérico' : null,
+                    validator: (v) => (v == null || int.tryParse(v) == null)
+                        ? 'Valor numérico'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _description,
-                    decoration: const InputDecoration(labelText: 'Descripción / perfil'),
+                    decoration: const InputDecoration(
+                      labelText: 'Descripción / perfil',
+                    ),
                     maxLines: 3,
                     validator: AppValidators.required,
                   ),
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Text('Médico activo', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+                      const Text(
+                        'Médico activo',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark,
+                        ),
+                      ),
                       const Spacer(),
                       Switch(
                         value: _active,
@@ -175,12 +211,22 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
                     ],
                   ),
                   const Divider(),
-                  const Text('Horarios de atención', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.dark)),
+                  const Text(
+                    'Horarios de atención',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Desactiva el día seleccionando "Sin atención".', style: TextStyle(color: AppColors.muted, fontSize: 13)),
+                  const Text(
+                    'Desactiva el día seleccionando "Sin atención".',
+                    style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  ),
                   const SizedBox(height: 12),
-                for (final day in kDays)
-                  DayScheduleRow(
+                  for (final day in kDays)
+                    DayScheduleRow(
                       day: day,
                       range: _ranges[day]!,
                       onChanged: (r) => setState(() => _ranges[day] = r),
@@ -190,7 +236,9 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: _save,
-                      child: Text(_isEdit ? 'Guardar cambios' : 'Registrar médico'),
+                      child: Text(
+                        _isEdit ? 'Guardar cambios' : 'Registrar médico',
+                      ),
                     ),
                   ),
                 ],
@@ -202,7 +250,15 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     );
   }
 
-  Widget _field(TextEditingController c, String label, String? Function(String?)? validator) {
-    return TextFormField(controller: c, decoration: InputDecoration(labelText: label), validator: validator);
+  Widget _field(
+    TextEditingController c,
+    String label,
+    String? Function(String?)? validator,
+  ) {
+    return TextFormField(
+      controller: c,
+      decoration: InputDecoration(labelText: label),
+      validator: validator,
+    );
   }
 }

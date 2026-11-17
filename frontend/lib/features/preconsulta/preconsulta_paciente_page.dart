@@ -19,7 +19,8 @@ class PreconsultaPacientePage extends StatefulWidget {
   const PreconsultaPacientePage({super.key});
 
   @override
-  State<PreconsultaPacientePage> createState() => _PreconsultaPacientePageState();
+  State<PreconsultaPacientePage> createState() =>
+      _PreconsultaPacientePageState();
 }
 
 class _PreconsultaPacientePageState extends State<PreconsultaPacientePage> {
@@ -98,15 +99,20 @@ class _PreconsultaPacientePageState extends State<PreconsultaPacientePage> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.info_outline,
-                          size: 18, color: AppColors.warning),
+                      const Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: AppColors.warning,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'No pudimos cargar tu historial ahora mismo. Puedes '
                           'iniciar una preconsulta igualmente. ($_error)',
                           style: const TextStyle(
-                              color: AppColors.muted, fontSize: 12),
+                            color: AppColors.muted,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -145,11 +151,7 @@ class _DosColumnas extends StatelessWidget {
         if (constraints.maxWidth < 820) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              izquierda,
-              const SizedBox(height: 14),
-              derecha,
-            ],
+            children: [izquierda, const SizedBox(height: 14), derecha],
           );
         }
         return Row(
@@ -207,8 +209,11 @@ class _Hero extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.auto_awesome,
-                    color: Colors.white, size: 24),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -225,7 +230,9 @@ class _Hero extends StatelessWidget {
               if (!habilitado)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(20),
@@ -233,9 +240,10 @@ class _Hero extends StatelessWidget {
                   child: const Text(
                     'Temporalmente no disponible',
                     style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700),
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
             ],
@@ -257,18 +265,12 @@ class _Hero extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _ChipHero(
-                icono: Icons.timer_outlined,
-                texto: '20-30 segundos',
-              ),
+              _ChipHero(icono: Icons.timer_outlined, texto: '20-30 segundos'),
               _ChipHero(
                 icono: Icons.videocam_outlined,
                 texto: 'Cámara frontal',
               ),
-              _ChipHero(
-                icono: Icons.lock_outline,
-                texto: 'Sin guardar video',
-              ),
+              _ChipHero(icono: Icons.lock_outline, texto: 'Sin guardar video'),
               _ChipHero(
                 icono: Icons.medical_services_outlined,
                 texto: 'Revisión humana',
@@ -284,7 +286,9 @@ class _Hero extends StatelessWidget {
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.primaryDark,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 22, vertical: 16),
+                    horizontal: 22,
+                    vertical: 16,
+                  ),
                 ),
                 icon: const Icon(Icons.play_circle_outline),
                 label: Text(
@@ -383,7 +387,10 @@ class _UltimaEvaluacion extends StatelessWidget {
               child: Text(
                 punto.resumen,
                 style: const TextStyle(
-                    color: AppColors.dark, fontSize: 12, height: 1.4),
+                  color: AppColors.dark,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
             ),
           ],
@@ -567,22 +574,22 @@ class _ComoFunciona extends StatelessWidget {
       (
         Icons.verified_user_outlined,
         'Aceptas el consentimiento',
-        'Te explicamos qué datos se usan y puedes decidir libremente.'
+        'Te explicamos qué datos se usan y puedes decidir libremente.',
       ),
       (
         Icons.videocam_outlined,
         'Captura breve con la cámara',
-        'Mira de frente durante 20-30 segundos con buena luz. Nada se guarda.'
+        'Mira de frente durante 20-30 segundos con buena luz. Nada se guarda.',
       ),
       (
         Icons.assignment_outlined,
         'Respondes unas preguntas',
-        'Motivo de consulta, síntomas y antecedentes relevantes.'
+        'Motivo de consulta, síntomas y antecedentes relevantes.',
       ),
       (
         Icons.insights_outlined,
         'Recibes un nivel de prioridad',
-        'El personal clínico lo revisa y confirma antes de atenderte.'
+        'El personal clínico lo revisa y confirma antes de atenderte.',
       ),
     ];
     return PreconsultaCard(
@@ -629,8 +636,11 @@ class _ComoFunciona extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Icon(pasos[i].$1,
-                                size: 14, color: AppColors.primaryDark),
+                            Icon(
+                              pasos[i].$1,
+                              size: 14,
+                              color: AppColors.primaryDark,
+                            ),
                             const SizedBox(width: 5),
                             Flexible(
                               child: Text(
@@ -699,8 +709,11 @@ class _Privacidad extends StatelessWidget {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 3),
-                    child: Icon(Icons.check_circle,
-                        size: 14, color: AppColors.primaryDark),
+                    child: Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: AppColors.primaryDark,
+                    ),
                   ),
                   const SizedBox(width: 7),
                   Expanded(
@@ -725,8 +738,11 @@ class _Privacidad extends StatelessWidget {
             ),
             child: const Row(
               children: [
-                Icon(Icons.health_and_safety_outlined,
-                    size: 15, color: AppColors.info),
+                Icon(
+                  Icons.health_and_safety_outlined,
+                  size: 15,
+                  color: AppColors.info,
+                ),
                 SizedBox(width: 7),
                 Expanded(
                   child: Text(
@@ -760,8 +776,7 @@ class _Historial extends StatelessWidget {
         child: AppEmptyState(
           icon: Icons.history_outlined,
           title: 'Aún no tienes preconsultas',
-          subtitle:
-              'Cuando completes tu primera evaluación, aquí verás tu nivel y la evolución en el tiempo.',
+          subtitle: 'Cuando completes tu primera evaluación, aquí verás tu nivel y la evolución en el tiempo.',
           action: FilledButton.icon(
             onPressed: () => context.push('/preconsulta'),
             icon: const Icon(Icons.play_circle_outline, size: 18),
@@ -771,8 +786,9 @@ class _Historial extends StatelessWidget {
       );
     }
     final ordenados = [...puntos]
-      ..sort((a, b) => (a.fecha ?? DateTime(0))
-          .compareTo(b.fecha ?? DateTime(0)));
+      ..sort(
+        (a, b) => (a.fecha ?? DateTime(0)).compareTo(b.fecha ?? DateTime(0)),
+      );
     return PreconsultaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -802,9 +818,11 @@ class _Historial extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
                   topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -813,7 +831,9 @@ class _Historial extends StatelessWidget {
                       getTitlesWidget: (v, meta) => Text(
                         v.toInt().toString(),
                         style: const TextStyle(
-                            color: AppColors.muted, fontSize: 10),
+                          color: AppColors.muted,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                   ),
@@ -832,11 +852,11 @@ class _Historial extends StatelessWidget {
                         }
                         final fecha = ordenados[i].fecha;
                         return Text(
-                          fecha == null
-                              ? '—'
-                              : '${fecha.day}/${fecha.month}',
+                          fecha == null ? '—' : '${fecha.day}/${fecha.month}',
                           style: const TextStyle(
-                              color: AppColors.muted, fontSize: 9),
+                            color: AppColors.muted,
+                            fontSize: 9,
+                          ),
                         );
                       },
                     ),
@@ -859,10 +879,10 @@ class _Historial extends StatelessWidget {
                       show: true,
                       getDotPainter: (spot, percent, bar, index) =>
                           FlDotCirclePainter(
-                        radius: 3.5,
-                        color: nivelColor(spot.y.round()),
-                        strokeWidth: 0,
-                      ),
+                            radius: 3.5,
+                            color: nivelColor(spot.y.round()),
+                            strokeWidth: 0,
+                          ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -905,7 +925,9 @@ class _Historial extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: AppColors.dark, fontSize: 11.5),
+                        color: AppColors.dark,
+                        fontSize: 11.5,
+                      ),
                     ),
                   ),
                   Text(
@@ -913,7 +935,9 @@ class _Historial extends StatelessWidget {
                         ? '—'
                         : DateFormat('d MMM', 'es').format(p.fecha!),
                     style: const TextStyle(
-                        color: AppColors.muted, fontSize: 10),
+                      color: AppColors.muted,
+                      fontSize: 10,
+                    ),
                   ),
                 ],
               ),

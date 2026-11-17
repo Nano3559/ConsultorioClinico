@@ -56,8 +56,7 @@ class _PreconsultaMetricsPageState extends State<PreconsultaMetricsPage> {
         children: [
           PageHeader(
             title: 'Métricas de PreConsulta IA',
-            subtitle:
-                'Volumen, prioridad y trazabilidad del triage asistido. Datos agregados, sin imágenes.',
+            subtitle: 'Volumen, prioridad y trazabilidad del triage asistido. Datos agregados, sin imágenes.',
             icon: Icons.insights_outlined,
             actions: [
               IconButton(
@@ -90,10 +89,7 @@ class _PreconsultaMetricsPageState extends State<PreconsultaMetricsPage> {
               if (m != null)
                 Text(
                   '${_fechaCorta(m.desde)} — ${_fechaCorta(m.hasta)}',
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
             ],
           ),
@@ -107,8 +103,11 @@ class _PreconsultaMetricsPageState extends State<PreconsultaMetricsPage> {
             PreconsultaCard(
               child: Column(
                 children: [
-                  const Icon(Icons.cloud_off_outlined,
-                      size: 40, color: AppColors.danger),
+                  const Icon(
+                    Icons.cloud_off_outlined,
+                    size: 40,
+                    color: AppColors.danger,
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     prov.error!,
@@ -129,7 +128,8 @@ class _PreconsultaMetricsPageState extends State<PreconsultaMetricsPage> {
               child: AppEmptyState(
                 icon: Icons.insights_outlined,
                 title: 'Sin métricas todavía',
-                subtitle: 'No hay datos agregados para el periodo seleccionado.',
+                subtitle:
+                    'No hay datos agregados para el periodo seleccionado.',
               ),
             )
           else
@@ -238,11 +238,7 @@ class _DosColumnas extends StatelessWidget {
         if (constraints.maxWidth < 820) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              izquierda,
-              const SizedBox(height: 14),
-              derecha,
-            ],
+            children: [izquierda, const SizedBox(height: 14), derecha],
           );
         }
         return Row(
@@ -322,14 +318,13 @@ class _Distribucion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dist = m.distribucion.where((d) => d.nivel >= 1 && d.nivel <= 5).toList()
-      ..sort((a, b) => a.nivel.compareTo(b.nivel));
+    final dist =
+        m.distribucion.where((d) => d.nivel >= 1 && d.nivel <= 5).toList()
+          ..sort((a, b) => a.nivel.compareTo(b.nivel));
     final maxY = dist.isEmpty
         ? 4.0
-        : dist
-                .map((d) => d.total.toDouble())
-                .reduce((a, b) => a > b ? a : b) *
-            1.25;
+        : dist.map((d) => d.total.toDouble()).reduce((a, b) => a > b ? a : b) *
+              1.25;
     return PreconsultaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -366,18 +361,25 @@ class _Distribucion extends StatelessWidget {
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 26,
-                        interval: (maxY / 4).ceilToDouble().clamp(1, 9999).toDouble(),
+                        interval: (maxY / 4)
+                            .ceilToDouble()
+                            .clamp(1, 9999)
+                            .toDouble(),
                         getTitlesWidget: (v, meta) => Text(
                           v.toInt().toString(),
                           style: const TextStyle(
-                              color: AppColors.muted, fontSize: 10),
+                            color: AppColors.muted,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                     ),
@@ -497,7 +499,9 @@ class _Distribucion extends StatelessWidget {
                     child: Text(
                       'Nivel ${d.nivel} · ${d.etiqueta}',
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 11),
+                        color: AppColors.muted,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                   Text(
@@ -568,18 +572,25 @@ class _SerieDiaria extends StatelessWidget {
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 26,
-                        interval: (tope / 4).ceilToDouble().clamp(1, 9999).toDouble(),
+                        interval: (tope / 4)
+                            .ceilToDouble()
+                            .clamp(1, 9999)
+                            .toDouble(),
                         getTitlesWidget: (v, meta) => Text(
                           v.toInt().toString(),
                           style: const TextStyle(
-                              color: AppColors.muted, fontSize: 10),
+                            color: AppColors.muted,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                     ),
@@ -602,7 +613,9 @@ class _SerieDiaria extends StatelessWidget {
                                 ? serie[i].fecha
                                 : '${fecha.day}/${fecha.month}',
                             style: const TextStyle(
-                                color: AppColors.muted, fontSize: 9),
+                              color: AppColors.muted,
+                              fontSize: 9,
+                            ),
                           );
                         },
                       ),
@@ -817,8 +830,7 @@ class _ResumenOperativo extends StatelessWidget {
           const SeccionTitulo(
             icono: Icons.analytics_outlined,
             titulo: 'Indicadores operativos',
-            subtitulo:
-                'Calidad de captura, confianza del triage y tiempos del análisis.',
+            subtitulo: 'Calidad de captura, confianza del triage y tiempos del análisis.',
             iconColor: AppColors.purple,
           ),
           const SizedBox(height: 14),
@@ -892,7 +904,9 @@ class _ResumenOperativo extends StatelessWidget {
                 for (final c in canal)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(20),
@@ -901,8 +915,11 @@ class _ResumenOperativo extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(_iconoCanal(c.key),
-                            size: 13, color: AppColors.primary),
+                        Icon(
+                          _iconoCanal(c.key),
+                          size: 13,
+                          color: AppColors.primary,
+                        ),
                         const SizedBox(width: 5),
                         Text(
                           '${_etiquetaCanal(c.key)}: ${c.value}',

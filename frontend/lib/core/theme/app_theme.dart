@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Tema único de la aplicación (Material 3, optimizado para hardware modesto).
@@ -69,7 +70,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.border),
@@ -92,8 +96,9 @@ class AppTheme {
         backgroundColor: AppColors.background,
         side: BorderSide(color: AppColors.border),
       ),
-      progressIndicatorTheme:
-          const ProgressIndicatorThemeData(color: AppColors.primary),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: AppColors.primary,
+      ),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.dark,
@@ -128,9 +133,14 @@ class ZoomFadeTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final curved =
-        CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-    final fade = CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeIn);
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+    );
+    final fade = CurvedAnimation(
+      parent: secondaryAnimation,
+      curve: Curves.easeIn,
+    );
     return AnimatedBuilder(
       animation: animation,
       builder: (context, child) {

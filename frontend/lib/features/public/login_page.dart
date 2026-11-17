@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_validators.dart';
 import '../../core/widgets/ambient_background.dart';
@@ -24,7 +25,8 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tab;
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -51,7 +53,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   Future<void> _enterApp() async {
     final auth = context.read<AuthProvider>();
     final clinic = context.read<ClinicProvider>();
-    clinic.setAuthToken(auth.token, perfilTipo: auth.perfilTipo, perfilId: auth.perfilId);
+    clinic.setAuthToken(
+      auth.token,
+      perfilTipo: auth.perfilTipo,
+      perfilId: auth.perfilId,
+    );
     clinic.loadAll();
     if (!mounted) return;
     context.go('/app');
@@ -59,8 +65,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
   Future<void> _loginPersonal() async {
     if (_email.text.isEmpty || _password.text.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Ingresa correo y contraseña')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa correo y contraseña')),
+      );
       return;
     }
     setState(() => _loading = true);
@@ -69,7 +76,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     if (!mounted) return;
     setState(() => _loading = false);
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     await _enterApp();
@@ -78,7 +86,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   Future<void> _loginPatient() async {
     if (_ci.text.trim().isEmpty || _birthDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ingresa tu carnet y fecha de nacimiento')));
+        const SnackBar(
+          content: Text('Ingresa tu carnet y fecha de nacimiento'),
+        ),
+      );
       return;
     }
     setState(() => _loading = true);
@@ -87,7 +98,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     if (!mounted) return;
     setState(() => _loading = false);
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     await _enterApp();
@@ -115,7 +127,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.local_hospital, size: 84, color: Colors.white.withValues(alpha: 0.95)),
+                        Icon(
+                          Icons.local_hospital,
+                          size: 84,
+                          color: Colors.white.withValues(alpha: 0.95),
+                        ),
                         const SizedBox(height: 10),
                         const Text(
                           'ConsultorioClínico',
@@ -123,20 +139,34 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                             color: Colors.white,
                             fontSize: 32,
                             fontWeight: FontWeight.w800,
-                            shadows: [Shadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4))],
+                            shadows: [
+                              Shadow(
+                                color: Colors.black26,
+                                blurRadius: 16,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Sistema de gestión médica y clínica',
-                          style: const TextStyle(color: Color(0xFFD1FAE5), fontSize: 16),
+                          style: const TextStyle(
+                            color: Color(0xFFD1FAE5),
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 24),
                         Container(
                           width: 220,
                           height: 4,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [Colors.white, Colors.white.withValues(alpha: 0.0)]),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white,
+                                Colors.white.withValues(alpha: 0.0),
+                              ],
+                            ),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -159,8 +189,16 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           borderRadius: BorderRadius.circular(28),
                           border: Border.all(color: Colors.white),
                           boxShadow: [
-                            BoxShadow(color: AppColors.shadowSoft, blurRadius: 42, offset: const Offset(0, 14)),
-                            BoxShadow(color: AppColors.primary.withValues(alpha: 0.12), blurRadius: 2, offset: const Offset(0, 2)),
+                            BoxShadow(
+                              color: AppColors.shadowSoft,
+                              blurRadius: 42,
+                              offset: const Offset(0, 14),
+                            ),
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              blurRadius: 2,
+                              offset: const Offset(0, 2),
+                            ),
                           ],
                         ),
                         child: Column(
@@ -170,13 +208,25 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               child: SizedBox(
                                 width: 96,
                                 height: 96,
-                                child: Lottie.asset('assets/lottie/Heartbeat Lottie Animation.json'),
+                                child: Lottie.asset(
+                                  'assets/lottie/Heartbeat Lottie Animation.json',
+                                ),
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text('Bienvenido', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.dark)),
+                            const Text(
+                              'Bienvenido',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.dark,
+                              ),
+                            ),
                             const SizedBox(height: 6),
-                            const Text('Ingresa con tu cuenta para continuar.', style: TextStyle(color: AppColors.muted)),
+                            const Text(
+                              'Ingresa con tu cuenta para continuar.',
+                              style: TextStyle(color: AppColors.muted),
+                            ),
                             const SizedBox(height: 16),
                             TabBar(
                               controller: _tab,
@@ -192,10 +242,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               height: 250,
                               child: TabBarView(
                                 controller: _tab,
-                                children: [
-                                  _personalForm(),
-                                  _patientForm(),
-                                ],
+                                children: [_personalForm(), _patientForm()],
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -228,7 +275,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       children: [
         TextFormField(
           controller: _email,
-          decoration: const InputDecoration(labelText: 'Correo', prefixIcon: Icon(Icons.mail_outline)),
+          decoration: const InputDecoration(
+            labelText: 'Correo',
+            prefixIcon: Icon(Icons.mail_outline),
+          ),
           keyboardType: TextInputType.emailAddress,
           validator: AppValidators.email,
         ),
@@ -254,7 +304,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           ),
         ),
         const SizedBox(height: 20),
-        const Text('Acceso rápido de demostración', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark)),
+        const Text(
+          'Acceso rápido de demostración',
+          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
+        ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
@@ -281,12 +334,18 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       children: [
         TextFormField(
           controller: _ci,
-          decoration: const InputDecoration(labelText: 'Carnet de identidad', prefixIcon: Icon(Icons.badge_outlined)),
+          decoration: const InputDecoration(
+            labelText: 'Carnet de identidad',
+            prefixIcon: Icon(Icons.badge_outlined),
+          ),
         ),
         const SizedBox(height: 14),
         TextFormField(
           readOnly: true,
-          decoration: const InputDecoration(labelText: 'Fecha de nacimiento', prefixIcon: Icon(Icons.cake_outlined)),
+          decoration: const InputDecoration(
+            labelText: 'Fecha de nacimiento',
+            prefixIcon: Icon(Icons.cake_outlined),
+          ),
           controller: TextEditingController(
             text: _birthDate == null
                 ? ''

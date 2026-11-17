@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_colors.dart';
 
 /// Tabla estándar para el modo web del sistema interno.
@@ -46,7 +47,11 @@ class AppTable extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   child: Text(
                     h,
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
             ],
@@ -55,10 +60,7 @@ class AppTable extends StatelessWidget {
             TableRow(
               children: [
                 for (final cell in row)
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: cell,
-                  ),
+                  Padding(padding: const EdgeInsets.all(12), child: cell),
               ],
             ),
         ],

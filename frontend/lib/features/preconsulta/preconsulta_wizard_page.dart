@@ -154,8 +154,10 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
     final catalogo = prov.catalogo;
     if (catalogo == null) return;
     if (_pacienteId == null) {
-      setState(() => _errorContexto =
-          'Selecciona el paciente al que pertenece esta preconsulta.');
+      setState(
+        () => _errorContexto =
+            'Selecciona el paciente al que pertenece esta preconsulta.',
+      );
       return;
     }
     setState(() {
@@ -198,7 +200,8 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
         if (!mounted) return;
         if (camaras.isEmpty) {
           setState(() {
-            _errorCamara = 'No se detectó una cámara conectada a este dispositivo.';
+            _errorCamara =
+                'No se detectó una cámara conectada a este dispositivo.';
           });
           return;
         }
@@ -296,8 +299,10 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
       );
       if (!mounted) return;
       if (!ok) {
-        setState(() => _errorCaptura =
-            prov.error ?? 'No se pudo completar el análisis facial.');
+        setState(
+          () => _errorCaptura =
+              prov.error ?? 'No se pudo completar el análisis facial.',
+        );
         return;
       }
       setState(() {
@@ -309,8 +314,9 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
       setState(() => _errorCaptura = e.message);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _errorCaptura =
-          'La captura falló. Puedes intentarlo de nuevo o continuar sin cámara.');
+      setState(
+        () => _errorCaptura = 'La captura falló. Puedes intentarlo de nuevo o continuar sin cámara.',
+      );
     } finally {
       if (mounted) setState(() => _capturando = false);
     }
@@ -355,7 +361,8 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
     for (final p in catalogo.preguntas) {
       if (!p.requerida) continue;
       final valor = _respuestas[p.codigo];
-      final vacio = valor == null ||
+      final vacio =
+          valor == null ||
           (valor is String && valor.trim().isEmpty) ||
           (valor is List && valor.isEmpty);
       if (vacio) errores[p.codigo] = 'Esta pregunta es obligatoria.';
@@ -547,7 +554,8 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
         child: Column(
           children: [
             _Mensaje(
-              texto: _errorInicial ??
+              texto:
+                  _errorInicial ??
                   'No se pudo cargar el consentimiento. Verifica tu conexión.',
               color: AppColors.danger,
               icono: Icons.cloud_off_outlined,
@@ -602,8 +610,11 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.verified_outlined,
-                  color: AppColors.success, size: 18),
+              const Icon(
+                Icons.verified_outlined,
+                color: AppColors.success,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -647,14 +658,20 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.lock_outline,
-                    size: 18, color: AppColors.muted),
+                const Icon(
+                  Icons.lock_outline,
+                  size: 18,
+                  color: AppColors.muted,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     consentimiento.retencion,
                     style: const TextStyle(
-                        color: AppColors.muted, fontSize: 12, height: 1.4),
+                      color: AppColors.muted,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -685,8 +702,10 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                 ? null
                 : Text(
                     consentimiento.contacto,
-                    style:
-                        const TextStyle(fontSize: 11, color: AppColors.muted),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.muted,
+                    ),
                   ),
           ),
         ),
@@ -730,9 +749,7 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
         const SizedBox(height: 18),
         if (esPaciente)
           _TarjetaPaciente(
-            nombre: paciente?.fullName ??
-                auth.currentUser?.name ??
-                'Paciente',
+            nombre: paciente?.fullName ?? auth.currentUser?.name ?? 'Paciente',
             cedula: paciente?.ci ?? '',
             edad: paciente == null ? null : _edad(paciente.birthDate),
           )
@@ -750,17 +767,23 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
           if (_paciente != null)
             _SelectorCita(
               key: ValueKey(_paciente!.id),
-              citas: clinic
-                  .appointmentsOfPatient(_paciente!.id)
-                  .where((a) =>
-                      !a.date.isBefore(DateTime(
-                          DateTime.now().year,
-                          DateTime.now().month,
-                          DateTime.now().day)) &&
-                      a.status != AppointmentStatus.cancelada &&
-                      a.status != AppointmentStatus.noAsistio)
-                  .toList()
-                ..sort((a, b) => a.date.compareTo(b.date)),
+              citas:
+                  clinic
+                      .appointmentsOfPatient(_paciente!.id)
+                      .where(
+                        (a) =>
+                            !a.date.isBefore(
+                              DateTime(
+                                DateTime.now().year,
+                                DateTime.now().month,
+                                DateTime.now().day,
+                              ),
+                            ) &&
+                            a.status != AppointmentStatus.cancelada &&
+                            a.status != AppointmentStatus.noAsistio,
+                      )
+                      .toList()
+                    ..sort((a, b) => a.date.compareTo(b.date)),
               citaId: _citaId,
               onCambiar: (id) => setState(() => _citaId = id),
               nombreMedico: clinic.doctorName,
@@ -799,7 +822,9 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                         ),
                       )
                     : const Icon(Icons.videocam_outlined),
-                label: Text(_creando ? 'Preparando…' : 'Continuar a la captura'),
+                label: Text(
+                  _creando ? 'Preparando…' : 'Continuar a la captura',
+                ),
               ),
             ),
           ],
@@ -833,8 +858,7 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
         _HeroPaso(
           icono: Icons.face_retouching_natural_outlined,
           titulo: 'Captura facial',
-          subtitulo:
-              'Mira de frente a la cámara, con buena luz y sin moverte. Duración aproximada: 20 segundos.',
+          subtitulo: 'Mira de frente a la cámara, con buena luz y sin moverte. Duración aproximada: 20 segundos.',
         ),
         const SizedBox(height: 16),
         const _InstruccionesCaptura(),
@@ -857,8 +881,10 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                         children: [
                           CircularProgressIndicator(color: Colors.white),
                           SizedBox(height: 12),
-                          Text('Abriendo cámara…',
-                              style: TextStyle(color: Colors.white70)),
+                          Text(
+                            'Abriendo cámara…',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                         ],
                       ),
                     )
@@ -869,8 +895,7 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                       camaras: _camarasDetectadas,
                       seleccionada: _idCamaraElegida,
                       onCambiar: (id) => setState(() => _idCamaraElegida = id),
-                      onUsar: () =>
-                          _iniciarCamara(idCamara: _idCamaraElegida),
+                      onUsar: () => _iniciarCamara(idCamara: _idCamaraElegida),
                     )
                   else
                     _CamaraInvitacion(
@@ -922,10 +947,12 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                             child: LinearProgressIndicator(
                               value: _progresoCaptura,
                               minHeight: 8,
-                              backgroundColor:
-                                  Colors.white.withValues(alpha: 0.25),
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.25,
+                              ),
                               valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppColors.primaryLight),
+                                AppColors.primaryLight,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -971,7 +998,9 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.play_circle_outline),
             label: Text(
@@ -1010,10 +1039,12 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
       return const Center(child: CircularProgressIndicator());
     }
     final respondidas = _respuestas.values
-        .where((v) =>
-            v != null &&
-            !(v is String && v.trim().isEmpty) &&
-            !(v is List && v.isEmpty))
+        .where(
+          (v) =>
+              v != null &&
+              !(v is String && v.trim().isEmpty) &&
+              !(v is List && v.isEmpty),
+        )
         .length;
     final requeridas = catalogo.preguntas.where((p) => p.requerida).toList();
     final obligatoriasRespondidas = requeridas.where((p) {
@@ -1029,8 +1060,7 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
         _HeroPaso(
           icono: Icons.assignment_outlined,
           titulo: 'Cuestionario clínico',
-          subtitulo:
-              'Responde con calma. Estas respuestas se combinan con la captura para explicar el nivel de prioridad.',
+          subtitulo: 'Responde con calma. Estas respuestas se combinan con la captura para explicar el nivel de prioridad.',
           badge: '$respondidas respuestas',
         ),
         const SizedBox(height: 16),
@@ -1093,7 +1123,9 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.check_circle_outline),
                 label: Text(
@@ -1208,11 +1240,12 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      triage?.resumen.isNotEmpty == true
-                          ? triage!.resumen
-                          : 'Triaje calculado. Confirma el nivel con el personal clínico.',
+                      triage?.resumen.isNotEmpty == true ? triage!.resumen : 'Triaje calculado. Confirma el nivel con el personal clínico.',
                       style: const TextStyle(
-                          color: AppColors.dark, fontSize: 13, height: 1.4),
+                        color: AppColors.dark,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -1226,8 +1259,7 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                         ),
                         _MiniChip(
                           icono: Icons.insights_outlined,
-                          texto:
-                              'Confianza ${porcentaje(triage?.confianza)}',
+                          texto: 'Confianza ${porcentaje(triage?.confianza)}',
                           color: AppColors.muted,
                         ),
                         if (triage?.revisado == true)
@@ -1278,8 +1310,8 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
             final columnas = constraints.maxWidth >= 720
                 ? 4
                 : constraints.maxWidth >= 420
-                    ? 2
-                    : 1;
+                ? 2
+                : 1;
             final anchoItem =
                 (constraints.maxWidth - (columnas - 1) * 12) / columnas;
             return Wrap(
@@ -1398,8 +1430,7 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
         SeccionTitulo(
           icono: Icons.account_tree_outlined,
           titulo: 'Por qué este nivel',
-          subtitulo:
-              'Cada factor tiene un peso y una fuente. Todo es auditable y revisable.',
+          subtitulo: 'Cada factor tiene un peso y una fuente. Todo es auditable y revisable.',
         ),
         const SizedBox(height: 12),
         if (triage == null || triage.motivos.isEmpty)
@@ -1430,15 +1461,21 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 5),
-                    child: Icon(Icons.check_circle_outline,
-                        size: 15, color: AppColors.success),
+                    child: Icon(
+                      Icons.check_circle_outline,
+                      size: 15,
+                      color: AppColors.success,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       r,
                       style: const TextStyle(
-                          color: AppColors.dark, fontSize: 12.5, height: 1.4),
+                        color: AppColors.dark,
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
@@ -1525,8 +1562,11 @@ class _BarraSuperior extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(Icons.auto_awesome,
-                color: Colors.white, size: 20),
+            child: const Icon(
+              Icons.auto_awesome,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -1655,7 +1695,9 @@ class _PanelLateral extends StatelessWidget {
                         Text(
                           'CI ${paciente!.ci}',
                           style: const TextStyle(
-                              color: AppColors.muted, fontSize: 11),
+                            color: AppColors.muted,
+                            fontSize: 11,
+                          ),
                         ),
                     ],
                   ),
@@ -1732,8 +1774,8 @@ class _PasoLateral extends StatelessWidget {
     final color = completado
         ? AppColors.success
         : activo
-            ? AppColors.primary
-            : AppColors.border;
+        ? AppColors.primary
+        : AppColors.border;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1916,7 +1958,9 @@ class _HeroPaso extends StatelessWidget {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryBg,
                         borderRadius: BorderRadius.circular(20),
@@ -1938,7 +1982,10 @@ class _HeroPaso extends StatelessWidget {
                 Text(
                   subtitulo!,
                   style: const TextStyle(
-                      color: AppColors.muted, fontSize: 12.5, height: 1.4),
+                    color: AppColors.muted,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ],
@@ -1974,7 +2021,10 @@ class _ParrafoConsentimiento extends StatelessWidget {
           Text(
             texto,
             style: const TextStyle(
-                color: AppColors.muted, fontSize: 12.5, height: 1.45),
+              color: AppColors.muted,
+              fontSize: 12.5,
+              height: 1.45,
+            ),
           ),
         ],
       ),
@@ -2028,16 +2078,21 @@ class _ListaConsentimiento extends StatelessWidget {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 6),
-                    child: Icon(Icons.circle, size: 5, color: AppColors.primary),
+                    child: Icon(
+                      Icons.circle,
+                      size: 5,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       item,
                       style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                          height: 1.4),
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
@@ -2099,14 +2154,16 @@ class _TarjetaPaciente extends StatelessWidget {
                     if (edad != null) '$edad años',
                     'Paciente',
                   ].join(' · '),
-                  style: const TextStyle(
-                      color: AppColors.muted, fontSize: 12),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.verified_user_outlined,
-              color: AppColors.primaryDark, size: 22),
+          const Icon(
+            Icons.verified_user_outlined,
+            color: AppColors.primaryDark,
+            size: 22,
+          ),
         ],
       ),
     );
@@ -2147,8 +2204,11 @@ class _SelectorPaciente extends StatelessWidget {
                 color: AppColors.primaryBg,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.person_search_outlined,
-                  color: AppColors.primaryDark, size: 20),
+              child: const Icon(
+                Icons.person_search_outlined,
+                color: AppColors.primaryDark,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -2167,8 +2227,9 @@ class _SelectorPaciente extends StatelessWidget {
                   Text(
                     paciente?.fullName ?? 'Seleccionar paciente',
                     style: TextStyle(
-                      color:
-                          paciente == null ? AppColors.muted : AppColors.dark,
+                      color: paciente == null
+                          ? AppColors.muted
+                          : AppColors.dark,
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                     ),
@@ -2177,7 +2238,9 @@ class _SelectorPaciente extends StatelessWidget {
                     Text(
                       'CI ${paciente!.ci}',
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 11),
+                        color: AppColors.muted,
+                        fontSize: 11,
+                      ),
                     ),
                 ],
               ),
@@ -2215,7 +2278,8 @@ class _SelectorCita extends StatelessWidget {
   Widget build(BuildContext context) {
     if (citas.isEmpty) {
       return const _Mensaje(
-        texto: 'El paciente no tiene citas próximas. La preconsulta quedará '
+        texto:
+            'El paciente no tiene citas próximas. La preconsulta quedará '
             'sin cita asociada (es válido).',
         color: AppColors.muted,
         icono: Icons.event_busy_outlined,
@@ -2229,10 +2293,7 @@ class _SelectorCita extends StatelessWidget {
         prefixIcon: Icon(Icons.event_available_outlined),
       ),
       items: [
-        const DropdownMenuItem<int>(
-          value: 0,
-          child: Text('Sin cita asociada'),
-        ),
+        const DropdownMenuItem<int>(value: 0, child: Text('Sin cita asociada')),
         for (final cita in citas)
           DropdownMenuItem<int>(
             value: int.tryParse(cita.id),
@@ -2519,7 +2580,9 @@ class _CampoCuestionario extends StatelessWidget {
                   Text(
                     '$min',
                     style: const TextStyle(
-                        color: AppColors.muted, fontSize: 11),
+                      color: AppColors.muted,
+                      fontSize: 11,
+                    ),
                   ),
                   Expanded(
                     child: Slider(
@@ -2536,7 +2599,9 @@ class _CampoCuestionario extends StatelessWidget {
                   Text(
                     '$max',
                     style: const TextStyle(
-                        color: AppColors.muted, fontSize: 11),
+                      color: AppColors.muted,
+                      fontSize: 11,
+                    ),
                   ),
                   const SizedBox(width: 10),
                 ],
@@ -2548,7 +2613,9 @@ class _CampoCuestionario extends StatelessWidget {
                       ? 'Desliza para indicar la intensidad'
                       : 'Intensidad: ${actual.toStringAsFixed(0)} / $max',
                   style: TextStyle(
-                    color: actual == null ? AppColors.muted : AppColors.primaryDark,
+                    color: actual == null
+                        ? AppColors.muted
+                        : AppColors.primaryDark,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -2774,9 +2841,10 @@ class _InstruccionesCaptura extends StatelessWidget {
                 Text(
                   item.$2,
                   style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600),
+                    color: AppColors.muted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -2803,7 +2871,11 @@ class _CamaraInvitacion extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.videocam_outlined, size: 44, color: Colors.white70),
+            const Icon(
+              Icons.videocam_outlined,
+              size: 44,
+              color: Colors.white70,
+            ),
             const SizedBox(height: 10),
             const Text(
               'La cámara se abrirá solo para esta captura.',
@@ -2844,15 +2916,19 @@ class _SelectorCamara extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.switch_video_outlined,
-                size: 40, color: Colors.white70),
+            const Icon(
+              Icons.switch_video_outlined,
+              size: 40,
+              color: Colors.white70,
+            ),
             const SizedBox(height: 8),
             const Text(
               'Elige la cámara que usarás',
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700),
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -2863,7 +2939,9 @@ class _SelectorCamara extends StatelessWidget {
                 for (final c in camaras)
                   ChoiceChip(
                     avatar: Icon(
-                      c.frontal ? Icons.person_outline : Icons.videocam_outlined,
+                      c.frontal
+                          ? Icons.person_outline
+                          : Icons.videocam_outlined,
                       size: 16,
                     ),
                     label: Text(c.nombre),
@@ -2898,14 +2976,20 @@ class _CamaraNoDisponible extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.videocam_off_outlined,
-                size: 42, color: Colors.orangeAccent),
+            const Icon(
+              Icons.videocam_off_outlined,
+              size: 42,
+              color: Colors.orangeAccent,
+            ),
             const SizedBox(height: 10),
             Text(
               mensaje,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  color: Colors.white, fontSize: 12.5, height: 1.4),
+                color: Colors.white,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -2977,7 +3061,10 @@ class _MotivoTile extends StatelessWidget {
                   Text(
                     motivo.detalle,
                     style: const TextStyle(
-                        color: AppColors.muted, fontSize: 11.5, height: 1.35),
+                      color: AppColors.muted,
+                      fontSize: 11.5,
+                      height: 1.35,
+                    ),
                   ),
                 ],
               ],

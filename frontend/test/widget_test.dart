@@ -53,16 +53,16 @@ class FakeFirebaseAuth extends Fake
     with MockPlatformInterfaceMixin
     implements FirebaseAuthPlatform {
   @override
-  FirebaseAuthPlatform delegateFor(
-      {required FirebaseApp app, Persistence? persistence}) =>
-      this;
+  FirebaseAuthPlatform delegateFor({
+    required FirebaseApp app,
+    Persistence? persistence,
+  }) => this;
 
   @override
   FirebaseAuthPlatform setInitialValues({
     InternalUserDetails? currentUser,
     String? languageCode,
-  }) =>
-      this;
+  }) => this;
   @override
   Stream<UserPlatform?> authStateChanges() =>
       const Stream<UserPlatform?>.empty();

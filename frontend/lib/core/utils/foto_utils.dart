@@ -21,10 +21,19 @@ class FotoUtils {
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return bytes;
-      final mayor = decoded.width > decoded.height ? decoded.width : decoded.height;
-      final img.Image redimensionada =
-          mayor > maxLado ? img.copyResize(decoded, width: decoded.width >= decoded.height ? maxLado : null, height: decoded.height > decoded.width ? maxLado : null) : decoded;
-      return Uint8List.fromList(img.encodeJpg(redimensionada, quality: calidad));
+      final mayor = decoded.width > decoded.height
+          ? decoded.width
+          : decoded.height;
+      final img.Image redimensionada = mayor > maxLado
+          ? img.copyResize(
+              decoded,
+              width: decoded.width >= decoded.height ? maxLado : null,
+              height: decoded.height > decoded.width ? maxLado : null,
+            )
+          : decoded;
+      return Uint8List.fromList(
+        img.encodeJpg(redimensionada, quality: calidad),
+      );
     } catch (_) {
       return bytes;
     }
@@ -37,7 +46,9 @@ class FotoUtils {
     int calidad = 80,
   }) {
     try {
-      return base64Encode(comprimirJpg(bytes, maxLado: maxLado, calidad: calidad));
+      return base64Encode(
+        comprimirJpg(bytes, maxLado: maxLado, calidad: calidad),
+      );
     } catch (_) {
       return null;
     }
