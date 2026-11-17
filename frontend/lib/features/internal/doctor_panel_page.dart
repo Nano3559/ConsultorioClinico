@@ -19,10 +19,82 @@ class DoctorPanelPage extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final clinic = context.watch<ClinicProvider>();
     final doctorId = auth.currentUser?.doctorId;
+
     if (doctorId == null) {
-      return const Center(child: Text('Sin médico asignado'));
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_outline, size: 48, color: AppColors.muted),
+            SizedBox(height: 12),
+            Text(
+              'Sin médico asignado',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+            ),
+            Text(
+              'Tu perfil de Firebase no tiene un médico vinculado.',
+              style: TextStyle(fontSize: 14, color: AppColors.muted),
+            ),
+          ],
+        ),
+      );
     }
+
+    if (clinic.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryDark),
+      );
+    }
+
+    if (clinic.error != null && clinic.error!.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
+            const SizedBox(height: 12),
+            Text(
+              'Error al cargar el panel',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.danger),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              clinic.error!,
+              style: const TextStyle(fontSize: 14, color: AppColors.muted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => clinic.setAuthToken(null),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+
     final doctor = clinic.doctorById(doctorId);
+    if (doctor == null) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.medical_services_outlined, size: 48, color: AppColors.muted),
+            SizedBox(height: 12),
+            Text(
+              'Médico no encontrado',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark),
+            ),
+            Text(
+              'El registro del médico aún no se ha sincronizado con el sistema.',
+              style: TextStyle(fontSize: 14, color: AppColors.muted),
+            ),
+          ],
+        ),
+      );
+    }
+
     final today = clinic
         .appointmentsOfDoctor(doctorId)
         .where((a) =>
@@ -127,6 +199,53 @@ class _AppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final clinic = context.watch<ClinicProvider>();
     final patient = clinic.patientById(appointment.patientId);
+
+    if (patient == null) {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      appointment.time,
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Paciente no disponible',
+                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.dark),
+                        ),
+                        Text(
+                          'El registro del paciente no se ha sincronizado.',
+                          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AppStatusBadge(status: appointment.status),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final hasPendingConsult = !clinic
         .historyOf(patient.id)
         .any((c) =>

@@ -55,6 +55,11 @@ class ClinicProvider extends ChangeNotifier {
   /// sin lectores y ya no se escribe (Fase 6).
   final Set<String> _occupied = {};
 
+  /// IDs de pacientes creados por el médico en la sesión actual.
+  /// Se usa para evitar que _scopePatientsToMedico los filtre antes de que
+  /// tengan citas o consultas asociadas.
+  final Set<String> _patientsCreadosPorMedico = {};
+
   // ---- Getters inmutables ------------------------------------------------
   List<Specialty> get specialties => List.unmodifiable(_specialties);
   List<Doctor> get doctors => List.unmodifiable(_doctors);
@@ -263,11 +268,15 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   // Un médico solo debe ver los pacientes que tienen citas o consultas a su nombre.
+  // Los pacientes recién creados por el médico en esta sesión se conservan
+  // aunque aún no tengan citas o consultas.
   void _scopePatientsToMedico() {
     final mine = <String>{
       for (final a in _appointments) a.patientId,
       for (final c in _consults) c.patientId,
     };
+    // Conserva pacientes creados por este médico en la sesión actual.
+    mine.addAll(_patientsCreadosPorMedico);
     _patients.removeWhere((p) => !mine.contains(p.id));
   }
 
@@ -423,17 +432,42 @@ class ClinicProvider extends ChangeNotifier {
   }
 
   // ---- Helpers de resolución ----------------------------------------------
-  Specialty specialtyById(String id) =>
-      _specialties.firstWhere((s) => s.id == id, orElse: () => _specialties.first);
+  /// Devuelve null si no existe la especialidad (evita Bad state: No element).
+  Specialty? specialtyById(String id) {
+    try {
+      return _specialties.firstWhere((s) => s.id == id);
+    } on StateError {
+      return null;
+    }
+  }
 
-  Doctor doctorById(String id) =>
-      _doctors.firstWhere((d) => d.id == id, orElse: () => _doctors.first);
+  /// Devuelve null si no existe el médico (evita Bad state: No element).
+  Doctor? doctorById(String id) {
+    try {
+      return _doctors.firstWhere((d) => d.id == id);
+    } on StateError {
+      return null;
+    }
+  }
 
-  Patient patientById(String id) =>
-      _patients.firstWhere((p) => p.id == id, orElse: () => _patients.first);
+  /// Devuelve null si no existe el paciente (evita Bad state: No element).
+  Patient? patientById(String id) {
+    try {
+      return _patients.firstWhere((p) => p.id == id);
+    } on StateError {
+      return null;
+    }
+  }
 
-  String doctorName(String id) => doctorById(id).displayName;
-  String patientName(String id) => patientById(id).fullName;
+  String doctorName(String id) {
+    final d = doctorById(id);
+    return d?.displayName ?? '';
+  }
+
+  String patientName(String id) {
+    final p = patientById(id);
+    return p?.fullName ?? '';
+  }
 
   List<Patient> searchPatients(String query) {
     final q = query.trim().toLowerCase();
@@ -445,8 +479,13 @@ class ClinicProvider extends ChangeNotifier {
     }).toList();
   }
 
-  String specialtyNameOf(String doctorId) =>
-      specialtyById(doctorById(doctorId).specialtyId).name;
+  String? specialtyNameOf(String? doctorId) {
+    if (doctorId == null) return null;
+    final d = doctorById(doctorId);
+    if (d == null) return null;
+    final s = specialtyById(d.specialtyId);
+    return s?.name;
+  }
 
   /// True si el médico indicado pertenece a la especialidad Cardiología
   /// (por nombre, ej. "Cardiología"). Devuelve false si el médico o su
@@ -511,7 +550,7 @@ class ClinicProvider extends ChangeNotifier {
     String? excludeAppointmentId,
   }) {
     final doctor = doctorById(doctorId);
-    if (!doctor.active) return false;
+    if (doctor == null || !doctor.active) return false;
     final dayName = _weekdayName(date.weekday);
     if (!doctor.schedule.forDay(dayName).contains(time)) return false;
 
@@ -531,6 +570,7 @@ class ClinicProvider extends ChangeNotifier {
 
   List<String> availableSlots(String doctorId, DateTime date) {
     final doctor = doctorById(doctorId);
+    if (doctor == null) return const [];
     final dayName = _weekdayName(date.weekday);
     return kTimeSlots.where((t) {
       if (!doctor.schedule.forDay(dayName).contains(t)) return false;
@@ -576,6 +616,9 @@ class ClinicProvider extends ChangeNotifier {
         Map<String, dynamic>.from(res.data?['data'] as Map),
       );
       _patients.add(created);
+      // Marca al paciente como creado por este médico para que no sea
+      // filtrado por _scopePatientsToMedico antes de tener citas.
+      _patientsCreadosPorMedico.add(created.id);
       notifyListeners();
       return created;
     } catch (e) {
@@ -693,7 +736,7 @@ class ClinicProvider extends ChangeNotifier {
       final res = await _api.postJson(
         '/medicos',
         {
-          ...d.toApiJson(especialidad: specialtyById(d.specialtyId).name),
+          ...d.toApiJson(especialidad: specialtyById(d.specialtyId)?.name ?? ''),
           'nombre': na[0],
           'apellido': na[1],
         },
@@ -730,7 +773,7 @@ class ClinicProvider extends ChangeNotifier {
         {
           'nombre': na[0],
           'apellido': na[1],
-          'especialidad': specialtyById(d.specialtyId).name,
+          'especialidad': specialtyById(d.specialtyId)?.name ?? '',
           'titulo': d.title,
           'descripcion': d.description,
           'anios_experiencia': d.yearsExperience,
@@ -1201,7 +1244,9 @@ class ClinicProvider extends ChangeNotifier {
       final count = _appointments.where((a) {
         final inRange = !a.date.isBefore(desde) && !a.date.isAfter(hasta);
         if (!inRange) return false;
-        return doctorById(a.doctorId).specialtyId == s.id;
+        final d = doctorById(a.doctorId);
+        if (d == null) return false;
+        return d.specialtyId == s.id;
       }).length;
       map[s.name] = count;
     }

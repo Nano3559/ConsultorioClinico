@@ -47,8 +47,8 @@ router.get(
 router.get('/:id', verifyFlexible, checkRole('admin', 'recepcion', 'medico', 'paciente'), getById);
 
 // Escritura
-router.post('/', verifyFlexible, checkRole('admin', 'recepcion'), pacienteValidation, validate, create);
-router.put('/:id', verifyFlexible, checkRole('admin', 'recepcion'), pacienteUpdateValidation, validate, update);
+router.post('/', verifyFlexible, checkRole('admin', 'recepcion', 'medico'), pacienteValidation, validate, create);
+router.put('/:id', verifyFlexible, checkRole('admin', 'recepcion', 'medico'), pacienteUpdateValidation, validate, update);
 router.delete('/:id', verifyFlexible, checkRole('admin'), remove);
 
 module.exports = router;

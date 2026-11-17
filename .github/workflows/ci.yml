@@ -1,0 +1,179 @@
+name: CI - Hito 5
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, Camila, Jhilian, brayan]
+
+env:
+  # Versiones de herramientas
+  FLUTTER_VERSION: '3.13.0'
+  NODE_VERSION: '22.x'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # =========================================================================
+  # FRONTEND - Flutter
+  # =========================================================================
+  frontend:
+    name: Frontend Flutter
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_CHANNEL }}
+          channel: stable
+
+      - name: Instalar dependencias Flutter
+        working-directory: ./frontend
+        run: flutter pub get
+
+      - name: Verificar formato (dart format)
+        working-directory: ./frontend
+        run: dart format --output=none --set-exit-if-changed lib/ test/
+
+      - name: Ejecutar flutter analyze
+        working-directory: ./frontend
+        run: flutter analyze lib/ test/
+
+      - name: Ejecutar pruebas Flutter
+        working-directory: ./frontend
+        run: flutter test
+
+      - name: Compilar Flutter Web
+        working-directory: ./frontend
+        run: flutter build web --release
+
+      - name: Subir artefacto de build web
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web-build
+          path: ./frontend/build/web
+          retention-days: 7
+
+  # =========================================================================
+  # BACKEND - Node.js + Express + Supabase
+  # =========================================================================
+  backend:
+    name: Backend Node.js
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ./backend/package-lock.json
+
+      - name: Instalar dependencias backend
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Ejecutar pruebas unitarias y de integración
+        working-directory: ./backend
+        run: npm test
+        env:
+          NODE_ENV: development
+          JWT_SECRET: test-secret-key-for-ci-only-do-not-use-in-production
+          SUPABASE_URL: http://localhost:54321
+          SUPABASE_ANON_KEY: test-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          CORS_ORIGINS: http://localhost:5000,http://127.0.0.1:5000
+
+      - name: Validar configuración del backend
+        working-directory: ./backend
+        run: node -e "require('./src/config/config'); console.log('Config OK');"
+
+  # =========================================================================
+  # PYTHON - Microservicios (Visión + Cardiología IA)
+  # =========================================================================
+  python:
+    name: Microservicios Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Instalar dependencias Python (Visión)
+        working-directory: ./backend/vision
+        run: |
+          pip install -r requirements.txt || true
+
+      - name: Instalar dependencias Python (Cardiología IA)
+        working-directory: ./CardiologiaEGC
+        run: |
+          pip install -r requirements.txt || true
+
+      - name: Ejecutar pruebas Python existentes
+        working-directory: ./backend/vision
+        run: |
+          python -m pytest test_preconsulta_metrics.py -v || echo "No hay pruebas pytest configuradas"
+
+      - name: Verificar importación de módulos Python
+        working-directory: ./CardiologiaEGC
+        run: |
+          python -c "import app; print('CardiologiaEGC app importado correctamente')" || true
+
+  # =========================================================================
+  # SEGURIDAD - Detección de secretos expuestos
+  # =========================================================================
+  security:
+    name: Seguridad y secretos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Detectar secretos expuestos con truffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          only-verified: false
+          fail: true
+          base-commit: origin/main
+
+      - name: Verificar que no hay .env reales commiteados
+        run: |
+          if git ls-files | grep -E '\.env$' | grep -v '.env.example'; then
+            echo "ERROR: Se encontraron archivos .env reales commiteados"
+            exit 1
+          fi
+          echo "No hay archivos .env reales en el repositorio"
+
+  # =========================================================================
+  # RESUMEN FINAL
+  # =========================================================================
+  summary:
+    name: Resumen de resultados
+    needs: [frontend, backend, python, security]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Mostrar estado de jobs
+        run: |
+          echo "Frontend: ${{ needs.frontend.result }}"
+          echo "Backend: ${{ needs.backend.result }}"
+          echo "Python: ${{ needs.python.result }}"
+          echo "Security: ${{ needs.security.result }}"

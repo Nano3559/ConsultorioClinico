@@ -278,9 +278,9 @@ class _HeroCard extends StatelessWidget {
 
     final cita = next;
     final doctor = clinic.doctorById(cita.doctorId);
-    final specialty = clinic.specialtyById(doctor.specialtyId);
-    final mainLine = isMedico ? clinic.patientName(cita.patientId) : doctor.displayName;
-    final subLine = isMedico ? 'Paciente' : '${specialty.name} · ${doctor.displayName}';
+    final specialty = doctor != null ? clinic.specialtyById(doctor.specialtyId) : null;
+    final mainLine = isMedico ? clinic.patientName(cita.patientId) : (doctor?.displayName ?? 'Médico');
+    final subLine = isMedico ? 'Paciente' : '${specialty?.name ?? 'Sin especialidad'} · ${doctor?.displayName ?? ''}';
 
     return _CardBox(
       children: [

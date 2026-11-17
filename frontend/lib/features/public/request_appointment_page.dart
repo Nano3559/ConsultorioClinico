@@ -463,7 +463,7 @@ class _RequestAppointmentPageState extends State<RequestAppointmentPage> {
   }
 
   String _doctorName(ClinicProvider clinic) =>
-      _doctorId == null ? '' : clinic.doctorById(_doctorId!).displayName;
+        _doctorId == null ? '' : (clinic.doctorById(_doctorId!)?.displayName ?? '');
 
   /// Comprime la foto FRONTAL del pack (sin procesar) a base64 para
   /// guardarla en Firestore. Funciona sin facturación (sin Storage).
