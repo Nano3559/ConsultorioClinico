@@ -18,6 +18,30 @@ class CapturaException implements Exception {
   String toString() => message;
 }
 
+/// Cámara detectada en el dispositivo (web, Android, iOS o escritorio).
+class CamaraDisponible {
+  const CamaraDisponible({
+    required this.id,
+    required this.nombre,
+    this.frontal = false,
+  });
+
+  /// Identificador que entiende la plataforma (deviceId en web, nombre del
+  /// plugin `camera` en la app).
+  final String id;
+  final String nombre;
+  final bool frontal;
+
+  /// Cámara que se preselecciona: la frontal (selfie) si existe, o la primera.
+  static CamaraDisponible? preferida(List<CamaraDisponible> camaras) {
+    if (camaras.isEmpty) return null;
+    for (final c in camaras) {
+      if (c.frontal) return c;
+    }
+    return camaras.first;
+  }
+}
+
 /// Resultado de una captura completa (frames o video, en base64).
 class ResultadoCaptura {
   const ResultadoCaptura({

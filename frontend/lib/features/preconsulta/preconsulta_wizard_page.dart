@@ -61,6 +61,8 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
 
   CamaraPreconsulta? _camara;
   bool _camaraLista = false;
+  List<CamaraDisponible> _camarasDetectadas = const [];
+  String? _idCamaraElegida;
   bool _iniciandoCamara = false;
   String? _errorCamara;
   bool _capturando = false;
@@ -181,7 +183,9 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
   // --------------------------------------------------------------------------
   // Cámara
   // --------------------------------------------------------------------------
-  Future<void> _iniciarCamara() async {
+  /// Primero busca las cámaras conectadas. Sin ninguna, avisa; con una, la abre;
+  /// con varias, deja elegir (la frontal queda preseleccionada).
+  Future<void> _iniciarCamara({String? idCamara}) async {
     if (_camaraLista || _iniciandoCamara) return;
     setState(() {
       _iniciandoCamara = true;
@@ -189,9 +193,30 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
     });
     final camara = _camara ??= CamaraPreconsulta();
     try {
-      await camara.iniciar();
+      if (idCamara == null) {
+        final camaras = await camara.listarCamaras();
+        if (!mounted) return;
+        if (camaras.isEmpty) {
+          setState(() {
+            _errorCamara = 'No se detectó una cámara conectada a este dispositivo.';
+          });
+          return;
+        }
+        if (camaras.length > 1) {
+          setState(() {
+            _camarasDetectadas = camaras;
+            _idCamaraElegida = CamaraDisponible.preferida(camaras)?.id;
+          });
+          return;
+        }
+        idCamara = camaras.first.id;
+      }
+      await camara.iniciar(idCamara: idCamara);
       if (!mounted) return;
-      setState(() => _camaraLista = true);
+      setState(() {
+        _camaraLista = true;
+        _camarasDetectadas = const [];
+      });
     } on CapturaException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -213,6 +238,8 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
     final camara = _camara;
     _camara = null;
     _camaraLista = false;
+    _camarasDetectadas = const [];
+    _idCamaraElegida = null;
     if (camara != null) {
       await camara.liberar();
     }
@@ -837,9 +864,17 @@ class _PreconsultaWizardPageState extends State<PreconsultaWizardPage> {
                     )
                   else if (_errorCamara != null)
                     _CamaraNoDisponible(mensaje: _errorCamara!)
+                  else if (_camarasDetectadas.length > 1)
+                    _SelectorCamara(
+                      camaras: _camarasDetectadas,
+                      seleccionada: _idCamaraElegida,
+                      onCambiar: (id) => setState(() => _idCamaraElegida = id),
+                      onUsar: () =>
+                          _iniciarCamara(idCamara: _idCamaraElegida),
+                    )
                   else
                     _CamaraInvitacion(
-                      onActivar: _iniciarCamara,
+                      onActivar: () => _iniciarCamara(),
                       deshabilitado: _capturando,
                     ),
                   // Guía de encuadre.
@@ -2780,6 +2815,68 @@ class _CamaraInvitacion extends StatelessWidget {
               onPressed: deshabilitado ? null : onActivar,
               icon: const Icon(Icons.videocam, size: 18),
               label: const Text('Activar cámara'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectorCamara extends StatelessWidget {
+  const _SelectorCamara({
+    required this.camaras,
+    required this.seleccionada,
+    required this.onCambiar,
+    required this.onUsar,
+  });
+
+  final List<CamaraDisponible> camaras;
+  final String? seleccionada;
+  final ValueChanged<String> onCambiar;
+  final VoidCallback onUsar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.switch_video_outlined,
+                size: 40, color: Colors.white70),
+            const SizedBox(height: 8),
+            const Text(
+              'Elige la cámara que usarás',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final c in camaras)
+                  ChoiceChip(
+                    avatar: Icon(
+                      c.frontal ? Icons.person_outline : Icons.videocam_outlined,
+                      size: 16,
+                    ),
+                    label: Text(c.nombre),
+                    selected: seleccionada == c.id,
+                    onSelected: (_) => onCambiar(c.id),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: seleccionada == null ? null : onUsar,
+              icon: const Icon(Icons.videocam, size: 18),
+              label: const Text('Usar esta cámara'),
             ),
           ],
         ),

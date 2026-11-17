@@ -13,7 +13,9 @@ import 'captura_preconsulta_tipos.dart';
 class CamaraPreconsulta {
   bool get activa => false;
 
-  Future<void> iniciar() async {
+  Future<List<CamaraDisponible>> listarCamaras() async => const [];
+
+  Future<void> iniciar({String? idCamara}) async {
     throw const CapturaException(
       CapturaErrorKind.notSupported,
       'La cámara de la preconsulta solo está disponible en el navegador o en la app móvil.',

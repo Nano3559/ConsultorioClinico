@@ -22,7 +22,45 @@ class CamaraPreconsulta {
 
   bool get activa => _video != null;
 
-  Future<void> iniciar() async {
+  /// Cámaras conectadas según el navegador. Antes de conceder el permiso los
+  /// nombres llegan vacíos; por eso se numeran como "Cámara 1", "Cámara 2"...
+  Future<List<CamaraDisponible>> listarCamaras() async {
+    if (!web.window.isSecureContext) {
+      throw const CapturaException(
+        CapturaErrorKind.denied,
+        'Abre la página con HTTPS (candado en la barra). Sin conexión segura el navegador bloquea la cámara.',
+      );
+    }
+    final List<web.MediaDeviceInfo> dispositivos;
+    try {
+      dispositivos = (await web.window.navigator.mediaDevices
+              .enumerateDevices()
+              .toDart)
+          .toDart;
+    } catch (_) {
+      throw const CapturaException(
+        CapturaErrorKind.notSupported,
+        'Este navegador no permite listar las cámaras. Prueba en Chrome o Edge.',
+      );
+    }
+    final videos =
+        dispositivos.where((d) => d.kind == 'videoinput').toList();
+    final patronFrontal = RegExp(r'front|frontal|user|selfie', caseSensitive: false);
+    return [
+      for (var i = 0; i < videos.length; i++)
+        CamaraDisponible(
+          id: videos[i].deviceId,
+          nombre: videos[i].label.isNotEmpty
+              ? videos[i].label
+              : 'Cámara ${i + 1}',
+          frontal: patronFrontal.hasMatch(videos[i].label),
+        ),
+    ];
+  }
+
+  /// Abre la cámara [idCamara] tal como la devolvió [listarCamaras]. Sin id,
+  /// usa la frontal (o la predeterminada del navegador).
+  Future<void> iniciar({String? idCamara}) async {
     if (_video != null) return;
     if (!web.window.isSecureContext) {
       throw const CapturaException(
@@ -32,14 +70,34 @@ class CamaraPreconsulta {
     }
     web.MediaStream? stream;
     try {
-      try {
-        stream = await _abrir({'facingMode': 'user'});
-      } catch (e) {
-        final name = _domErrorName(e);
-        if (name == 'OverconstrainedError' || name == 'NotFoundError') {
-          stream = await _abrir(null);
-        } else {
+      // Un deviceId vacío significa que el navegador aún no concedió acceso al
+      // dispositivo: se abre la cámara por defecto en lugar de forzar ese id.
+      if (idCamara != null && idCamara.isNotEmpty) {
+        // Una cámara elegida no se sustituye en silencio por otra.
+        try {
+          stream = await _abrir({
+            'deviceId': {'exact': idCamara},
+          });
+        } catch (e) {
+          final name = _domErrorName(e);
+          if (name == 'OverconstrainedError' || name == 'NotFoundError') {
+            throw const CapturaException(
+              CapturaErrorKind.noCamera,
+              'La cámara seleccionada ya no está disponible. Vuelve a elegirla.',
+            );
+          }
           rethrow;
+        }
+      } else {
+        try {
+          stream = await _abrir({'facingMode': 'user'});
+        } catch (e) {
+          final name = _domErrorName(e);
+          if (name == 'OverconstrainedError' || name == 'NotFoundError') {
+            stream = await _abrir(null);
+          } else {
+            rethrow;
+          }
         }
       }
       final video = web.HTMLVideoElement()
@@ -124,7 +182,7 @@ class CamaraPreconsulta {
     if (name == 'NotFoundError' || name == 'OverconstrainedError') {
       return const CapturaException(
         CapturaErrorKind.noCamera,
-        'No se encontró ninguna cámara en este dispositivo.',
+        'No se detectó una cámara conectada a este dispositivo.',
       );
     }
     if (name == 'NotReadableError') {

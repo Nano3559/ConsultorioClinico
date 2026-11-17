@@ -16,14 +16,16 @@ import 'captura_preconsulta_tipos.dart';
 
 class CamaraPreconsulta {
   CameraController? _controller;
+  List<CameraDescription> _descripciones = const [];
 
   bool get activa => _controller?.value.isInitialized ?? false;
 
-  Future<void> iniciar() async {
-    if (_controller != null && _controller!.value.isInitialized) return;
-    List<CameraDescription> camaras;
+  /// Busca las cámaras conectadas. En el celular son frontal y trasera; en
+  /// escritorio, las webcams que reporte el sistema.
+  Future<List<CamaraDisponible>> listarCamaras() async {
     try {
-      camaras = await availableCameras().timeout(const Duration(seconds: 25));
+      _descripciones =
+          await availableCameras().timeout(const Duration(seconds: 25));
     } on CameraException catch (e) {
       throw _mapear(e.code, e.description);
     } on TimeoutException {
@@ -37,18 +39,49 @@ class CamaraPreconsulta {
         'Este equipo no permite usar la cámara desde aquí.',
       );
     }
-    if (camaras.isEmpty) {
+    return [
+      for (var i = 0; i < _descripciones.length; i++)
+        CamaraDisponible(
+          id: _descripciones[i].name,
+          nombre: _nombreCamara(_descripciones[i]),
+          frontal: _descripciones[i].lensDirection == CameraLensDirection.front,
+        ),
+    ];
+  }
+
+  String _nombreCamara(CameraDescription c) {
+    switch (c.lensDirection) {
+      case CameraLensDirection.front:
+        return 'Cámara frontal (selfie)';
+      case CameraLensDirection.back:
+        return 'Cámara trasera';
+      case CameraLensDirection.external:
+        return 'Cámara externa';
+    }
+  }
+
+  /// Abre la cámara [idCamara] (una de las devueltas por [listarCamaras]); si
+  /// no se indica, usa la frontal o la primera.
+  Future<void> iniciar({String? idCamara}) async {
+    if (_controller != null && _controller!.value.isInitialized) return;
+    if (_descripciones.isEmpty) {
+      await listarCamaras();
+    }
+    if (_descripciones.isEmpty) {
       throw const CapturaException(
         CapturaErrorKind.noCamera,
-        'No se detectó ninguna cámara en el dispositivo.',
+        'No se detectó una cámara conectada a este dispositivo.',
       );
     }
-    final frontal = camaras.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.front,
-      orElse: () => camaras.first,
+    final elegida = _descripciones.firstWhere(
+      (c) => c.name == idCamara,
+      orElse: () => _descripciones.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => _descripciones.first,
+      ),
     );
     final controller = CameraController(
-      frontal,
+      elegida,
       ResolutionPreset.low,
       enableAudio: false,
     );
@@ -81,7 +114,7 @@ class CamaraPreconsulta {
     if (code == 'NotFoundError' || code == 'OverconstrainedError') {
       return const CapturaException(
         CapturaErrorKind.noCamera,
-        'No se encontró ninguna cámara en este dispositivo.',
+        'No se detectó una cámara conectada a este dispositivo.',
       );
     }
     if (code == 'NotReadableError' || d.contains('busy') || d.contains('in use')) {
